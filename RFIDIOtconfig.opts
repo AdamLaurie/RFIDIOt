@@ -1,0 +1,7 @@
+#-s 9600 -l /dev/ttyUSB1
+# uncomment the above line to enable global overrides
+# options should be all on the first line, as if added on the command line
+# this file will be looked for in the following places:
+#   $(RFIDIOtconfig_opts) - note that this environment variable should be set to the full path and filename
+#   ./RFIDIOtconfig.opts
+#   /etc/RFIDIOtconfig.opts

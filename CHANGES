@@ -1,0 +1,229 @@
+v0.1:  2006-04-28
+First release.
+
+v0.1a: 2006-05-16
+Add 'Value' commands:
+	readvalueblock
+	writevalueblock
+	MIFAREvb (set variables from value block)
+
+v0.1b: 2006-05-29
+Make readblock non MIFARE specific
+Add readMIFAREblock command
+Add reset() call to all test programs (to switch off constant read)
+Add readlfx program to support ACG LFX reader
+
+v0.1c: 2006-05-30
+Add LFXTags hash (125 kHz tag types)
+Add lfxtype.py (command line tag identifier)
+
+v0.d: 2006-06-01
+Add access control block user data byte to MIFARE structure
+Add LFX tag type detection to cardselect.py 
+
+v0.e: 2006-09-29
+Add ICAO 9303 structures for Machine Readable Passports
+New test program: mrpkey.py for ICAO 9303
+Move reader config to RFIDIOtconfig.py
+Add EM4x05 ID decode
+
+v0.f: 2006-10-24
+Emergency release - 0.e lost in webserver disk crash
+Contains work in progress!!!
+Rename EM4x05 decode to more generic FDX-B
+Add EM4x02 'Unique' ID decode/encode
+Add passport file reads and image display
+
+v0.g: 2006-10-27
+Tidy up!
+Update all version numbers
+
+v.0.h:
+Add Hitag2 reading (readlfx)
+Add fdx-b cloning to Q5 / Hitag2 (fdxbnum)
+Add q5unfuck (does what it say on the tin!)
+mrpkey - display all data in GUI
+fdxbnum - add ability to write raw 16 digit HEX (to clone non-compliant tags)
+
+v0.i: 2006-12-10
+Fix login error for sector 0
+
+v0.j:
+Fix iso_7816_fail to allow non-passports to fail properly
+Add support for Frosch Hitag reader/writer
+Start to rationalise routines to always return True or False
+fdxbnum - add Frosch support for Hitag2
+fdxbnum - wait for blank tag in WRITE mode
+
+v0.k:
+was release j - forgot to update version number!
+
+v0.m:
+add facility to set Q5 native ID in 'q5reset.py'
+fix 'EM4x02' ID mode in 'unique.py' (was reversed)
+allow forcing of tag type in 'readlfx.py'
+add 'readtag.py' - read data blocks with no login
+add 'copytag.py' - copy data blocks to matching blank
+add 'isotype.py' - determine HF tag types
+add CHECK for Machine Readable Document  in 'mrpkey.py'
+fix bruteforce for non complete document numbers in 'mrpkey.py'
+fix bruteforce length of field in 'mrpkey.py'
+add offsets for usa & netherlands to 'mrpkey.py'
+add global overrides for line/speed etc. in RFIDIOtconfig.py [AL & Philippe Biondi]
+
+v0.n:
+add CLONE mode to 'unique.py'
+make 'mrpkey.py' more intelligent about reading passport contents:
+  read all data groups
+  extract image from CBEFF block in EF.DG2
+  extract public key certificate from EF.SOD (requires openssl installation)
+  add asn.1 field length encoding rules
+add 'sod.py' tool for brute force finding of certificates in EF_SOD.BIN (requires openssl installation)
+
+v0.p
+add PCSC support (http://pcsclite.alioth.debian.org/ and http://pyscard.sourceforge.net/) [hints/tips/inspiration Henryk Plötz]
+fix cardselect.py and multiselect.py to check for presence of card
+fix 'waitfor/do nothing' in RFIDIOt.py [Philippe Biondi]
+cleaner check digit calc in mrpkey.py [Philippe Biondi]
+change -r to -R (reader type) to allow -r to be used for PCSC compatibility
+add speed/framesize reporting to mrpkey.py
+increase MAX read chunk size to 118 in mrpkey.py (needs fixing to go up to device supported size ISO_FRAMESIZE)
+fix bit allignment issue in FDXBID encoding/decoding [Matsche]
+add global uid variable
+add locked block reporting to readmifare
+add readmifaresimple.py
+
+v0.q
+fix asn1 field length calculation in mrpkey.py
+add human readable config block for Q5 in readlfx.py
+add Manchester encoding to RFIDIOt.py and unique.py
+add serial port opening and baud rate checking for ACG / Frosch in RFIDIOt.py
+add Q5 emulation detection in lfxtype.py
+
+v0.r
+add SCM Microsystems reader support
+add -d (debug) option
+switch to T=1 protocol for PC/SC
+add auto-detect of PC/SC reader types
+fix minor reporting issues in readmifaresimple.py
+fix setting of tag type 'ALL' on ACG readers (different for LF or HF)
+added a bunch of PCSC ATR card types
+add reading of previously stored files to mrpkey.py
+fix CBEFF processing in mrpkey.py 
+fix bruteforcing of first character in mrpkey.py [Petter Bjorklund]
+add ID Card processing to mrpkey.py [vonJeek <mailto:vonjeek@thc.org>]
+
+v0.s
+fix -L issue in RFIDIOtconfig (readernum must be 0)
+add human readable dump to readmifaresimple.py (ReadablePrint() in RFIDIOt)
+fix logic in tag selection in unique.py (would not use hitag2)
+add hitag2 login (password mode) to RFIDIOt.py
+add hitag2bruteforce program hitag2brute.py
+start migrating definitions into smaller files to aid sharing with other apps (e.g. iso3166.py)
+add Windows distribution [Zac Franken]
+
+v0.t - October 2008
+add WRITE function to mrpkey.py for vonJeek JCOP emulator (http://freeworld.thc.org/thc-epassport/)
+add Makefile and vonJeek.gpsh for installing vonJeek epassport.cap to JCOP
+add VONJEEK declarations for vonJeek emulator to RFIDIOt.py
+set mrpkey file types to binary for windows compatibility [Jeroen van Beek / vonJeek <vonjeek@thc.org>]
+use windows compatible command execution for external commands in mrpkey [Jeroen van Beek / vonJeek <vonjeek@thc.org>]
+add WRITE function to mrpkey.py for JMRTD JCOP emulator (http://jmrtd.org/)
+allow mrpkey to skip objects (e.g. fingerprint (EF.DG3) protected by active authentication)
+add mifarekeys.py - calculate 3DES MifarePWD for Access to Mifare memory/functions on Dual Interface JCOP cards
+    as per Philips Application Note AN02105, http://www.nxp.com/acrobat_download/other/identification/067512.pdf
+add some country codes to iso3166.py [Jeroen van Beek / vonJeek <vonjeek@thc.org>]
+add -g 'No GUI' option to RFIDIOtconfig.py
+
+v0.u - November 2008
+add testlahf.sh script for testing LAHF units
+fix -R reader type override in RFIDIOtconfig.py
+add RFIDIOtconfig.py checking for global overrides in one of the following locations (in search order):
+
+	$(RFIDIOtconfig_opts)
+	./RFIDIOtconfig.opts
+	/etc/RFIDIOtconfig.opts
+
+    options should be specified on the first line as if typed on the command line, e.g.
+
+       -s 9600 -l /dev/ttyUSB0
+
+    command line options will take precedence over this file.
+
+add -n (No Init) command to RFIDIOtconfig.py - allow modules to run without hardware
+add display of checksum-corrected MRZ to mrpkey.py
+add jcop_mifare_access.cap - mifare access applet for JCOP
+add jcop_mifare_access.gpsh and target in Makefile for installation of jcop_mifare_access.cap
+add jcopmifare.py test program for JCOP mifare emulation
+add display of biometric features on FACE in mrpkey.py
+
+v0.v - January 2009
+fix ATS position & length in RFIDIOT.py
+add jcopsetatrhist.py - sets ATR Historical Bytes (ATS) on JCOP cards
+add jcop_set_atr_hist.cap - java applet for setting ATR/ATS
+add JAVA source for jcop_set_atr_hist.cap
+move iso_7816 routines into RFIDIOt (from mrpkey.py)
+fix exit status of all test programs and RFIDIOt (should be True on error)
+
+v0.w
+fix ACG reset/info sequence in RFIDIOt.py
+fix facial image display bug in mrpkey.py where conversion is required [Andreas Schmidt]
+fix RANDOM_UID setting in jcop_mifare_access.cap/jcopmifare.py (you will need a secret key from NXP)
+add jcoptool.py - JCOP toolkit (work in progress)
+mrpkey.py changes:
+  fix binary mode when reading files under Windows (for WRITE to card)
+  fix computation of composite checksum digit
+  support reading non-BAC passports
+  specify a dummy MRZ or simply the keyword 'PLAIN' for Plain Access if there is no Basic Access Control
+  support writing non-BAC passports (only for vonJeek cards)
+  new commands SETBAC and UNSETBAC to toggle the BAC mode on vonJeek cards
+  extract & display signature image stored in DG7, if any
+  fix bug in Jpeg 2000 handling & add Jpeg 2000 support for DG7
+  better error handling if PCSC daemon is down or no reader is found
+  support clone mode by specifying PLAIN/MRZ and WRITE: first read then write
+  support shortened MRZ (as in mrp0wn)
+  strip AA & EAC by default when writing, set STRIP_INDEX=False to disable stripping
+change Makefile to match vonJeek gpshell files (upload2jcop.gpsh & upload2nokia.gpsh)
+
+v0.x
+add support for ACS readers and Alcatel-Lucent Tikitag/Touchatag [props to pytey for http://hackerati.com/post/57314994/rfid-on-the-cheap-hacking-tikitag]
+rationalise PCSC subtypes 
+add hidprox.py for reading HID ProxCards (only tested with OmniKey 5325)
+add pn532.py - definitions for nxp pn532 chip
+add pn532emulate.py - run nxp pn532 in emulator mode
+add pn532mitm.py - relay traffic between reader and emulator, and log APDU and responses 
+
+v0.y
+fix support for ACS PCSC-2 devices (e.g. ACR 122U)
+add writelfx.py - test write LF devices
+fix 3DES key setting for ID cards in mrpkey.py
+allow missing files to be skipped if running in files mode in mrpkey.py
+
+v0.z
+add xorcheck.py - search for valid final byte of rolling LRC [input from Henryk Plötz]
+add transit.py - program Q5 with FDI Matalec 'TRANSIT 500' or 'TRANSIT 999' standard UID [input from Proxmark Community]
+
+v1.0a
+make mrpkey.py slightly easier to add new document types to
+add COPY and RESET functions to readmifaresimple.py
+add automatic keytype and default key checking to readmifaresimple.py
+fix MIFARE KeyA and KeyB handling on all supported readers
+add readmifareultra.py - read Mifare UltraLight tags [Keith Howell]
+add support for libnfc devices [Nick von Dadelszen] (work in progress)
+
+v1.0b
+allow global overrides to be specified in ENV variable, e.g.
+  export RFIDIOtconfig="-s 9600 -l /dev/ttyUSB1 -R RFIDIOt.rfidiot.READER_ACG"
+use latest pynfc.py (ver 0.2) for libnfc devices
+add device listing to libnfc support (-N)
+add more keys to readmifaresimple.py [nethemba]
+strip leading character from ACG LFX UID
+add cosmo card (alternative to jcop) upload files for gpshell
+fix init for pn532mitm.py
+make sure all programs exit with status (also removes annoying PCSC error on close)
+wait for passport in mrpkey.py [Adam Urban]
+add lifecycle data to jcoptool.py
+
+v1.0c
+fix reading unknown block size in readblock()
+detect more ACS readers [Keith Howell]

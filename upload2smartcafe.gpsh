@@ -1,0 +1,13 @@
+// script to install epassport.cap to jcop card using gpshell (http://sourceforge.net/projects/globalplatform/)
+mode_211
+establish_context
+// edit the following line to match your PCSC reader
+//card_connect -readerNumber 2
+//card_connect -reader "OMNIKEY CardMan 5x21 (USB iClass Reader) 00 01"
+card_connect
+select -AID A000000003000000
+open_sc -scp 2 -scpimpl 0x15 -security 1 -keyind 0 -keyver 0 -keyDerivation emvcps11 -key 404142434445464748494A4B4C4D4E4F
+delete -AID A00000024710
+install -file epassport.cap -priv 2
+card_disconnect
+release_context

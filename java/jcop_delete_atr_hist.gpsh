@@ -1,0 +1,16 @@
+// script to install applet.cap to jcop card using gpshell (http://sourceforge.net/projects/globalplatform/)
+mode_211
+//enable_trace
+establish_context
+// edit the following line to match your PCSC reader
+//card_connect -reader "OMNIKEY CardMan 5x21 00 01"
+//card_connect -reader "OMNIKEY CardMan 5x21 (USB iClass Reader) 00 01"
+//card_connect -reader "OMNIKEY CardMan 5x21 (OKCM0022602100142172731750393654) 00 00"
+card_connect
+//card_connect -reader "SDI010 USB Smart Card Reader (21120652200170) 00 01"
+select -AID A000000003000000
+open_sc -security 3 -mac_key 404142434445464748494A4B4C4D4E4F -enc_key 404142434445464748494A4B4C4D4E4F -kek_key 404142434445464748494A4B4C4D4E4F // Open secure channel
+delete -AID DC44200606
+get_status -element 10 
+card_disconnect
+release_context
