@@ -1356,6 +1356,14 @@ class rfidiot:
 		apdustring= ''
 		if self.readersubtype == self.READER_ACS:
 			return self.acs_send_apdu(apdu)
+			
+		if self.readertype == self.READER_ANDROID:
+			result = self.android.sendAPDU(apdu)
+			self.data = result[0:-4]
+			self.errorcode = result[len(result)-4:len(result)]
+			if self.errorcode == self.ISO_OK:
+				return True
+			return False
 		# apdu is a list which may contain long fields such as 'data', so first concatonate into
 		# one long string, then break up into 2 char hex fields
 		for d in apdu:
