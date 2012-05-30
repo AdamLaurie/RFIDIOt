@@ -29,6 +29,8 @@ import binascii
 import logging
 import time
 import readline
+import os
+
 import RFIDIOtconfig
 
 DCO_HANDLE_CRC              = 0x00
@@ -80,17 +82,24 @@ class ISO14443A(object):
 
 class NFC(object):
 
-	def __init__(self):
-		self.LIB = "/usr/local/lib/libnfc.so"
-		#self.LIB = "/usr/local/lib/libnfc_26102009.so.0.0.0"
-		#self.LIB = "./libnfc_nvd.so.0.0.0"
-		#self.LIB = "./libnfc_26102009.so.0.0.0"		
-		#self.LIB = "/data/RFID/libnfc/libnfc-svn-1.3.0/src/lib/.libs/libnfc.so"		
+	def __init__(self):		
+		self.LIBS = [
+		    "/usr/local/lib/libnfc.so",
+		    "/usr/local/lib/libnfc_26102009.so.0.0.0",
+		    "./libnfc_nvd.so.0.0.0",
+		    "./libnfc_26102009.so.0.0.0",
+		    "/data/RFID/libnfc/libnfc-svn-1.3.0/src/lib/.libs/libnfc.so",
+		    "/usr/lib/libnfc.so.3", # Doesn't seem to work so far due to unkonwn symbol: nfc_connect
+		]
 		self.device = None
 		self.poweredUp = False
 
 		if RFIDIOtconfig.debug:
-			self.initLog()
+		    level = logging.DEBUG
+		else:
+		    level = logging.WARN
+		self.initLog(level)
+
 		self.LIBNFC_VER= self.initlibnfc()
 		if RFIDIOtconfig.debug:
 			self.log.debug("libnfc %s" % self.LIBNFC_VER)
@@ -110,11 +119,28 @@ class NFC(object):
 		self.log.addHandler(sh)
 
 	def initlibnfc(self):
-		if RFIDIOtconfig.debug:
-			self.log.debug("Loading %s" % self.LIB)
-		self.libnfc = CDLL(self.LIB)
-		self.libnfc.nfc_version.restype = c_char_p
-		return self.libnfc.nfc_version()
+	    exception = None
+	    for lib in self.LIBS:
+	        try:
+		        if RFIDIOtconfig.debug:
+			        self.log.debug("Loading %s" % lib)
+		        self.libnfc = CDLL(lib)
+		        exception = None
+		        break # If we found a library, we escape this for loop
+		        
+	        except OSError, e:
+	            exception = e
+	            self.log.critical("Could not find nfc.so at %s", lib)
+	    if exception:
+	        self.log.exception("No nfc library found at %s, for now"
+	            " you have to edit %s to control where libraries are "
+	            "loaded from", self.LIBS, os.path.abspath(__file__))
+	        raise
+	    
+	    self.libnfc.nfc_version.restype = c_char_p
+	    
+	    return self.libnfc.nfc_version()
+
 
 	def listreaders(self, target):
 		devices = NFC_DEVICE_LIST()
