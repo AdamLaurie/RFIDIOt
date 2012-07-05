@@ -66,12 +66,13 @@ line= "/dev/ttyUSB0"
 #readertype= RFIDIOt.rfidiot.READER_FROSCH
 #readertype= RFIDIOt.rfidiot.READER_DEMOTAG
 # READER_PCSC is a meta type. Actual subtype will be auto-determined.
-readertype= RFIDIOt.rfidiot.READER_PCSC
+#readertype= RFIDIOt.rfidiot.READER_PCSC
 #readertype= RFIDIOt.rfidiot.READER_NONE
 #readertype= RFIDIOt.rfidiot.READER_LIBNFC
+readertype= RFIDIOt.rfidiot.READER_ANDROID
 
 # PCSC reader number (can be overridden with -r)
-readernum= 1
+readernum= 0
 
 # serial port speed (can be overridden with -s)
 # ignored for PCSC

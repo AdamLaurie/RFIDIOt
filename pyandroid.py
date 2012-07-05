@@ -112,6 +112,17 @@ class Android(object):
 			self.log.debug('APDU r =' + response)
 		return response
 
+        def sendResults(self, result):
+                if debug:
+                        self.log.debug("Sending results: " + results)
+                self.c.send('r:' + result + '\n')
+                response = self.c.recv(1024)
+                response = response[:-1]
+
+                if debug:
+                        self.log.debug('Response r =' + response)
+                return response
+
 if __name__ == "__main__":
 	n = Android()
 	uid = n.select()
