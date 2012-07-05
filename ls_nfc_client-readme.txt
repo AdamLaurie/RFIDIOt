@@ -16,11 +16,8 @@
  * Copyright (c) 2011 Lateral Security
  */
 
-LS_NFC_CLient is an Android application that detects an NFC card and makesa network connection to obtain commands (APDUs) to run on that card.  It works by registering an intent for detection of ISODEP NFC cards, and then connecting to the server defined in the nfc_settings.txt file in the root of the external storage.
+LS_NFC_CLient is an Android application that detects an NFC card and makes a network connection to obtain commands (APDUs) to run on that card.  It works by registering an intent for detection of ISODEP NFC cards, and then connecting to the server defined the application settings.  This can be changed in the client UI.
 
-A sample nfc_settings.txt file is as follows:
-192.168.1.1
-4444
 
 For the server component, you can use netcat to listen on the port and send APDUs manually.  Or you can use RFIDIOt with the pyandroid patch to send commands to the card.
 
