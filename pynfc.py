@@ -24,7 +24,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ctypes import *
+import ctypes
+import ctypes.util
 import binascii
 import logging
 import time
@@ -49,20 +50,20 @@ MAX_FRAME_LEN = 264
 MAX_DEVICES = 16
 BUFSIZ = 8192
 
-class TAG_INFO_ISO14443A(Structure):
-	_fields_ = [('abtAtqa', c_ubyte * 2),
-		    ('btSak', c_ubyte),
-		    ('uiUidLen', c_ulong),
-		    ('abtUid', c_ubyte * 10),
-		    ('uiAtsLen', c_ulong),
-		    ('abtAts', c_ubyte * 36)]
+class TAG_INFO_ISO14443A(ctypes.Structure):
+	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),
+		    ('btSak', ctypes.c_ubyte),
+		    ('uiUidLen', ctypes.c_ulong),
+		    ('abtUid', ctypes.c_ubyte * 10),
+		    ('uiAtsLen', ctypes.c_ulong),
+		    ('abtAts', ctypes.c_ubyte * 36)]
 
-class NFC_DEVICE_DESC_T(Structure):
-	_fields_ = [('acDevice',c_char * BUFSIZ),
-		    ('pcDriver',c_char_p),
-		    ('pcPort',c_char_p),
-		    ('uiSpeed',c_ulong),
-		    ('uiBusIndex',c_ulong)]
+class NFC_DEVICE_DESC_T(ctypes.Structure):
+	_fields_ = [('acDevice',ctypes.c_char * BUFSIZ),
+		    ('pcDriver',ctypes.c_char_p),
+		    ('pcPort',ctypes.c_char_p),
+		    ('uiSpeed',ctypes.c_ulong),
+		    ('uiBusIndex',ctypes.c_ulong)]
 
 NFC_DEVICE_LIST = NFC_DEVICE_DESC_T * MAX_DEVICES
 
@@ -81,7 +82,8 @@ class ISO14443A(object):
 class NFC(object):
 
 	def __init__(self):
-		self.LIB = "/usr/local/lib/libnfc.so"
+		self.LIB = ctypes.util.find_library('nfc')
+		#self.LIB = "/usr/local/lib/libnfc.so"
 		#self.LIB = "/usr/local/lib/libnfc_26102009.so.0.0.0"
 		#self.LIB = "./libnfc_nvd.so.0.0.0"
 		#self.LIB = "./libnfc_26102009.so.0.0.0"		
@@ -112,14 +114,14 @@ class NFC(object):
 	def initlibnfc(self):
 		if RFIDIOtconfig.debug:
 			self.log.debug("Loading %s" % self.LIB)
-		self.libnfc = CDLL(self.LIB)
-		self.libnfc.nfc_version.restype = c_char_p
+		self.libnfc = ctypes.CDLL(self.LIB)
+		self.libnfc.nfc_version.restype = ctypes.c_char_p
 		return self.libnfc.nfc_version()
 
 	def listreaders(self, target):
 		devices = NFC_DEVICE_LIST()
-		nfc_num_devices = c_ulong()
-		self.libnfc.nfc_list_devices(byref(devices),MAX_DEVICES,byref(nfc_num_devices))
+		nfc_num_devices = ctypes.c_ulong()
+		self.libnfc.nfc_list_devices(ctypes.byref(devices),MAX_DEVICES,ctypes.byref(nfc_num_devices))
 		if target != None:
 			if nfc_num_devices.value <= target:
 				print 'Reader number %d not found!' % target
@@ -153,10 +155,10 @@ class NFC(object):
 		else:
 			target= None 
 		if target:
-			target= byref(target)
-		self.device = self.libnfc.nfc_connect(target)
-		self.libnfc.nfc_device_name.restype = c_char_p
-		self.LIBNFC_READER= self.libnfc.nfc_device_name(self.device)	
+			target= ctypes.byref(target)
+		self.device = self.libnfc.nfc_open(target)
+		self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
+		self.LIBNFC_READER= self.libnfc.nfc_device_get_name(self.device)	
 		if RFIDIOtconfig.debug:
 			if self.device == None:
 				self.log.error("Error opening NFC reader")
@@ -183,7 +185,7 @@ class NFC(object):
 			if RFIDIOtconfig.debug:
 				self.log.debug("Deconfiguring NFC reader")
 			#self.powerOff()
-			self.libnfc.nfc_disconnect(self.device)
+			self.libnfc.nfc_close(self.device)
 			if RFIDIOtconfig.debug:
 				self.log.debug("Disconnected NFC reader")
 			self.device == None
@@ -205,7 +207,7 @@ class NFC(object):
 		if RFIDIOtconfig.debug:
 			self.log.debug("Polling for ISO14443A cards")
 		ti = TAG_INFO_ISO14443A()
-		r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, byref(ti))
+		r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
 		if RFIDIOtconfig.debug:
 			self.log.debug('card Select r: ' + str(r))
 		if r == None or r ==0:
@@ -234,7 +236,7 @@ class NFC(object):
 	
 		if RFIDIOtconfig.debug:	
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
-		r = self.libnfc.nfc_initiator_transceive_dep_bytes(self.device, byref(tx), c_ulong(len(tx)), byref(rx), byref(rxlen))		
+		r = self.libnfc.nfc_initiator_transceive_dep_bytes(self.device, ctypes.byref(tx), c_ulong(len(tx)), ctypes.byref(rx), ctypes.byref(rxlen))		
 		if RFIDIOtconfig.debug:
 			self.log.debug('APDU r =' + str(r))
 		if r == 0:
