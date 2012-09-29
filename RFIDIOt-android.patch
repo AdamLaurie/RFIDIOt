@@ -1,0 +1,108 @@
+--- RFIDIOt.py	2011-10-30 10:05:00.770555688 +1300
++++ RFIDIOt-android.py	2011-10-30 10:04:37.674551272 +1300
+@@ -40,7 +40,8 @@
+ from operator import *
+ import pynfc
+ import signal
+-
++import socket
++import pyandroid
+ 
+ try:
+ 	import smartcard, smartcard.CardRequest
+@@ -153,6 +154,10 @@
+ 			elif self.readertype == self.READER_LIBNFC:
+ 				self.nfc = pynfc.NFC()
+ 				self.readername = self.nfc.LIBNFC_READER
++			#Andoid reader
++			elif self.readertype == self.READER_ANDROID:
++				self.android = pyandroid.Android()
++				self.readername = "Android"
+ 			elif self.readertype == self.READER_NONE:
+ 				self.readername = 'none'
+ 			else:	
+@@ -204,6 +209,7 @@
+ 	READER_ACS= 0x07
+ 	READER_LIBNFC = 0x08
+ 	READER_NONE = 0x09
++	READER_ANDROID = 0x10
+ 	# TAG related globals
+ 	errorcode= ''
+ 	binary= ''
+@@ -765,6 +771,8 @@
+ 						os._exit(True)
+ 			if self.readertype == self.READER_LIBNFC:			
+ 				print 'LibNFC', self.readername
++			if self.readertype == self.READER_ANDROID:			
++				print 'Android Reader'
+ 			print
+ 	#
+ 	# reader functions
+@@ -799,6 +807,9 @@
+ 		if self.readertype == self.READER_LIBNFC:
+ 			self.nfc.powerOff()
+ 			self.nfc.powerOn()
++		if self.readertype == self.READER_ANDROID:
++			self.android.reset()
++			
+ 	def version(self):
+ 		if self.readertype == self.READER_ACG:
+ 			self.ser.write('v')
+@@ -819,6 +830,8 @@
+ 			else:
+ 				print self.FROSCH_Errors[self.errorcode]
+ 				os._exit(True)
++		if self.readertype == self.READER_ANDROID:
++			print 'Android version: ', self.android.VERSION
+ 	def id(self):
+ 		return self.readEEPROM(0)[:2] + self.readEEPROM(1)[:2] + self.readEEPROM(2)[:2] + self.readEEPROM(3)[:2]
+ 	def station(self):
+@@ -986,6 +999,23 @@
+ 					return False
+ 			except ValueError:
+ 				self.errorcode = 'Error reading card using LIBNFC' + e
++		
++		if self.readertype == self.READER_ANDROID:
++			try:
++				if DEBUG:
++					print 'Reading card using Android'
++				uid = self.android.select()
++				if uid:
++					self.uid = uid
++					if DEBUG:
++						print '\tUID: ' + self.uid
++					return True
++				else:
++					if DEBUG:
++						print 'Error selecting card'
++					return False
++			except ValueError:
++				self.errorcode = 'Error reading card using Android' + e
+ 		return False
+ 	def h2publicselect(self):
+ 		"select Hitag2 from Public Mode A/B/C"
+@@ -1007,7 +1037,7 @@
+ 			return False
+ 		return True
+ 	def hsselect(self,speed):
+-		if self.readertype == self.READER_PCSC or self.readertype == self.READER_LIBNFC:
++		if self.readertype == self.READER_PCSC or self.readertype == self.READER_LIBNFC or self.READER_ANDROID:
+ 			# low level takes care of this, so normal select only
+ 			if self.select():
+ 				#fixme - find true speed/framesize
+@@ -1361,7 +1391,14 @@
+ 			if self.errorcode == self.ISO_OK:
+ 				return True
+ 			return False
+-		dlength= 5
++		if self.readertype == self.READER_ANDROID:
++			result = self.android.sendAPDU(cla+self.ISOAPDU[ins]+p1+p2+lc+data+le)
++			self.data = result[0:-4]
++			self.errorcode = result[len(result)-4:len(result)]
++			if self.errorcode == self.ISO_OK:
++				return True
++			return False
++			dlength= 5
+ 		command= pcb+cla+self.ISOAPDU[ins]+p1+p2+lc+data+le
+ 		dlength += len(data) / 2
+ 		dlength += len(lc) / 2
