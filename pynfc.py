@@ -3,6 +3,7 @@
 #
 # pynfc.py - Python wrapper for libnfc
 # version 0.2 (should work with libnfc 1.2.1 and 1.3.0)
+# version 0.2a - tweaked by rfidiot for libnfc 1.6.0-rc1 october 2012
 # Nick von Dadelszen (nick@lateralsecurity.com)
 # Lateral Security (www.lateralsecurity.com)
 
@@ -121,7 +122,7 @@ class NFC(object):
 	def listreaders(self, target):
 		devices = NFC_DEVICE_LIST()
 		nfc_num_devices = ctypes.c_ulong()
-		self.libnfc.nfc_list_devices(ctypes.byref(devices),MAX_DEVICES,ctypes.byref(nfc_num_devices))
+		nfc_num_devices= self.libnfc.nfc_list_devices(0,ctypes.byref(devices),MAX_DEVICES)
 		if target != None:
 			if nfc_num_devices.value <= target:
 				print 'Reader number %d not found!' % target
@@ -131,19 +132,21 @@ class NFC(object):
 				if i == target:
 					return dev
 				i= i + 1
-		print 'LibNFC ver' , self.libnfc.nfc_version(), 'devices:'
-		if nfc_num_devices.value == 0:
+		print 'LibNFC ver' , self.libnfc.nfc_version(), 'devices (%d):' % nfc_num_devices
+		if nfc_num_devices == 0:
 			print '\t', 'no supported devices!'
 			return
-		i= 0
-		for dev in devices:
-			if dev.acDevice:
-				print '    No: %d\t\t%s' % (i,dev.acDevice)
-				print '    \t\t\t\tDriver:',dev.pcDriver
-				if dev.pcPort != None:
-					print '    \t\t\t\tPort:', dev.pcPort
-					print '    \t\t\t\tSpeed:', dev.uiSpeed
-				i = i + 1
+		for i in range(nfc_num_devices):
+			if devices[i].acDevice:
+				dev = self.libnfc.nfc_open(0, i)
+				self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
+				devname= self.libnfc.nfc_device_get_name(dev)
+				print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
+				print '    \t\t\t\tDriver:',devices[i].pcDriver
+				if devices[i].pcPort != None:
+					print '    \t\t\t\tPort:', devices[i].pcPort
+					print '    \t\t\t\tSpeed:', devices[i].uiSpeed
+
 
 	def configure(self):
 		if RFIDIOtconfig.debug:
@@ -156,7 +159,7 @@ class NFC(object):
 			target= None 
 		if target:
 			target= ctypes.byref(target)
-		self.device = self.libnfc.nfc_open(target)
+		self.device = self.libnfc.nfc_open(0, target)
 		self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
 		self.LIBNFC_READER= self.libnfc.nfc_device_get_name(self.device)	
 		if RFIDIOtconfig.debug:
@@ -170,15 +173,15 @@ class NFC(object):
 			self.log.debug("Configuring NFC reader")
 
   		# Drop the field for a while
-		self.libnfc.nfc_configure(self.device,DCO_ACTIVATE_FIELD,False);
+		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACTIVATE_FIELD,False);
   	
   		# Let the reader only try once to find a tag
-  		self.libnfc.nfc_configure(self.device,DCO_INFINITE_SELECT,False);
-  		self.libnfc.nfc_configure(self.device,DCO_HANDLE_CRC,True);
-		self.libnfc.nfc_configure(self.device,DCO_HANDLE_PARITY,True);
-		self.libnfc.nfc_configure(self.device,DCO_ACCEPT_INVALID_FRAMES, True);
+  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_INFINITE_SELECT,False);
+  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_HANDLE_CRC,True);
+		self.libnfc.nfc_device_set_property_bool(self.device,DCO_HANDLE_PARITY,True);
+		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACCEPT_INVALID_FRAMES, True);
   		# Enable field so more power consuming cards can power themselves up
-  		self.libnfc.nfc_configure(self.device,DCO_ACTIVATE_FIELD,True);
+  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACTIVATE_FIELD,True);
 		
 	def deconfigure(self):
 		if self.device != None:
@@ -191,13 +194,13 @@ class NFC(object):
 			self.device == None
 	
 	def powerOn(self):
-		self.libnfc.nfc_configure(self.device, DCO_ACTIVATE_FIELD, True)
+		self.libnfc.nfc_device_set_property_bool(self.device, DCO_ACTIVATE_FIELD, True)
 		if RFIDIOtconfig.debug:
 			self.log.debug("Powered up field")
 		self.poweredUp = True
 	
 	def powerOff(self):
-		self.libnfc.nfc_configure(self.device, DCO_ACTIVATE_FIELD, False)
+		self.libnfc.nfc_device_set_property_bool(self.device, DCO_ACTIVATE_FIELD, False)
 		if RFIDIOtconfig.debug:
 			self.log.debug("Powered down field")
 		self.poweredUp = False
