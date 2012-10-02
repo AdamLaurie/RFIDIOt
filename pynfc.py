@@ -51,6 +51,10 @@ MAX_FRAME_LEN = 264
 MAX_DEVICES = 16
 BUFSIZ = 8192
 
+DEVICE_NAME_LENGTH		= 256
+DEVICE_PORT_LENGTH		= 64
+NFC_CONNSTRING_LENGTH		= 1024
+
 class TAG_INFO_ISO14443A(ctypes.Structure):
 	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),
 		    ('btSak', ctypes.c_ubyte),
@@ -59,14 +63,31 @@ class TAG_INFO_ISO14443A(ctypes.Structure):
 		    ('uiAtsLen', ctypes.c_ulong),
 		    ('abtAts', ctypes.c_ubyte * 36)]
 
-class NFC_DEVICE_DESC_T(ctypes.Structure):
-	_fields_ = [('acDevice',ctypes.c_char * BUFSIZ),
-		    ('pcDriver',ctypes.c_char_p),
-		    ('pcPort',ctypes.c_char_p),
-		    ('uiSpeed',ctypes.c_ulong),
-		    ('uiBusIndex',ctypes.c_ulong)]
+class NFC_CONNSTRING(ctypes.Structure):
+	_fields_ = [('connstring', ctypes.c_ubyte * NFC_CONNSTRING_LENGTH)]
 
-NFC_DEVICE_LIST = NFC_DEVICE_DESC_T * MAX_DEVICES
+#class NFC_DEVICE(ctypes.Structure):
+#	_fields_ = [('driver', ctypes.pointer(NFC_DRIVER),
+#		    ('driver_data', ctypes.c_void_p),
+#		    ('chip_data', ctypes.c_void_p),
+#		    ('name', ctypes.c_ubyte * DEVICE_NAME_LENGTH),
+#		    ('nfc_connstring', ctypes.c_ubyte * NFC_CONNSTRING_LENGTH),
+#		    ('bCrc', ctypes.c_bool),
+#		    ('bPar', ctypes.c_bool),
+#		    ('bEasyFraming', ctypes.c_bool),
+#		    ('bAutoIso14443_4', ctypes.c_bool),
+#		    ('btSupportByte', ctypes.c_ubyte).
+#		    ('last_error', ctypes.c_byte)]
+
+#class NFC_DEVICE_DESC_T(ctypes.Structure):
+#	_fields_ = [('acDevice',ctypes.c_char * BUFSIZ),
+#		    ('pcDriver',ctypes.c_char_p),
+#		    ('pcPort',ctypes.c_char_p),
+#		    ('uiSpeed',ctypes.c_ulong),
+#		    ('uiBusIndex',ctypes.c_ulong)]
+
+#NFC_DEVICE_LIST = NFC_DEVICE_DESC_T * MAX_DEVICES
+NFC_DEVICE_LIST = NFC_CONNSTRING * MAX_DEVICES
 
 class ISO14443A(object):
 	def __init__(self, ti):
@@ -124,28 +145,25 @@ class NFC(object):
 		nfc_num_devices = ctypes.c_ulong()
 		nfc_num_devices= self.libnfc.nfc_list_devices(0,ctypes.byref(devices),MAX_DEVICES)
 		if target != None:
-			if nfc_num_devices.value <= target:
+			if target > nfc_num_devices - 1:
 				print 'Reader number %d not found!' % target
 				return None
-			i=  0
-			for dev in devices:
-				if i == target:
-					return dev
-				i= i + 1
+			return devices[target]
 		print 'LibNFC ver' , self.libnfc.nfc_version(), 'devices (%d):' % nfc_num_devices
 		if nfc_num_devices == 0:
 			print '\t', 'no supported devices!'
 			return
 		for i in range(nfc_num_devices):
-			if devices[i].acDevice:
-				dev = self.libnfc.nfc_open(0, i)
+			if devices[i]:
+				dev = self.libnfc.nfc_open(0, ctypes.byref(devices[i]))
 				self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
 				devname= self.libnfc.nfc_device_get_name(dev)
-				print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
-				print '    \t\t\t\tDriver:',devices[i].pcDriver
-				if devices[i].pcPort != None:
-					print '    \t\t\t\tPort:', devices[i].pcPort
-					print '    \t\t\t\tSpeed:', devices[i].uiSpeed
+				print '    No: %d\t\t%s' % (i,devname)
+				#print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
+				#print '    \t\t\t\tDriver:',devices[i].pcDriver
+				#if devices[i].pcPort != None:
+				#	print '    \t\t\t\tPort:', devices[i].pcPort
+				#	print '    \t\t\t\tSpeed:', devices[i].uiSpeed
 
 
 	def configure(self):
@@ -210,10 +228,11 @@ class NFC(object):
 		if RFIDIOtconfig.debug:
 			self.log.debug("Polling for ISO14443A cards")
 		ti = TAG_INFO_ISO14443A()
-		r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
+		#r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
+		r = self.libnfc.nfc_initiator_init(self.device)
 		if RFIDIOtconfig.debug:
 			self.log.debug('card Select r: ' + str(r))
-		if r == None or r ==0:
+		if r == None or r < 0:
 			if RFIDIOtconfig.debug:
 				self.log.error("No cards found, trying again")
 			time.sleep(1)
