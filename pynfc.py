@@ -41,11 +41,34 @@ DCO_INFINITE_SELECT         = 0x20
 DCO_ACCEPT_INVALID_FRAMES   = 0x30
 DCO_ACCEPT_MULTIPLE_FRAMES  = 0x31
 
-IM_ISO14443A_106  = 0x00
-IM_FELICA_212     = 0x01
-IM_FELICA_424     = 0x02
-IM_ISO14443B_106  = 0x03
-IM_JEWEL_106      = 0x04
+#IM_ISO14443A_106  = 0x00
+#IM_FELICA_212     = 0x01
+#IM_FELICA_424     = 0x02
+#IM_ISO14443B_106  = 0x03
+#IM_JEWEL_106      = 0x04
+
+# NFC modulation type enumeration
+NMT_ISO14443A		= 0x01		
+NMT_JEWEL		= 0x02
+NMT_ISO14443B		= 0x03
+NMT_ISO14443BI		= 0x04
+NMT_ISO14443B2SR	= 0x05
+NMT_ISO14443B2CT	= 0x06
+NMT_FELICA		= 0x07
+NMT_DEP			= 0x08
+
+# NFC baud rate enumeration
+NBR_UNDEFINED		= 0x00
+NBR_106			= 0x01
+NBR_212			= 0x02
+NBR_424			= 0x03
+NBR_847			= 0x04
+
+#NFC D.E.P. (Data Exchange Protocol) active/passive mode
+NDM_UNDEFINED		= 0x00
+NDM_PASSIVE		= 0x01
+NDM_ACTIVE		= 0x02
+
 
 MAX_FRAME_LEN = 264
 MAX_DEVICES = 16
@@ -55,16 +78,78 @@ DEVICE_NAME_LENGTH		= 256
 DEVICE_PORT_LENGTH		= 64
 NFC_CONNSTRING_LENGTH		= 1024
 
-class TAG_INFO_ISO14443A(ctypes.Structure):
+class NFC_ISO14443A_INFO(ctypes.Structure):
 	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),
 		    ('btSak', ctypes.c_ubyte),
 		    ('uiUidLen', ctypes.c_ulong),
 		    ('abtUid', ctypes.c_ubyte * 10),
 		    ('uiAtsLen', ctypes.c_ulong),
-		    ('abtAts', ctypes.c_ubyte * 36)]
+		    ('abtAts', ctypes.c_ubyte * 254)]
+
+class NFC_FELICA_INFO(ctypes.Structure):
+	_fields_ = [('szLen', ctypes.c_ulong),
+		    ('btResCode', ctypes.c_ubyte),
+		    ('abtId', ctypes.c_ubyte * 8),
+		    ('abtPad', ctypes.c_ubyte * 8),
+		    ('abtSysCode', ctyps.c_ubyte * 2)]
+
+class NFC_ISO14443B_INFO(ctypes.Structure):
+	_fields_ = [('abtPupi', ctypes.c_ubyte * 4),
+		    ('abtApplicationData', ctypes.c_ubyte * 4),
+		    ('abtProtocolInfo', ctypes.c_ubyte * 3),
+		    ('ui8CardIdentifier', ctypes.c_ubyte)]
+
+class NFC_ISO14443BI_INFO(ctypes.Structure):
+	_fields_ = [('abtDIV', ctypes.c_ubyte * 4),
+		    ('btVerLog', ctypes.c_ubyte),
+		    ('btConfig', ctypes.c_ubyte),
+		    ('szAtrLen', ctypes.c_ulong),
+		    ('abtAtr', ctypes.c_ubyte * 33)]
+
+class NFC_ISO14443B2SR_INFO(ctypes.Structure):
+	_fields_ = [('abtUID', ctypes.c_ubyte * 8)]
+
+
+class NFC_ISO14443B2CT_INFO(ctypes.Structure):
+	_fields_ = [('abtUID', ctypes.c_ubyte * 4),
+		    ('btProdCode', ctypes.c_ubyte),
+		    ('btFabCode', ctypes.c_ubyte)]
+
+class NFC_JEWEL_INFO(ctypes.Structure):
+	_fields_ = [('btSensRes', ctypes.c_ubyte * 2),
+		    ('btId', ctypes.c_ubyte * 4)]
+
+class NFC_DEP_INFO(ctypes.Structure):
+	_fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),
+		    ('btDID', ctypes.c_ubyte),
+		    ('btBS', ctypes.c_ubyte),
+		    ('btBR', ctypes.c_ubyte),
+		    ('btTO', ctypes.c_ubyte),
+		    ('btPP', ctypes.c_ubyte),
+		    ('abtGB', ctypes.c_ubyte * 48),
+		    ('szGB', ctypes.c_ulong),
+		    ('ndm', ctypes.c_ubyte)]
+
+class NFC_TARGET_INFO(ctypes.Structure):
+	_fields_ = [('nai', NFC_ISO14443A_INFO),
+		    ('nfi', NFC_FELICA_INFO),
+		    ('nbi', NFC_ISO14443B_INFO),
+		    ('nii', NFC_ISO14443BI_INFO),
+		    ('nsi', NFC_ISO14443B2SR_INFO),
+		    ('nci', NFC_ISO14443B2CT_INFO),
+		    ('nji', NFC_JEWEL_INFO),
+		    ('ndi', NFC_DEP_INFO)]
 
 class NFC_CONNSTRING(ctypes.Structure):
 	_fields_ = [('connstring', ctypes.c_ubyte * NFC_CONNSTRING_LENGTH)]
+
+class NFC_MODULATION(ctypes.Structure):
+	_fields_ = [('nmt', ctypes.c_ubyte),
+		    ('nbr', ctypes.c_ubyte)]
+
+class NFC_TARGET(ctypes.Structure):
+	_fields_ = [('nti', ),
+		    ('nm', NFC_MODULATION)]
 
 #class NFC_DEVICE(ctypes.Structure):
 #	_fields_ = [('driver', ctypes.pointer(NFC_DRIVER),
