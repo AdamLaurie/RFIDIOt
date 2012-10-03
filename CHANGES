@@ -231,4 +231,9 @@ detect more ACS readers [Keith Howell]
 v1.0d
 port pynfc to new libNFC API (1.6.0-rc1)
 add libnfc mifare command support (TODO: error handling)
+*** note that early ACS devices such as ACR122-V1/TikiTag/TouchaTag are not currently
+    working with native libNFC (V2 seem to work fine). This is a libNFC issue.
+    However, ACR122-V1/TikiTag/TouchaTag devices can be used if libNFC is compiled with
+    acr122_pcsc driver support, and then used in conjunction with pcscd, in chich case 
+    they should work as READER_LIBNFC and/or READER_PCSC types. 
 
