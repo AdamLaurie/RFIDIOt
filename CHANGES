@@ -236,4 +236,5 @@ add libnfc mifare command support (TODO: error handling)
     However, ACR122-V1/TikiTag/TouchaTag devices can be used if libNFC is compiled with
     acr122_pcsc driver support, and then used in conjunction with pcscd, in chich case 
     they should work as READER_LIBNFC and/or READER_PCSC types. 
+Android support [Nick von Dadelszen]
 
