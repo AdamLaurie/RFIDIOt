@@ -227,3 +227,8 @@ add lifecycle data to jcoptool.py
 v1.0c
 fix reading unknown block size in readblock()
 detect more ACS readers [Keith Howell]
+
+v1.0d
+port pynfc to new libNFC API (1.6.0-rc1)
+add libnfc mifare command support (TODO: error handling)
+

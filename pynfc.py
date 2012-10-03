@@ -72,6 +72,44 @@ NDM_UNDEFINED		= 0x00
 NDM_PASSIVE		= 0x01
 NDM_ACTIVE		= 0x02
 
+# Mifare commands
+MC_AUTH_A 		= 0x60
+MC_AUTH_B 		= 0x61
+MC_READ 		= 0x30
+MC_WRITE 		= 0xA0
+MC_TRANSFER 		= 0xB0
+MC_DECREMENT 		= 0xC0
+MC_INCREMENT 		= 0xC1
+MC_STORE 		= 0xC2
+
+# PN53x specific errors */
+ETIMEOUT        	= 0x01
+ECRC            	= 0x02
+EPARITY         	= 0x03
+EBITCOUNT       	= 0x04
+EFRAMING        	= 0x05
+EBITCOLL        	= 0x06
+ESMALLBUF       	= 0x07
+EBUFOVF         	= 0x09
+ERFTIMEOUT      	= 0x0a
+ERFPROTO        	= 0x0b
+EOVHEAT         	= 0x0d
+EINBUFOVF       	= 0x0e
+EINVPARAM       	= 0x10
+EDEPUNKCMD      	= 0x12
+EINVRXFRAM      	= 0x13
+EMFAUTH         	= 0x14
+ENSECNOTSUPP    	= 0x18    # PN533 only
+EBCC            	= 0x23
+EDEPINVSTATE    	= 0x25
+EOPNOTALL       	= 0x26
+ECMD            	= 0x27
+ETGREL          	= 0x29
+ECID            	= 0x2a
+ECDISCARDED     	= 0x2b
+ENFCID3         	= 0x2c
+EOVCURRENT      	= 0x2d
+ENAD            	= 0x2e
 
 MAX_FRAME_LEN 		= 264
 MAX_DEVICES 		= 16
@@ -325,8 +363,8 @@ class NFC(object):
 			self.log.debug("Powered down field")
 		self.poweredUp = False
 	
-	def readISO14443A(self):
-		"""Detect and read an ISO14443A card, returns an ISO14443A() object."""
+	def selectISO14443A(self):
+		"""Detect and initialise an ISO14443A card, returns an ISO14443A() object."""
 		if RFIDIOtconfig.debug:
 			self.log.debug("Polling for ISO14443A cards")
 		#r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
@@ -348,36 +386,41 @@ class NFC(object):
 		nm.nbr = NBR_106
 		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
 			return ISO14443A(target[0].nti.nai)
+		return None
+
+	# set Mifare specific parameters
+	def configMifare(self):
+		self.libnfc.nfc_device_set_property_bool(self.device, NP_AUTO_ISO14443_4, False)
+		self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, True)
+		self.selectISO14443A()
 
 	def sendAPDU(self, apdu):
+		apdu= "".join([x for x in apdu])
 		txData = []		
 		for i in range(0, len(apdu), 2):
 			txData.append(int(apdu[i:i+2], 16))
 	
-		txAPDU = c_ubyte * len(txData)
+		txAPDU = ctypes.c_ubyte * len(txData)
 		tx = txAPDU(*txData)
 
-		rxAPDU = c_ubyte * MAX_FRAME_LEN
+		rxAPDU = ctypes.c_ubyte * MAX_FRAME_LEN
 		rx = rxAPDU()
-		rxlen = c_size_t()
-
 	
 		if RFIDIOtconfig.debug:	
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
-		r = self.libnfc.nfc_initiator_transceive_dep_bytes(self.device, ctypes.byref(tx), c_size_t(len(tx)), ctypes.byref(rx), ctypes.byref(rxlen))		
+		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), -1)
 		if RFIDIOtconfig.debug:
-			self.log.debug('APDU r =' + str(r))
-		if r == 0:
+			self.log.debug('APDU r = ' + str(r))
+		if rxlen < 0:
 			if RFIDIOtconfig.debug:
 				self.log.error("Error sending/recieving APDU")
 
-			result = False
-			return result
+			return False, rxlen
 		else:
-			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen.value]])
 			if RFIDIOtconfig.debug:
-				self.log.debug("Recieved %d byte APDU: %s" % (rxlen.value, rxAPDU))
-			return rxAPDU
+				self.log.debug("Recieved %d byte APDU: " % rxlen, rx[:])
+			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
+			return True, rxAPDU
 
 if __name__ == "__main__":
 	n = NFC()

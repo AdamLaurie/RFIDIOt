@@ -198,7 +198,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0c-beta'
+	VERSION= '1.0d'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -985,8 +985,8 @@ class rfidiot:
 		if self.readertype == self.READER_LIBNFC:
 			try:
 				if DEBUG:
-					print 'reading card using LIBNFC'
-				result = self.nfc.readISO14443A()
+					print 'selecting card using LIBNFC'
+				result = self.nfc.selectISO14443A()
 				if result:
 					self.atr = result.atr
 					self.uid = result.uid
@@ -999,7 +999,7 @@ class rfidiot:
 						print 'Error selecting card'
 					return False
 			except ValueError:
-				self.errorcode = 'Error reading card using LIBNFC' + e
+				self.errorcode = 'Error selecting card using LIBNFC' + e
 		
 		if self.readertype == self.READER_ANDROID:
 			try:
@@ -1260,6 +1260,33 @@ class rfidiot:
 	def acs_power_off(self):
 		"ACS Antenna Power Off"
 		return self.acs_send_apdu(self.PCSC_APDU['ACS_POWER_OFF'])
+	# libNFC specific commands
+	def libnfc_mifare_login(self,block,key,keytype):
+		"libNFC Mifare Login"
+		self.nfc.configMifare()
+		if keytype == 'BB':
+			keytype= '%02x' % pynfc.MC_AUTH_B
+		else:
+		   keytype= '%02x' % pynfc.MC_AUTH_A
+		loginblock= '%02x' % block
+		#if self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
+		ret, self.errorcode= self.nfc.sendAPDU([keytype]+[loginblock]+[key]+[self.uid])
+		if not ret:
+			return False
+		self.errorcode= self.ISO_OK
+		return True
+	def libnfc_mifare_read_block(self, block):
+		apdu= []
+		apdu += '%02X' % pynfc.MC_READ # mifare read
+		hexblock= '%02x' % block
+		apdu.append(hexblock)
+		ret, dat= self.nfc.sendAPDU(apdu)
+		if not ret:
+			self.errorcode= dat
+			return False
+		self.data= dat
+		self.errorcode= self.ISO_OK
+		return True
 	# Global Platform specific commands
 	def gp_external_authenticate(self,host_cryptogram,mac_key):
 		"Global Platform external authenticate"
@@ -1473,12 +1500,11 @@ class rfidiot:
 			return False
 		if self.readertype == self.READER_FROSCH:
 			return self.frosch(self.FR_HTS_TagAuthent,'')
+		if self.readertype == self.READER_LIBNFC:
+			return self.libnfc_mifare_login(sector,key,keytype)
 		if self.readertype == self.READER_PCSC:
 			if self.readersubtype == self.READER_ACS:
-				if self.acs_mifare_login(sector,key,keytype):
-					return True
-				else:
-					return False
+				return self.acs_mifare_login(sector,key,keytype)
 			# PCSC requires key to be loaded to reader, then login with key
 			if not self.PCSC_Keys.has_key(key):
 				# send key to reader and store in global PCSC_KEYS if not already sent
@@ -1561,6 +1587,19 @@ class rfidiot:
 				self.binary += chr(int(self.data[count * 2:(count * 2) + 2],16))
 				count += 1
 			return True	
+		if self.readertype == self.READER_LIBNFC:
+			print "not implemented!"
+			return False
+			apdu += self.PCSC_APDU['READ_BLOCK']
+			apdu= []
+			apdu += '%02X' % pynfc.MC_READ # mifare read
+			hexblock= '%04x' % block
+			apdu.append(hexblock)
+			ret, self.errorcode= self.nfc.sendAPDU(apdu)
+			if not ret:
+				return False
+			self.errorcode= self.ISO_OK
+			return True
 		if self.readertype == self.READER_PCSC:
 			if self.readersubtype == self.READER_ACS:
 				return self.acs_read_block(block)
@@ -1579,7 +1618,12 @@ class rfidiot:
 			else:
 				return ret
 	def readMIFAREblock(self,block):
-		if self.readblock(block):
+		if self.readertype == self.READER_LIBNFC:
+			if self.libnfc_mifare_read_block(block):
+				self.MIFAREdata= self.data
+			else:
+				return False
+		elif self.readblock(block):
 			self.MIFAREdata= self.data
 		else:
 			return False
