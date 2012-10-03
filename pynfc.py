@@ -33,22 +33,25 @@ import time
 import readline
 import RFIDIOtconfig
 
-DCO_HANDLE_CRC              = 0x00
-DCO_HANDLE_PARITY           = 0x01
-DCO_ACTIVATE_FIELD          = 0x10
-DCO_INFINITE_LIST_PASSIVE   = 0x20
-DCO_INFINITE_SELECT         = 0x20
-DCO_ACCEPT_INVALID_FRAMES   = 0x30
-DCO_ACCEPT_MULTIPLE_FRAMES  = 0x31
-
-#IM_ISO14443A_106  = 0x00
-#IM_FELICA_212     = 0x01
-#IM_FELICA_424     = 0x02
-#IM_ISO14443B_106  = 0x03
-#IM_JEWEL_106      = 0x04
+# nfc_property enumeration
+NP_TIMEOUT_COMMAND		= 0x00
+NP_TIMEOUT_ATR			= 0x01
+NP_TIMEOUT_COM			= 0x02
+NP_HANDLE_CRC			= 0x03
+NP_HANDLE_PARITY		= 0x04
+NP_ACTIVATE_FIELD		= 0x05
+NP_ACTIVATE_CRYPTO1		= 0x06
+NP_INFINITE_SELECT		= 0x07
+NP_ACCEPT_INVALID_FRAMES	= 0x08
+NP_ACCEPT_MULTIPLE_FRAMES	= 0x09
+NP_AUTO_ISO14443_4		= 0x0a
+NP_EASY_FRAMING			= 0x0b
+NP_FORCE_ISO14443_A		= 0x0c
+NP_FORCE_ISO14443_B		= 0x0d
+NP_FORCE_SPEED_106		= 0x0e
 
 # NFC modulation type enumeration
-NMT_ISO14443A		= 0x01		
+NMT_ISO14443A		= 0x01
 NMT_JEWEL		= 0x02
 NMT_ISO14443B		= 0x03
 NMT_ISO14443BI		= 0x04
@@ -70,56 +73,65 @@ NDM_PASSIVE		= 0x01
 NDM_ACTIVE		= 0x02
 
 
-MAX_FRAME_LEN = 264
-MAX_DEVICES = 16
-BUFSIZ = 8192
+MAX_FRAME_LEN 		= 264
+MAX_DEVICES 		= 16
+BUFSIZ 			= 8192
+MAX_TARGET_COUNT 	= 1
 
-DEVICE_NAME_LENGTH		= 256
-DEVICE_PORT_LENGTH		= 64
-NFC_CONNSTRING_LENGTH		= 1024
+DEVICE_NAME_LENGTH	= 256
+DEVICE_PORT_LENGTH	= 64
+NFC_CONNSTRING_LENGTH	= 1024
 
 class NFC_ISO14443A_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),
 		    ('btSak', ctypes.c_ubyte),
-		    ('uiUidLen', ctypes.c_ulong),
+		    ('uiUidLen', ctypes.c_size_t),
 		    ('abtUid', ctypes.c_ubyte * 10),
-		    ('uiAtsLen', ctypes.c_ulong),
+		    ('uiAtsLen', ctypes.c_size_t),
 		    ('abtAts', ctypes.c_ubyte * 254)]
 
 class NFC_FELICA_INFO(ctypes.Structure):
-	_fields_ = [('szLen', ctypes.c_ulong),
+	_pack_ = 1
+	_fields_ = [('szLen', ctypes.c_size_t),
 		    ('btResCode', ctypes.c_ubyte),
 		    ('abtId', ctypes.c_ubyte * 8),
 		    ('abtPad', ctypes.c_ubyte * 8),
-		    ('abtSysCode', ctyps.c_ubyte * 2)]
+		    ('abtSysCode', ctypes.c_ubyte * 2)]
 
 class NFC_ISO14443B_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtPupi', ctypes.c_ubyte * 4),
 		    ('abtApplicationData', ctypes.c_ubyte * 4),
 		    ('abtProtocolInfo', ctypes.c_ubyte * 3),
 		    ('ui8CardIdentifier', ctypes.c_ubyte)]
 
 class NFC_ISO14443BI_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtDIV', ctypes.c_ubyte * 4),
 		    ('btVerLog', ctypes.c_ubyte),
 		    ('btConfig', ctypes.c_ubyte),
-		    ('szAtrLen', ctypes.c_ulong),
+		    ('szAtrLen', ctypes.c_size_t),
 		    ('abtAtr', ctypes.c_ubyte * 33)]
 
 class NFC_ISO14443B2SR_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtUID', ctypes.c_ubyte * 8)]
 
 
 class NFC_ISO14443B2CT_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtUID', ctypes.c_ubyte * 4),
 		    ('btProdCode', ctypes.c_ubyte),
 		    ('btFabCode', ctypes.c_ubyte)]
 
 class NFC_JEWEL_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('btSensRes', ctypes.c_ubyte * 2),
 		    ('btId', ctypes.c_ubyte * 4)]
 
 class NFC_DEP_INFO(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),
 		    ('btDID', ctypes.c_ubyte),
 		    ('btBS', ctypes.c_ubyte),
@@ -127,10 +139,11 @@ class NFC_DEP_INFO(ctypes.Structure):
 		    ('btTO', ctypes.c_ubyte),
 		    ('btPP', ctypes.c_ubyte),
 		    ('abtGB', ctypes.c_ubyte * 48),
-		    ('szGB', ctypes.c_ulong),
+		    ('szGB', ctypes.c_size_t),
 		    ('ndm', ctypes.c_ubyte)]
 
-class NFC_TARGET_INFO(ctypes.Structure):
+class NFC_TARGET_INFO(ctypes.Union):
+	_pack_ = 1
 	_fields_ = [('nai', NFC_ISO14443A_INFO),
 		    ('nfi', NFC_FELICA_INFO),
 		    ('nbi', NFC_ISO14443B_INFO),
@@ -141,14 +154,17 @@ class NFC_TARGET_INFO(ctypes.Structure):
 		    ('ndi', NFC_DEP_INFO)]
 
 class NFC_CONNSTRING(ctypes.Structure):
+	_pack_ = 1
 	_fields_ = [('connstring', ctypes.c_ubyte * NFC_CONNSTRING_LENGTH)]
 
 class NFC_MODULATION(ctypes.Structure):
-	_fields_ = [('nmt', ctypes.c_ubyte),
-		    ('nbr', ctypes.c_ubyte)]
+	_pack_ = 1
+	_fields_ = [('nmt', ctypes.c_uint),
+		    ('nbr', ctypes.c_uint)]
 
 class NFC_TARGET(ctypes.Structure):
-	_fields_ = [('nti', ),
+	_pack_ = 1
+	_fields_ = [('nti', NFC_TARGET_INFO),
 		    ('nm', NFC_MODULATION)]
 
 #class NFC_DEVICE(ctypes.Structure):
@@ -227,7 +243,7 @@ class NFC(object):
 
 	def listreaders(self, target):
 		devices = NFC_DEVICE_LIST()
-		nfc_num_devices = ctypes.c_ulong()
+		nfc_num_devices = ctypes.c_size_t()
 		nfc_num_devices= self.libnfc.nfc_list_devices(0,ctypes.byref(devices),MAX_DEVICES)
 		if target != None:
 			if target > nfc_num_devices - 1:
@@ -244,6 +260,7 @@ class NFC(object):
 				self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
 				devname= self.libnfc.nfc_device_get_name(dev)
 				print '    No: %d\t\t%s' % (i,devname)
+				self.libnfc.nfc_close(0, ctypes.byref(devices[i]))
 				#print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
 				#print '    \t\t\t\tDriver:',devices[i].pcDriver
 				#if devices[i].pcPort != None:
@@ -276,15 +293,15 @@ class NFC(object):
 			self.log.debug("Configuring NFC reader")
 
   		# Drop the field for a while
-		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACTIVATE_FIELD,False);
+		self.libnfc.nfc_device_set_property_bool(self.device,NP_ACTIVATE_FIELD,False);
   	
   		# Let the reader only try once to find a tag
-  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_INFINITE_SELECT,False);
-  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_HANDLE_CRC,True);
-		self.libnfc.nfc_device_set_property_bool(self.device,DCO_HANDLE_PARITY,True);
-		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACCEPT_INVALID_FRAMES, True);
+  		self.libnfc.nfc_device_set_property_bool(self.device,NP_INFINITE_SELECT,False);
+  		self.libnfc.nfc_device_set_property_bool(self.device,NP_HANDLE_CRC,True);
+		self.libnfc.nfc_device_set_property_bool(self.device,NP_HANDLE_PARITY,True);
+		self.libnfc.nfc_device_set_property_bool(self.device,NP_ACCEPT_INVALID_FRAMES, True);
   		# Enable field so more power consuming cards can power themselves up
-  		self.libnfc.nfc_device_set_property_bool(self.device,DCO_ACTIVATE_FIELD,True);
+  		self.libnfc.nfc_device_set_property_bool(self.device,NP_ACTIVATE_FIELD,True);
 		
 	def deconfigure(self):
 		if self.device != None:
@@ -297,13 +314,13 @@ class NFC(object):
 			self.device == None
 	
 	def powerOn(self):
-		self.libnfc.nfc_device_set_property_bool(self.device, DCO_ACTIVATE_FIELD, True)
+		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, True)
 		if RFIDIOtconfig.debug:
 			self.log.debug("Powered up field")
 		self.poweredUp = True
 	
 	def powerOff(self):
-		self.libnfc.nfc_device_set_property_bool(self.device, DCO_ACTIVATE_FIELD, False)
+		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, False)
 		if RFIDIOtconfig.debug:
 			self.log.debug("Powered down field")
 		self.poweredUp = False
@@ -312,21 +329,25 @@ class NFC(object):
 		"""Detect and read an ISO14443A card, returns an ISO14443A() object."""
 		if RFIDIOtconfig.debug:
 			self.log.debug("Polling for ISO14443A cards")
-		ti = TAG_INFO_ISO14443A()
 		#r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
-		r = self.libnfc.nfc_initiator_init(self.device)
-		if RFIDIOtconfig.debug:
-			self.log.debug('card Select r: ' + str(r))
-		if r == None or r < 0:
-			if RFIDIOtconfig.debug:
-				self.log.error("No cards found, trying again")
-			time.sleep(1)
-			result = self.readISO14443A()
-			return result
-		else:
-			if RFIDIOtconfig.debug:
-				self.log.debug("Card found")
-			return ISO14443A(ti)
+		#r = self.libnfc.nfc_initiator_init(self.device)
+		#if RFIDIOtconfig.debug:
+		#	self.log.debug('card Select r: ' + str(r))
+		#if r == None or r < 0:
+		#	if RFIDIOtconfig.debug:
+		#		self.log.error("No cards found, trying again")
+		#	time.sleep(1)
+		#	result = self.readISO14443A()
+		#	return result
+		#else:
+		#	if RFIDIOtconfig.debug:
+		#		self.log.debug("Card found")
+		nm= NFC_MODULATION()
+		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
+		nm.nmt = NMT_ISO14443A
+		nm.nbr = NBR_106
+		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
+			return ISO14443A(target[0].nti.nai)
 
 	def sendAPDU(self, apdu):
 		txData = []		
@@ -338,12 +359,12 @@ class NFC(object):
 
 		rxAPDU = c_ubyte * MAX_FRAME_LEN
 		rx = rxAPDU()
-		rxlen = c_ulong()
+		rxlen = c_size_t()
 
 	
 		if RFIDIOtconfig.debug:	
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
-		r = self.libnfc.nfc_initiator_transceive_dep_bytes(self.device, ctypes.byref(tx), c_ulong(len(tx)), ctypes.byref(rx), ctypes.byref(rxlen))		
+		r = self.libnfc.nfc_initiator_transceive_dep_bytes(self.device, ctypes.byref(tx), c_size_t(len(tx)), ctypes.byref(rx), ctypes.byref(rxlen))		
 		if RFIDIOtconfig.debug:
 			self.log.debug('APDU r =' + str(r))
 		if r == 0:
