@@ -20,9 +20,9 @@
 #    GNU General Public License for more details.
 #
 
-from pn532 import *
 
 import rfidiot
+from rfidiot.pn532 import *
 import sys
 import os
 import string
