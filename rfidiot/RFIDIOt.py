@@ -49,6 +49,14 @@ try:
 except:
 	print '*** Warning - no pyscard installed or pcscd not running'
 
+try:
+	from pynfc import get_version
+	print
+	print '*** Warning - pynfc mismatch!'
+	print "*** This is Mike Auty's pynfc which is not what RFIDIOt is expecting!"
+except:
+	pass
+
 MASK_CCITT = 0x1021 # CRC-CCITT mask (ISO 3309, used in X25, HDLC)
 MASK_11785 = 0x8408
 MASK_CRC16 = 0xA001 # CRC16 mask (used in ARC files)
