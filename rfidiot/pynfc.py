@@ -412,16 +412,16 @@ class NFC(object):
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
 		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), -1)
 		if rfidiotglobals.Debug:
-			self.log.debug('APDU r = ' + str(r))
+			self.log.debug('APDU rxlen = ' + str(rxlen))
 		if rxlen < 0:
 			if rfidiotglobals.Debug:
 				self.log.error("Error sending/recieving APDU")
 
 			return False, rxlen
 		else:
-			if rfidiotglobals.Debug:
-				self.log.debug("Recieved %d byte APDU: " % rxlen, rx[:])
 			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
+			if rfidiotglobals.Debug:
+				self.log.debug("Recieved %d byte APDU: %s" % (rxlen, rxAPDU))
 			return True, rxAPDU
 
 if __name__ == "__main__":
