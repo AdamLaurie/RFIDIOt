@@ -22,14 +22,15 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import string
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
 card.info('copytag v0.1d')

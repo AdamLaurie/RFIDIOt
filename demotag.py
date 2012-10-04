@@ -20,16 +20,17 @@
 #    GNU General Public License for more details.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(False)
 
-args= RFIDIOtconfig.args
+args= rfidiot.args
 
 print 'Setting ID to: ' + args[0]
 print card.demotag(card.DT_SET_UID,card.ToBinary(args[0]))

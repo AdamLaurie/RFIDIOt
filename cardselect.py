@@ -22,18 +22,19 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
+args= rfidiot.args
 
-card.info('cardselect v0.1l')
+card.info('cardselect v0.1m')
 # force card type if specified
 if len(args) == 1:
 	card.settagtype(args[0])

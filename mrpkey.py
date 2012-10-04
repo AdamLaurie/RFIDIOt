@@ -33,7 +33,7 @@ FieldKeys= ()
 # this needs fixing - MAX should be able to go up to size supported by device
 MAXCHUNK= 118
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import commands
@@ -987,16 +987,16 @@ def bruteno(init):
 		return out
 
 try:
-        passport= RFIDIOtconfig.card
+        passport= rfidiot.card
 except:
         os._exit(True)
 
-args= RFIDIOtconfig.args
-Help= RFIDIOtconfig.help
-Nogui= RFIDIOtconfig.nogui
-DEBUG= RFIDIOtconfig.debug
+args= rfidiot.args
+Help= rfidiot.help
+Nogui= rfidiot.nogui
+DEBUG= rfidiot.debug
 
-myver= 'mrpkey v0.1s'
+myver= 'mrpkey v0.1t'
 passport.info(myver)
 
 TEST= False

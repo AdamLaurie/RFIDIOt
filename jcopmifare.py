@@ -28,17 +28,18 @@
 #	15/11/08 - ver 0.1a - first cut, seems to work. :)
 #	13/01/09 - ver 0.1b - add RANDOM UID mode
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-Help= RFIDIOtconfig.help
+args= rfidiot.args
+Help= rfidiot.help
 
 # fixed values required by JCOP applet
 CLA= '00'
@@ -49,7 +50,7 @@ READ= '02'
 RANDOM= '03'
 MIFARE_AID= 'DC4420060606'
 
-card.info('jcopmifare v0.1d')
+card.info('jcopmifare v0.1e')
 
 if Help or len(args) < 2:
 	print '\nUsage:\n\n\t%s [OPTIONS] <READ|WRITE|RANDOM> <MIFARE_PWD> [SECTOR] [HEX DATA]' % sys.argv[0]

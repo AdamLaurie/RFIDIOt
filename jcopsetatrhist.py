@@ -24,18 +24,18 @@
 #    GNU General Public License for more details.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import string
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
         os._exit(True)
 
-args= RFIDIOtconfig.args
-Help= RFIDIOtconfig.help
+args= rfidiot.args
+Help= rfidiot.help
 
 # fixed values required by JCOP applet
 CLA= '80'

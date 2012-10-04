@@ -25,15 +25,16 @@
 import sys
 import os
 import string
-import RFIDIOtconfig
+import rfidiot
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
 
-card.info('isotype v0.1l')
+card.info('isotype v0.1m')
 
 typed= 0
 if card.readertype == card.READER_ACG:

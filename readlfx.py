@@ -24,17 +24,18 @@
 #
 #        specifiy KEY for protected tags. If not specified, TRANSPORT key will be tried.
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
 Q5Mod= { '000':'Manchester',\
 	 '001':'PSK 1',\

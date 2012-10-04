@@ -25,21 +25,22 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import string
 import time
 
 try:
-	card= RFIDIOtconfig.card
+	card= rfidiot.card
 except:
+	print "Couldn't open reader!"
 	os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
-card.info('unique v0.1k')
+card.info('unique v0.1l')
 
 # Q5 config block
 Q5CFB='e601f004'

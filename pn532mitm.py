@@ -22,8 +22,7 @@
 
 from pn532 import *
 
-import RFIDIOtconfig
-import RFIDIOt
+import rfidiot
 import sys
 import os
 import string
@@ -108,14 +107,14 @@ def recv_data(host):
 	return out[:-2]
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
-card.info('pn532mitm v0.1d')
+card.info('pn532mitm v0.1e')
 
 if help or len(args) < 1: 
 	print sys.argv[0] + ' - NXP PN532 Man-In-The-Middle'
@@ -201,7 +200,7 @@ if remote:
 else:
 	try:
 		readernum= int(args[0])
-		emulator= RFIDIOt.rfidiot(readernum,card.readertype,'','','','','','')
+		emulator= rfidiot.RFIDIOt.rfidiot(readernum,card.readertype,'','','','','','')
 		print '  Emulator:',
 		emulator.info('')
 		if not emulator.readersubtype == card.READER_ACS:

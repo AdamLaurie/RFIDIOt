@@ -2,3 +2,28 @@ to install:
 
   sudo python ./setup.py install
 
+this will create a python library called 'rfidiot'.
+
+*** note - if you are upgrading from a version that didn't use an install script,
+and you've written your own clients, you'll need to make the following changes:
+
+  replace all instances of 'RFIDIOTconfig' with 'rfidiot'
+
+  e.g.
+
+    import RFIDIOtconfig
+
+  becomes
+
+    import rfidiot
+
+  and
+
+    args= RFIDIOtconfig.args
+
+  becomes
+
+     args= rfidiot.args
+
+  etc.
+

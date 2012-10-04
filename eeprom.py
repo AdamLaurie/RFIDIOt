@@ -21,16 +21,17 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('eeprom v0.1c')
+card.info('eeprom v0.1e')
 print 'Station:\t' + card.station()
 print 'Protocol:\t' + card.PCON()
 print 'Protocol2:\t' + card.PCON2()

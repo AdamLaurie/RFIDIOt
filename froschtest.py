@@ -20,16 +20,17 @@
 #    GNU General Public License for more details.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('froschtest v0.1c')
+card.info('froschtest v0.1d')
 print 
 print 'Trying Hitag1: ',
 if card.frosch(card.FR_HT1_Get_Snr,''):

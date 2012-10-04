@@ -25,21 +25,22 @@
 import sys
 import os
 import string
-import RFIDIOtconfig
+import rfidiot
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-
-card.info('hidprox v0.1c')
+card.info('hidprox v0.1e')
 
 if not card.readersubtype == card.READER_OMNIKEY:
-	print 'Reader type not supported!'
+	print 'Reader type not supported!', card.ReaderSubType, card.READER_OMNIKEY
 	os._exit(True)
 
 try:
+	card.select()
 	prox= card.pcsc_atr[:6]
 	type= card.HID_PROX_TYPES[prox]
 	print '  Card type:', type

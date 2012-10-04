@@ -21,7 +21,7 @@
 #    GNU General Public License for more details.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import string
@@ -30,12 +30,13 @@ from Crypto.Cipher import DES
 from pyasn1.codec.ber import decoder
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-Help= RFIDIOtconfig.help
+args= rfidiot.args
+Help= rfidiot.help
 
 # fixed values required by JCOP applet
 CLA= '80'
@@ -270,7 +271,7 @@ def decode_gp_registry_data(data, padding, filter):
 			return False
 	return True
 	
-card.info('jcoptool v0.1c')
+card.info('jcoptool v0.1d')
 if Help or len(args) < 1:
 	print '\nUsage:\n\n\t%s [OPTIONS] <COMMAND> [ARGS] [ENC Key] [MAC Key] [KEK Key]' % sys.argv[0]
 	print

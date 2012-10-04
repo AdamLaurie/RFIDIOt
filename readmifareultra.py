@@ -23,16 +23,17 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-help= RFIDIOtconfig.help
+help= rfidiot.help
 
 if help:
         print sys.argv[0] + ' - read mifare ultralight tags'
@@ -40,7 +41,7 @@ if help:
         print
 	os._exit(True)
 
-card.info('readmifareultra v0.1a')
+card.info('readmifareultra v0.1b')
 card.waitfortag('Waiting for Mifare Ultralight...')
 
 blocks=16

@@ -22,17 +22,18 @@
 
 import sys
 import os
-import RFIDIOtconfig
+import rfidiot
 import time
 import string
 
 try:
-	card= RFIDIOtconfig.card
+	card= rfidiot.card
 except:
+	print "Couldn't open reader!"
 	os._exit(False)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
 blocksread= 0
 blockslocked= 0
@@ -69,7 +70,7 @@ if help or len(args) > 6:
 	print
         os._exit(True)
 
-card.info('readmifaresimple v0.1g')
+card.info('readmifaresimple v0.1h')
 
 if not card.select():
 	card.waitfortag('waiting for Mifare TAG...')

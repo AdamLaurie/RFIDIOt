@@ -22,20 +22,20 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import time
 import string
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
         os._exit(True)
 
-args= RFIDIOtconfig.args
+args= rfidiot.args
 
-card.info('multiselect v0.1m')
+card.info('multiselect v0.1n')
 
 # force card type if specified
 if len(args) == 1:

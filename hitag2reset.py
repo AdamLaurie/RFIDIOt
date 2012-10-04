@@ -21,20 +21,21 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import string
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
-card.info('hitag2reset v0.1d')
+card.info('hitag2reset v0.1e')
 
 # standard config block
 #CFB='06' + card.HITAG2_TRANSPORT_TAG

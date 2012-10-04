@@ -20,17 +20,18 @@
 #    GNU General Public License for more details.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
 Q5Mod= { '000':'Manchester',\
 	 '001':'PSK 1',\
@@ -41,7 +42,7 @@ Q5Mod= { '000':'Manchester',\
 	 '110':'Biphase',\
 	 '111':'NRZ / direct'}
 
-card.info('writelfx v0.1b')
+card.info('writelfx v0.1c')
 
 # force card type if specified
 if len(args) > 0:

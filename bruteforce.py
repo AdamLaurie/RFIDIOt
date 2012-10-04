@@ -21,20 +21,21 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import random
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
-card.info('bruteforce v0.1h')
+card.info('bruteforce v0.1i')
 card.select()
 print 'Card ID: ' + card.uid
 

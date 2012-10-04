@@ -21,14 +21,13 @@
 #    GNU General Public License for more details.
 #
 
+import rfidiotglobals
+
 import RFIDIOt
 import getopt
 import sys
 import os
 import string
-
-
-debug= False
 
 # help flag (-h) set?
 help= False
@@ -146,7 +145,7 @@ try:
 
 	for o, a in opts:
 		if o == '-d':
-			debug= True
+			rfidiotglobals.Debug= True
 		if o == '-f':
 			nfcreader= int(a)
 			readertype= RFIDIOt.rfidiot.READER_LIBNFC
@@ -159,7 +158,7 @@ try:
 			noinit= True
 		if o == '-N':
 			readertype= RFIDIOt.rfidiot.READER_LIBNFC
-			card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,debug,noinit,nfcreader)
+			card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,rfidiotglobals.Debug,noinit,nfcreader)
 			card.libnfc_listreaders()
 			os._exit(True)
 		if o == '-r':
@@ -172,14 +171,14 @@ try:
 		if o == '-L':
 			readertype= RFIDIOt.rfidiot.READER_PCSC
 			readernum= 0
-			card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,debug,noinit,nfcreader)
+			card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,rfidiotglobals.Debug,noinit,nfcreader)
 			card.pcsc_listreaders()
 			os._exit(True)
 		if o == '-s':
 			speed= int(a)
 		if o == '-t':
 			timeout= int(a)
-	card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,debug,noinit,nfcreader)
+	card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,rfidiotglobals.Debug,noinit,nfcreader)
 except getopt.GetoptError,e:
    		print "RFIDIOtconfig module ERROR: %s" % e
 		printoptions()

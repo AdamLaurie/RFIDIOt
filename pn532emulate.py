@@ -23,19 +23,19 @@
 
 from pn532 import *
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
         os._exit(True)
 
-args= RFIDIOtconfig.args
-help= RFIDIOtconfig.help
+args= rfidiot.args
+help= rfidiot.help
 
-card.info('pn532emulate v0.1c')
+card.info('pn532emulate v0.1d')
 
 if help or len(args) < 6: 
 	print sys.argv[0] + ' - Switch NXP PN532 chip into emulation mode'

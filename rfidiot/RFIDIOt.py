@@ -27,8 +27,6 @@ try:
 except ImportError:
         pass
 
-
-
 import os
 import sys
 import random
@@ -61,12 +59,14 @@ MASK_CCITT = 0x1021 # CRC-CCITT mask (ISO 3309, used in X25, HDLC)
 MASK_11785 = 0x8408
 MASK_CRC16 = 0xA001 # CRC16 mask (used in ARC files)
 
-DEBUG= False
-#DEBUG= True
-NoInit= False
-NFCReader= None
 
 class rfidiot:
+	DEBUG= False
+	readertype= None
+	readersubtype= None
+	NoInit= False
+	NFCReader= None
+	pcsc_atr= None
 	"RFIDIOt - RFID I/O tools - http://rfidiot.org"
 	# local imports
 	from iso3166 import ISO3166CountryCodesAlpha
@@ -75,15 +75,13 @@ class rfidiot:
 	# open reader port
 	#
 	def __init__(self,readernum,reader,port,baud,to,debug,noinit,nfcreader):
-		global NoInit
-		global DEBUG
 		self.readertype= reader
 		self.readersubtype= reader
 		readernum= int(readernum)
-		DEBUG= debug
-		NoInit= noinit
-		NFCReader= nfcreader
-		if not NoInit:
+		self.DEBUG= debug
+		self.NoInit= noinit
+		self.NFCReader= nfcreader
+		if not self.NoInit:
 			if self.readertype == self.READER_PCSC:
 				try:
 					self.pcsc_protocol= smartcard.scard.SCARD_PROTOCOL_T1
@@ -103,7 +101,7 @@ class rfidiot:
 					self.readername= self.pcsc[readernum].name
 					self.pcsc_connection= self.pcsc[readernum].createConnection()
 					# debug option will show APDU traffic
-					if DEBUG:
+					if self.DEBUG:
 						from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 						observer=ConsoleCardConnectionObserver()
 						self.pcsc_connection.addObserver( observer )
@@ -128,11 +126,13 @@ class rfidiot:
 						else:
 							# default to Omnikey for now
 							self.readersubtype= self.READER_OMNIKEY
-				if DEBUG:
+				if self.DEBUG:
 					print 'Reader Subtype:',self.readersubtype
 				# create a connection
 				try:
 					self.pcsc_connection.connect()
+					if self.DEBUG:
+						print 'pcsc_connection successful'
 				except:
 					# card may be something like a HID PROX which only returns ATR and does not allow connect
 					hresult, hcontext = smartcard.scard.SCardEstablishContext( smartcard.scard.SCARD_SCOPE_USER )
@@ -160,7 +160,7 @@ class rfidiot:
 					self.acs_set_retry(to)
 			#libnfc device
 			elif self.readertype == self.READER_LIBNFC:
-				self.nfc = pynfc.NFC()
+				self.nfc = pynfc.NFC(self.NFCReader)
 				self.readername = self.nfc.LIBNFC_READER
 			#Andoid reader
 			elif self.readertype == self.READER_ANDROID:
@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0d'
+	VERSION= '1.0e'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -740,7 +740,7 @@ class rfidiot:
 	def info(self,caller):
 		if len(caller) > 0:
 			print caller + ' (using RFIDIOt v' + self.VERSION + ')'
-		if not NoInit:
+		if not self.NoInit:
 			self.reset()
 			self.version()
 			if len(caller) > 0:
@@ -910,7 +910,7 @@ class rfidiot:
 			print '    No: %d\t\t%s' % (n,reader)
 			n += 1
 	def libnfc_listreaders(self):
-		self.nfc.listreaders(NFCReader)
+		self.nfc.listreaders(self.NFCReader)
 	def waitfortag(self,message):
 		print message
 		# we need a way to interrupt infinite loop
@@ -930,9 +930,13 @@ class rfidiot:
 				time.sleep(0.1)
 		return True
 	def select(self):
+		if self.DEBUG:
+			print 'in select'
 		self.uid= ''
 		# return True or False and set tag type and data
 		if self.readertype == self.READER_ACG:
+			if self.DEBUG:
+				print 'selecting card using ACG'
 			self.ser.write('s')
 			self.data= self.ser.readline()[:-2]
 			self.tagtype= self.data[:1]
@@ -946,6 +950,8 @@ class rfidiot:
 				self.uid= self.data
 			return True
 		if self.readertype == self.READER_FROSCH:
+			if self.DEBUG:
+				print 'selecting card using FROSCH'
 			if self.frosch(self.FR_HT2_Get_Snr_PWD,''):
 				# select returns an extra byte on the serial number, so strip it
 				self.data= self.data[:len(self.data) - 2]
@@ -962,6 +968,8 @@ class rfidiot:
 					return True
 			return False
 		if self.readertype == self.READER_PCSC:
+			if self.DEBUG:
+				print 'selecting card using PCSC'
 			try:
 				# start a new connection in case TAG has been switched
 				self.pcsc_connection.disconnect()
@@ -992,18 +1000,18 @@ class rfidiot:
 				return False
 		if self.readertype == self.READER_LIBNFC:
 			try:
-				if DEBUG:
+				if self.DEBUG:
 					print 'selecting card using LIBNFC'
 				result = self.nfc.selectISO14443A()
 				if result:
 					self.atr = result.atr
 					self.uid = result.uid
-					if DEBUG:
+					if self.DEBUG:
 						print 'ATR: ' + self.atr
 						print 'UID: ' + self.uid
 					return True
 				else:
-					if DEBUG:
+					if self.DEBUG:
 						print 'Error selecting card'
 					return False
 			except ValueError:
@@ -1011,16 +1019,16 @@ class rfidiot:
 		
 		if self.readertype == self.READER_ANDROID:
 			try:
-				if DEBUG:
+				if self.DEBUG:
 					print 'Reading card using Android'
 				uid = self.android.select()
 				if uid:
 					self.uid = uid
-					if DEBUG:
+					if self.DEBUG:
 						print '\tUID: ' + self.uid
 					return True
 				else:
-					if DEBUG:
+					if self.DEBUG:
 						print 'Error selecting card'
 					return False
 			except ValueError:
@@ -1367,7 +1375,7 @@ class rfidiot:
         	"get random challenge - challenge will be in .data"
         	ins= 'GET_CHALLENGE'
         	le= '%02x' % length
-        	if DEBUG:
+        	if self.DEBUG:
                 	print "DEBUG: requesting %d byte challenge" % length
         	return self.send_apdu('','','','','',ins,'','','','',le)
 	def iso_7816_read_binary(self,bytes,offset):
@@ -1447,12 +1455,12 @@ class rfidiot:
 		dlength += len(data) / 2
 		dlength += len(lc) / 2
 		dlength += len(le) / 2
-		if DEBUG:
+		if self.DEBUG:
 			print 'sending: ' + 't' + '%02x' % dlength + option + command
 		self.ser.write('t' + '%02x' % dlength + option + command)
 		# need check for 'le' length as well
 		ret= self.ser.readline()[:-2] 
-		if DEBUG:
+		if self.DEBUG:
 			print 'received:',ret
 		self.errorcode= ret[len(ret) - 4:len(ret)]
 		# copy data if more than just an error code (JCOP sometimes returns an error with data)
@@ -1490,17 +1498,17 @@ class rfidiot:
 			if keytype == 'FF':
 				keytype= 'AA'
 			if not sector == '':
-				if DEBUG:
+				if self.DEBUG:
 					print 'sending:', 'l' + ('%02x' % sector) + keytype + key
 				self.ser.write('l' + ('%02x' % sector) + keytype + key)
 			else:
-				if DEBUG:
+				if self.DEBUG:
 					print 'sending:','l' + keytype + key
 				self.ser.write('l' + keytype + key)
 			if key == '':
 				self.ser.write('\r')
 			self.errorcode= self.ser.readline()[0]
-			if DEBUG:
+			if self.DEBUG:
 				print 'received:', self.errorcode
 			if self.errorcode == 'L':
 				self.errorcode= ''
@@ -1689,7 +1697,7 @@ class rfidiot:
 		commandlen= len(command)
 		bcc= self.frosch_bcc_out(command,commandlen + 1)
 		# send length + command + checkdigit
-		if DEBUG:
+		if self.DEBUG:
 			print 'Sending: ', 
 			self.HexPrint(chr(commandlen + 1) + command + chr(bcc))
 		self.ser.write(chr(commandlen + 1) + command + chr(bcc))
@@ -1704,7 +1712,7 @@ class rfidiot:
 			return False
 		# now read the rest
 		ret += self.ser.read(ord(ret[0]))
-		if DEBUG:
+		if self.DEBUG:
 			print 'ret: %d ' % len(ret),
 			self.HexPrint(ret)
 		# check integrity of return
@@ -1728,7 +1736,7 @@ class rfidiot:
 		else :
 			self.errorcode= self.ToHex(status)
 			self.data= ''
-			if DEBUG:
+			if self.DEBUG:
 				print "Frosch error:", int(self.errorcode,16) - 256
 			# reader may need resetting to normal read mode
 			if command == self.FR_HT2_Read_PublicB or command == self.FR_HT2_Read_Miro:

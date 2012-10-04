@@ -28,10 +28,10 @@ import logging
 import time
 import readline
 import socket
+import rfidiotglobals
 
 # listening port
 PORT = 4444
-debug = False
 
 class Android(object):
 	VERSION = "0.1"
@@ -39,9 +39,9 @@ class Android(object):
 	c = None
 	
 	def __init__(self):
-		if debug:
+		if rfidiotglobals.Debug:
 			self.initLog()
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid starting")
 		self.configure()
 	
@@ -49,7 +49,7 @@ class Android(object):
 		self.deconfigure()
 	
 	def deconfigure(self):
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid: deconfiguring")
 		if self.c is not None:
 				self.c.send("close\n")
@@ -65,7 +65,7 @@ class Android(object):
 		self.log.addHandler(sh)
 
 	def configure(self):
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid: Setting up listening port")
 		if self.s is not None:
 			self.s.close()
@@ -79,7 +79,7 @@ class Android(object):
 			print e
 		
 	def reset(self):
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid: Resetting connections")
 		if self.c is not None:
 			self.c.send("close\n")
@@ -89,11 +89,11 @@ class Android(object):
 		self.configure()	
 	
 	def select(self):
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid in select statement")
 		print 'Waiting for connection from Android device ....'
 		self.c, addr = self.s.accept()     # Establish connection with client.
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("pyandroid: Got connection from " + addr[0])
 		print "Got connection from ", addr
 		# Get UID
@@ -102,24 +102,24 @@ class Android(object):
 		return uid
 	
 	def sendAPDU(self, apdu):
-		if debug:	
+		if rfidiotglobals.Debug:	
 			self.log.debug("Sending APDU: " + apdu)
 		self.c.send(apdu + '\n')
 		response = self.c.recv(1024)
 		response = response[:-1]
 		
-		if debug:
+		if rfidiotglobals.Debug:
 			self.log.debug('APDU r =' + response)
 		return response
 
         def sendResults(self, result):
-                if debug:
+                if rfidiotglobals.Debug:
                         self.log.debug("Sending results: " + results)
                 self.c.send('r:' + result + '\n')
                 response = self.c.recv(1024)
                 response = response[:-1]
 
-                if debug:
+                if rfidiotglobals.Debug:
                         self.log.debug('Response r =' + response)
                 return response
 

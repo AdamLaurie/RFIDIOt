@@ -33,6 +33,8 @@ import time
 import readline
 #import RFIDIOtconfig
 
+import rfidiotglobals
+
 # nfc_property enumeration
 NP_TIMEOUT_COMMAND		= 0x00
 NP_TIMEOUT_ATR			= 0x01
@@ -241,8 +243,7 @@ class ISO14443A(object):
 		return rv
 
 class NFC(object):
-
-	def __init__(self):
+	def __init__(self, nfcreader):
 		self.LIB = ctypes.util.find_library('nfc')
 		#self.LIB = "/usr/local/lib/libnfc.so"
 		#self.LIB = "/usr/local/lib/libnfc_26102009.so.0.0.0"
@@ -252,12 +253,13 @@ class NFC(object):
 		self.device = None
 		self.poweredUp = False
 
-		if RFIDIOtconfig.debug:
+		#if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.initLog()
 		self.LIBNFC_VER= self.initlibnfc()
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("libnfc %s" % self.LIBNFC_VER)
-		self.configure()
+		self.configure(nfcreader)
 	
 	def __del__(self):
 		self.deconfigure()
@@ -273,7 +275,7 @@ class NFC(object):
 		self.log.addHandler(sh)
 
 	def initlibnfc(self):
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("Loading %s" % self.LIB)
 		self.libnfc = ctypes.CDLL(self.LIB)
 		self.libnfc.nfc_version.restype = ctypes.c_char_p
@@ -306,13 +308,13 @@ class NFC(object):
 				#	print '    \t\t\t\tSpeed:', devices[i].uiSpeed
 
 
-	def configure(self):
-		if RFIDIOtconfig.debug:
+	def configure(self, nfcreader):
+		if rfidiotglobals.Debug:
 			self.log.debug("NFC Readers:")
 			self.listreaders(None)
-			self.log.debug("Connecting to NFC reader")
-		if RFIDIOtconfig.nfcreader:
-			target=  self.listreaders(RFIDIOtconfig.nfcreader)
+			self.log.debug("Connecting to NFC reader number %d" % nfcreader)
+		if nfcreader != None:
+			target=  self.listreaders(nfcreader)
 		else:
 			target= None 
 		if target:
@@ -320,14 +322,14 @@ class NFC(object):
 		self.device = self.libnfc.nfc_open(0, target)
 		self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
 		self.LIBNFC_READER= self.libnfc.nfc_device_get_name(self.device)	
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			if self.device == None:
 				self.log.error("Error opening NFC reader")
 			else:
 				self.log.debug("Opened NFC reader " + self.LIBNFC_READER)	
 			self.log.debug("Initing NFC reader")
 		self.libnfc.nfc_initiator_init(self.device)		
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("Configuring NFC reader")
 
   		# Drop the field for a while
@@ -343,29 +345,29 @@ class NFC(object):
 		
 	def deconfigure(self):
 		if self.device != None:
-			if RFIDIOtconfig.debug:
+			if rfidiotglobals.Debug:
 				self.log.debug("Deconfiguring NFC reader")
 			#self.powerOff()
 			self.libnfc.nfc_close(self.device)
-			if RFIDIOtconfig.debug:
+			if rfidiotglobals.Debug:
 				self.log.debug("Disconnected NFC reader")
 			self.device == None
 	
 	def powerOn(self):
 		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, True)
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("Powered up field")
 		self.poweredUp = True
 	
 	def powerOff(self):
 		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, False)
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("Powered down field")
 		self.poweredUp = False
 	
 	def selectISO14443A(self):
 		"""Detect and initialise an ISO14443A card, returns an ISO14443A() object."""
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug("Polling for ISO14443A cards")
 		#r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
 		#r = self.libnfc.nfc_initiator_init(self.device)
@@ -406,18 +408,18 @@ class NFC(object):
 		rxAPDU = ctypes.c_ubyte * MAX_FRAME_LEN
 		rx = rxAPDU()
 	
-		if RFIDIOtconfig.debug:	
+		if rfidiotglobals.Debug:	
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
 		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), -1)
-		if RFIDIOtconfig.debug:
+		if rfidiotglobals.Debug:
 			self.log.debug('APDU r = ' + str(r))
 		if rxlen < 0:
-			if RFIDIOtconfig.debug:
+			if rfidiotglobals.Debug:
 				self.log.error("Error sending/recieving APDU")
 
 			return False, rxlen
 		else:
-			if RFIDIOtconfig.debug:
+			if rfidiotglobals.Debug:
 				self.log.debug("Recieved %d byte APDU: " % rxlen, rx[:])
 			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
 			return True, rxAPDU

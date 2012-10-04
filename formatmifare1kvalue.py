@@ -21,17 +21,18 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import string
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('formatmifare1k v0.1b')
+card.info('formatmifare1k v0.1c')
 card.select()
 print 'Card ID: ' + card.data
 while True:

@@ -23,16 +23,17 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('send_apdu v0.1')
+card.info('send_apdu v0.1a')
 card.select()
 print '\nID: ' + card.uid
 print '  Data:'

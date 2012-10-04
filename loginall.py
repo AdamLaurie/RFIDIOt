@@ -21,14 +21,15 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('loginall v0.1g')
+card.info('loginall v0.1h')
 
 card.select()
 print '\ncard id: ' + card.uid

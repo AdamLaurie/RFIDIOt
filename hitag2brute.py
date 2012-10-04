@@ -22,19 +22,20 @@
 #
 
 
-import RFIDIOtconfig
+import rfidiot
 import sys
 import os
 import time
 
 try:
-        card= RFIDIOtconfig.card
+        card= rfidiot.card
 except:
+	print "Couldn't open reader!"
         os._exit(True)
 
-args= RFIDIOtconfig.args
+args= rfidiot.args
 
-card.info('hitag2brute v0.1b')
+card.info('hitag2brute v0.1c')
 
 pwd= 0x00
 
