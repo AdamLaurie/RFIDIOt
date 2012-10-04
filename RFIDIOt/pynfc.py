@@ -410,7 +410,7 @@ class NFC(object):
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
 		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), -1)
 		if RFIDIOtconfig.debug:
-			self.log.debug('APDU r = ' + str(r))
+			self.log.debug('APDU rx = ' + str(rx))
 		if rxlen < 0:
 			if RFIDIOtconfig.debug:
 				self.log.error("Error sending/recieving APDU")
