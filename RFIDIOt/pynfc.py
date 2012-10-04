@@ -31,7 +31,7 @@ import binascii
 import logging
 import time
 import readline
-import RFIDIOtconfig
+#import RFIDIOtconfig
 
 # nfc_property enumeration
 NP_TIMEOUT_COMMAND		= 0x00

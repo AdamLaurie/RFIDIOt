@@ -238,3 +238,5 @@ add libnfc mifare command support (TODO: error handling)
     they should work as READER_LIBNFC and/or READER_PCSC types. 
 Android support [Nick von Dadelszen]
 
+v1.0e
+move to a package style implementation
