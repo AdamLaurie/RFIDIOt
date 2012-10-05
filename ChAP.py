@@ -36,7 +36,7 @@ import sys
 from operator import *
 
 # local imports
-from iso3166 import ISO3166CountryCodes
+from rfidiot.iso3166 import ISO3166CountryCodes
 
 # default global options
 BruteforcePrimitives= False
