@@ -4,6 +4,30 @@ to install:
 
 this will create a python library called 'rfidiot'.
 
+*** important:
+
+as some scripts have moved from the execution path and into the library, you
+should ensure that no old copies are left lying around. in particular, the
+following files should only exist in your python DIST directory
+(e.g. /usr/local/lib/python2.7/dist-packages/rfidiot), and not in /usr/local/bin:
+
+  iso3166.py
+  iso3166.pyc
+  pn532.py
+  pn532.pyc
+  pyandroid.py
+  pyandroid.pyc
+  pynfc.py
+  pynfc.pyc
+  rfidiotglobals.py  
+  rfidiotglobals.pyc
+  RFIDIOt.py
+  RFIDIOt.pyc
+
+for a brief moment setup was configured to create e.g. /usr/local/lib/python2.7/dist-packages/RFIDIOt
+which was an error, so you can safely remove /usr/local/lib/python2.7/dist-packages/RFIDIOt* or
+your equivelant.
+
 *** note - if you are upgrading from a version that didn't use an install script,
 and you've written your own clients, you'll need to make the following changes:
 
@@ -26,4 +50,6 @@ and you've written your own clients, you'll need to make the following changes:
      args= rfidiot.args
 
   etc.
+
+everything else should behave the same as before. please inform me if you hit any snags!
 
