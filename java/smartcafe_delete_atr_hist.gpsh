@@ -1,0 +1,10 @@
+// script to install applet.cap to jcop card using gpshell (http://sourceforge.net/projects/globalplatform/)
+mode_211
+//enable_trace
+establish_context
+card_connect
+select -AID A000000003000000
+open_sc -scp 2 -scpimpl 0x15 -security 1 -keyind 0 -keyver 0 -keyDerivation emvcps11 -key 404142434445464748494A4B4C4D4E4F
+delete -AID DC44200606
+card_disconnect
+release_context
