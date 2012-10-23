@@ -98,7 +98,17 @@ def printoptions():
 	print '\t-n\t\tNo Init - do not initialise hardware'
 	print '\t-N\t\tList available LibNFC devices'
 	print '\t-r <num>\tUse PCSC device number <num> (implies -R READER_PCSC)'
-	print '\t-R <type>\tReader/writer type (see source of RFIDIOtconfig.py for types)'
+	print '\t-R <type>\tReader/writer type:'
+	print '\t\t\t\tREADER_ACG:\tACG Serial'
+	print '\t\t\t\tREADER_ACS:\tPC/SC Subtype ACS'
+	print '\t\t\t\tREADER_ANDROID:\tAndroid'
+	print '\t\t\t\tREADER_DEMOTAG:\tDemoTag'
+	print '\t\t\t\tREADER_FROSCH:\tFrosch Hitag'
+	print '\t\t\t\tREADER_LIBNFC:\tlibnfc'
+	print '\t\t\t\tREADER_NONE:\tNone'
+	print '\t\t\t\tREADER_OMNIKEY:\tPC/SC Subtype OmniKey'
+	print '\t\t\t\tREADER_PCSC:\tPC/SC'
+	print '\t\t\t\tREADER_SCM:\tPC/SC Subtype SCM'
 	print '\t-l <line>\tLine to use for reader/writer'
 	print '\t-L\t\tList available PCSC devices'
 	print '\t-s <baud>\tSpeed of reader/writer'
@@ -165,7 +175,10 @@ try:
 			readernum= a
 			readertype= RFIDIOt.rfidiot.READER_PCSC
 		if o == '-R':
-			readertype= eval(a)
+			try:
+				readertype= eval(a)
+			except:
+				readertype= eval('RFIDIOt.rfidiot.'+a)
 		if o == '-l':
 			line= a
 		if o == '-L':

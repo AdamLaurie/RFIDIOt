@@ -394,6 +394,22 @@ class rfidiot:
 	AID_SECURITY_DOMAIN= 'A0000000035350'
 	AID_PKCS_15= 'A000000063'
 	AID_JCOP_IDENTIFY= 'A000000167413000FF'
+	AID_GSD_MANAGER= 'A000000476A110'
+	AIDS= {
+		AID_CARD_MANAGER:'Card Manager',
+		AID_MRTD:'Machine Readable Travel Document',
+		AID_JAVA_LANG:'java.lang',
+		AID_JAVACARD_FRAMEWORK:'javacard.framework',
+		AID_JAVACARD_SECURITY:'javacard.security',
+		AID_JAVARCARDX_CRYPTO:'javacardx.crypto',
+		AID_FIPS_140_2:'FIPS 140-2',
+		AID_JAVACARD_BIOMETRY:'org.javacardforum.javacard.biometry',
+		AID_SECURITY_DOMAIN:'Security Domain',
+		AID_PKCS_15:'PKCS15',
+		AID_JCOP_IDENTIFY:'JCOP Identify',
+		AID_GSD_MANAGER:'GSD Manager',
+	}
+
 
 	# Global Platform
 	CLA_GLOBAL_PLATFORM= '80'
@@ -1434,24 +1450,30 @@ class rfidiot:
 			p1= '00'
 		if not p2:
 			p2= '00'
+		try:
+			ins= self.ISOAPDU[ins]
+		except:
+			pass
 		if self.readertype == self.READER_PCSC:
-			return self.pcsc_send_apdu(cla+self.ISOAPDU[ins]+p1+p2+lc+data+le)
+			return self.pcsc_send_apdu(cla+ins+p1+p2+lc+data+le)
 		if self.readertype == self.READER_LIBNFC:
-			result = self.nfc.sendAPDU(cla+self.ISOAPDU[ins]+p1+p2+lc+data+le)
+			if self.DEBUG:
+				print 'In send_apdu - for libnfc:', cla+ins+p1+p2+lc+data+le
+			ret, result = self.nfc.sendAPDU(cla+ins+p1+p2+lc+data+le)
 			self.data = result[0:-4]
 			self.errorcode = result[len(result)-4:len(result)]
-			if self.errorcode == self.ISO_OK:
-				return True
-			return False
+			if not ret or self.errorcode != self.ISO_OK:
+				return False
+			return True
 		if self.readertype == self.READER_ANDROID:
-			result = self.android.sendAPDU(cla+self.ISOAPDU[ins]+p1+p2+lc+data+le)
+			result = self.android.sendAPDU(cla+self.ins+p1+p2+lc+data+le)
 			self.data = result[0:-4]
 			self.errorcode = result[len(result)-4:len(result)]
 			if self.errorcode == self.ISO_OK:
 				return True
 			return False
 			dlength= 5
-		command= pcb+cla+self.ISOAPDU[ins]+p1+p2+lc+data+le
+		command= pcb+cla+self.ins+p1+p2+lc+data+le
 		dlength += len(data) / 2
 		dlength += len(lc) / 2
 		dlength += len(le) / 2
@@ -1491,6 +1513,10 @@ class rfidiot:
 	def login(self,sector,keytype,key):
 		"login to specified sector - returns True if successful, False if failed. If failure is due to an error, 'errorcode' will be set." 
 		keytype= string.upper(keytype)
+		if keytype == 'A':
+			keytype= 'AA'
+		if keytype == 'B':
+			keytype= 'BB'
 		# use transport key if none specified
 		if not key:
 			key= self.MIFARE_TK[keytype]

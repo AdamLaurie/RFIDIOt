@@ -31,8 +31,7 @@ import binascii
 import logging
 import time
 import readline
-#import RFIDIOtconfig
-
+import string
 import rfidiotglobals
 
 # nfc_property enumeration
@@ -232,9 +231,9 @@ NFC_DEVICE_LIST = NFC_CONNSTRING * MAX_DEVICES
 
 class ISO14443A(object):
 	def __init__(self, ti):
-		self.uid = "".join(["%02x" % x for x in ti.abtUid[:ti.uiUidLen]])
+		self.uid = "".join(["%02X" % x for x in ti.abtUid[:ti.uiUidLen]])
 		if ti.uiAtsLen:
-			self.atr = "".join(["%02x" % x for x in ti.abtAts[:ti.uiAtsLen]])
+			self.atr = "".join(["%02X" % x for x in ti.abtAts[:ti.uiAtsLen]])
 		else:
 			self.atr = ""
 	
@@ -253,9 +252,7 @@ class NFC(object):
 		self.device = None
 		self.poweredUp = False
 
-		#if RFIDIOtconfig.debug:
-		if rfidiotglobals.Debug:
-			self.initLog()
+		self.initLog()
 		self.LIBNFC_VER= self.initlibnfc()
 		if rfidiotglobals.Debug:
 			self.log.debug("libnfc %s" % self.LIBNFC_VER)
@@ -428,7 +425,7 @@ class NFC(object):
 			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
 			if rfidiotglobals.Debug:
 				self.log.debug("Recieved %d byte APDU: %s" % (rxlen, rxAPDU))
-			return True, rxAPDU
+			return True, string.upper(rxAPDU)
 
 if __name__ == "__main__":
 	n = NFC()
