@@ -35,6 +35,7 @@
 
 import rfidiot
 import sys
+import time
 
 args= rfidiot.args
 help= rfidiot.help
@@ -57,7 +58,7 @@ if help or len(sys.argv) == 1:
 	print '     MF <COMMAND> [<ARGS> ... ]                       Mifare commands:'
 	print '        AUTH <"A|B"> <BLOCK>                            Authenticate with KEY A or B (future authentications'
 	print '                                                        are automated)'
-	print '        CLONE <KEY>                                     Duplicate a Mifare TAG (KEY is KEY A of BLANK)'
+	print '        CLONE <HEX KEY>                                 Duplicate a Mifare TAG (KEY is KEY A of BLANK)'
 	print '        DUMP <START> <END>                              Show data blocks'
 	print '        KEY <"A|B"> <HEX KEY>                           Set Mifare KEY A or B'
 	print '        READ <START> <END> <FILE>                       Read data blocks and save as FILE'
@@ -237,10 +238,12 @@ while args:
 			print
 			# wait for tag to change (same UID is OK)
 			card.waitfortag('    Replace TAG with TARGET')
-			while card.uid != '':
-				card.waitfortag('')
-			while card.uid == '':
-				card.waitfortag('')
+			while card.select():
+				pass
+			time.sleep(.5)
+			while not card.select():
+				pass
+			time.sleep(.5)
 			print
 			print
 			print '    Writing...'
@@ -254,6 +257,7 @@ while args:
 				if not (card.login(sector, 'A', blank_key) and card.writeblock(sector, block)):
 					if sector == 0:
 						print '      Sector 0 write failed'
+						card.select()
 					else:
 						print '      '+card.ISO7816ErrorCodes[card.errorcode]
 						exit(True)
@@ -386,6 +390,7 @@ while args:
 				if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
 					if sector == 0:
 						print '    Sector 0 write failed'
+						card.select()
 					else:
 						print '    '+card.ISO7816ErrorCodes[card.errorcode]
 						exit(True)
