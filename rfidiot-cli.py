@@ -61,7 +61,9 @@ if help or len(sys.argv) == 1:
 	print '        DUMP <START> <END>                              Show data blocks'
 	print '        READ <START> <END> <FILE>                       Read data blocks and save as FILE'
 	print '        WRITE <START> <FILE>                            Write data blocks from FILE (note that KEY A will'
-	print '                                                        be reconstructed from previously set value)'
+	print '                                                        be inserted from previously set value and KEY B'
+	print '                                                        will also be inserted if set, overriding FILE value)'
+	print '     SCRIPT <FILE>                                    Read commands from FILE'   
 	print '     SELECT                                           Select TAG'
 	print
 	print '  Commands will be executed sequentially and must be combined as appropriate.'
@@ -69,9 +71,13 @@ if help or len(sys.argv) == 1:
 	print
 	print '  Examples:'
 	print
-	print '     Select TAG, set Mifare KEY to "FFFFFFFFFFFF" and authenticate against sector 0:'
+	print '     Select TAG, set Mifare KEY A to "FFFFFFFFFFFF" and authenticate against sector 0:'
 	print
 	print '       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0'
+	print
+	print '     Write Mifare data to new TAG, changing Key A to 112233445566 (writing block 0 is allowed to fail):'
+	print
+	print '       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0 mf key a 112233445566 mf write 0 mifare.dat'
 	exit(True)
 
 try:
@@ -197,7 +203,11 @@ while args:
 		if mfcommand == 'DUMP':
 			start= int(args.pop(),16)
 			end= int(args.pop(),16)
-			print '  Dumping data blocks %02X to %02X:' % (start, end)
+			print '  Dumping data blocks %02X to %02X:' % (start, end),
+			if not Mifare_KeyType or not Mifare_Key:
+				print 'failed! No authentication performed!'
+				exit(True)
+			print
 			print
 			sector= start
 			while sector <= end:
@@ -210,7 +220,6 @@ while args:
 		if mfcommand == 'KEY':
 			print '  Setting Mifare Key',
 			keytype= args.pop().upper()
-			Mifare_KeyType= keytype
 			if keytype == 'A':
 				Mifare_KeyA= args.pop().upper()
 				print 'A:', Mifare_KeyA
@@ -225,12 +234,16 @@ while args:
 			start= int(args.pop(),16)
 			end= int(args.pop(),16)
 			filename= args.pop()
-			print '  Reading data blocks %02X to %02X and saving as %s:' % (start, end, filename)
-			print
+			print '  Reading data blocks %02X to %02X and saving as %s:' % (start, end, filename),
 			outfile= open(filename, "wb")
 			if not outfile:
-				print "Failed! Couldn't open output file!"
+				print "failed! Couldn't open output file!"
 				exit(True)
+			if not Mifare_KeyType or not Mifare_Key:
+				print 'failed! No authentication performed!'
+				exit(True)
+			print
+			print
 			sector= start
 			while sector <= end:
 				if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
@@ -254,16 +267,28 @@ while args:
 			if not Mifare_KeyA:
 				print 'failed! KEY A not set!'
 				exit(True)
+			if not Mifare_KeyType or not Mifare_Key:
+				print 'failed! No authentication performed!'
+				exit(True)
 			end= start + len(data) / 16 - 1
 			print 'to blocks %02X to %02X' % (start, end)
+			print
+			print '    Key A will be set to:', Mifare_KeyA
+			if Mifare_KeyB:
+				print '    Key B will be set to:', Mifare_KeyB
+			else:
+				print '    Key B will be set as per file'
 			print
 			sector= start
 			p= 0
 			while sector <= end:
 				block= data[p:p + 16].encode('hex')
 				if not (sector + 1) % 4:
-					# trailing block must contain key A, so reconstruct
-					block= Mifare_KeyA + block[12:]
+					# trailing block must contain keys, so reconstruct
+					if Mifare_KeyB:
+						block= Mifare_KeyA + block[12:20] + Mifare_KeyB
+					else:
+						block= Mifare_KeyA + block[12:]
 				if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
 					if sector == 0:
 						print '    Sector 0 write failed'
@@ -276,6 +301,31 @@ while args:
 			continue
 		print '  Invalid MF command:', mfcommand
 		exit(True)
+	if command == 'SCRIPT':
+		filename= args.pop()
+		infile= open(filename,"rb")
+		print
+		print '  Reading commands from', filename
+		if not infile:
+			print "failed! Can't open file!"
+			exit(True)
+		script= []
+		while 42:
+			line= infile.readline()
+			if line == '':
+				break
+			line= line.strip()
+			if line == '':
+				continue
+			for arg in line.split(' '):
+				# skip comments
+				if arg[0] == '#':
+					break
+				script.append(arg)
+		infile.close()
+		script.reverse()
+		args += script
+		continue
 	if command == 'SELECT':
 		print
 		print '  Selecting TAG'

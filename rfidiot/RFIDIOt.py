@@ -928,7 +928,9 @@ class rfidiot:
 	def libnfc_listreaders(self):
 		self.nfc.listreaders(self.NFCReader)
 	def waitfortag(self,message):
-		print message
+		if message:
+			print message,
+			sys.stdout.flush()
 		# we need a way to interrupt infinite loop
 		if self.readersubtype == self.READER_OMNIKEY or self.readersubtype == self.READER_SCM:
 			wait=True

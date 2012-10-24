@@ -1,0 +1,17 @@
+#
+# example script file for rfidiot-cli
+#
+# commands can be specified one per line:
+select
+aids
+# or combined:
+select aids
+# commented out:
+#mf write 0 /tmp/mifare.dat
+# blank lines are ignored
+mf dump 0 3
+
+
+select
+select # comments are also allowed on end of lines
+
