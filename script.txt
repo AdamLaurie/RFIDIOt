@@ -6,12 +6,14 @@ select
 aids
 # or combined:
 select aids
+mf key a 112233445566 mf auth a 0
 # commented out:
-#mf write 0 /tmp/mifare.dat
+#mf write 0 mifare.dat
 # blank lines are ignored
+
+prompt 'Continue (Y/N)?'
 mf dump 0 3
-
-
+wait 'Waiting for you to change TAG!'
 select
-select # comments are also allowed on end of lines
+select # comments are allowed on end of lines
 

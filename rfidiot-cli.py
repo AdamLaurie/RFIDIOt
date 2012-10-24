@@ -57,14 +57,18 @@ if help or len(sys.argv) == 1:
 	print '     MF <COMMAND> [<ARGS> ... ]                       Mifare commands:'
 	print '        AUTH <"A|B"> <BLOCK>                            Authenticate with KEY A or B (future authentications'
 	print '                                                        are automated)'
-	print '        KEY <"A|B"> <HEX KEY>                           Set Mifare KEY A or B'
+	print '        CLONE <KEY>                                     Duplicate a Mifare TAG (KEY is KEY A of BLANK)'
 	print '        DUMP <START> <END>                              Show data blocks'
+	print '        KEY <"A|B"> <HEX KEY>                           Set Mifare KEY A or B'
 	print '        READ <START> <END> <FILE>                       Read data blocks and save as FILE'
+	print '        WIPE                                            Set Mifare TAG to all 00'
 	print '        WRITE <START> <FILE>                            Write data blocks from FILE (note that KEY A will'
 	print '                                                        be inserted from previously set value and KEY B'
 	print '                                                        will also be inserted if set, overriding FILE value)'
-	print '     SCRIPT <FILE>                                    Read commands from FILE'   
+	print '     PROMPT <MESSAGE>                                 Print message and wait for Y/N answer (exit if N)'
+	print '     SCRIPT <FILE>                                    Read commands from FILE (see script.txt for example)'   
 	print '     SELECT                                           Select TAG'
+	print '     WAIT <MESSAGE>                                   Print message and wait for TAG to change'
 	print
 	print '  Commands will be executed sequentially and must be combined as appropriate.'
 	print '  Block numbers must be specified in HEX.'
@@ -78,6 +82,10 @@ if help or len(sys.argv) == 1:
 	print '     Write Mifare data to new TAG, changing Key A to 112233445566 (writing block 0 is allowed to fail):'
 	print
 	print '       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0 mf key a 112233445566 mf write 0 mifare.dat'
+	print
+	print '     Clone a Mifare TAG to a new blank:'
+	print
+	print '       rfidiot-cli.py select mf key a 112233445566 mf auth a 0 mf clone FFFFFFFFFFFF'
 	exit(True)
 
 try:
@@ -200,6 +208,60 @@ while args:
 			else:
 				print '    '+card.ISO7816ErrorCodes[card.errorcode]
 			continue
+		if mfcommand == 'CLONE':
+			print '  Cloning Mifare TAG',
+			if not Mifare_KeyA:
+				print 'failed! KEY A not set!'
+				exit(True)
+			if not Mifare_KeyType or not Mifare_Key:
+				print 'failed! No authentication performed!'
+				exit(True)
+			print
+			print
+			print '    Key A will be set to:', Mifare_KeyA
+			print
+			blank_key= args.pop()
+			start= 0
+			end= 0x3F
+			data= ''
+			sector= start
+			print '    Reading...'
+			while sector <= end:
+				if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
+					data += card.MIFAREdata.decode('hex')
+				else:
+					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+				sector += 1
+			print
+			print '      OK'
+			print
+			# wait for tag to change (same UID is OK)
+			card.waitfortag('    Replace TAG with TARGET')
+			while card.uid != '':
+				card.waitfortag('')
+			while card.uid == '':
+				card.waitfortag('')
+			print
+			print
+			print '    Writing...'
+			sector= start
+			p= 0
+			while sector <= end:
+				block= data[p:p + 16].encode('hex')
+				if not (sector + 1) % 4:
+					# trailing block must contain keys, so reconstruct
+					block= Mifare_KeyA + block[12:]
+				if not (card.login(sector, 'A', blank_key) and card.writeblock(sector, block)):
+					if sector == 0:
+						print '      Sector 0 write failed'
+					else:
+						print '      '+card.ISO7816ErrorCodes[card.errorcode]
+						exit(True)
+				sector += 1
+				p += 16
+			print
+			print '      OK'
+			continue
 		if mfcommand == 'DUMP':
 			start= int(args.pop(),16)
 			end= int(args.pop(),16)
@@ -254,6 +316,38 @@ while args:
 			outfile.close()
 			print '    OK'
 			continue
+		if mfcommand == 'WIPE':
+			print '  Wiping Mifare TAG',
+			if not Mifare_KeyA:
+				print 'failed! KEY A not set!'
+				exit(True)
+			if not Mifare_KeyB:
+				print 'failed! KEY B not set!'
+				exit(True)
+			if not Mifare_KeyType or not Mifare_Key:
+				print 'failed! No authentication performed!'
+				exit(True)
+			print
+			print
+			print '    Key A will be set to:', Mifare_KeyA
+			print '    Key B will be set to:', Mifare_KeyB
+			print
+			start= 1
+			end= 0x3F
+			sector= start
+			perms= 'FF078069'
+			while sector <= end:
+				if not (sector + 1) % 4:
+					# trailing block must contain keys, so reconstruct
+					block= Mifare_KeyA + perms + Mifare_KeyB
+				else:
+					block= '00' * 16
+				if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
+					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+					exit(True)
+				sector += 1
+			print '    OK'
+			continue
 		if mfcommand == 'WRITE':
 			start= int(args.pop(),16)
 			filename= args.pop()
@@ -301,6 +395,13 @@ while args:
 			continue
 		print '  Invalid MF command:', mfcommand
 		exit(True)
+	if command == 'PROMPT':
+		message= args.pop()
+		print
+		x= raw_input(message).upper()
+		if x == 'N':
+			exit(False)
+		continue
 	if command == 'SCRIPT':
 		filename= args.pop()
 		infile= open(filename,"rb")
@@ -317,11 +418,25 @@ while args:
 			line= line.strip()
 			if line == '':
 				continue
+			quoted= False
 			for arg in line.split(' '):
 				# skip comments
 				if arg[0] == '#':
 					break
-				script.append(arg)
+				# quoted sections
+				if arg[0] == '"' or arg[0] == "'":
+					quoted= True
+					quote= ''
+					arg= arg[1:]
+				if quoted:
+					if arg[-1] == '"' or arg[-1] == "'":
+						quote += ' ' + arg[:-1]
+						quoted= False
+						script.append(quote)
+					else:
+						quote += ' ' + arg
+				else:
+					script.append(arg)
 		infile.close()
 		script.reverse()
 		args += script
@@ -339,6 +454,15 @@ while args:
 				print '    '+card.ISO7816ErrorCodes[card.errorcode]
 			else:
 				print '    No card present'
+		continue
+	if command == 'WAIT':
+		message= args.pop()
+		print
+		current= card.uid
+		card.waitfortag(message)
+		while card.uid == current or card.uid == '':
+			card.waitfortag('')
+		print
 		continue
 	print
 	print 'Unrecognised command:', command
