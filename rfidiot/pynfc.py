@@ -386,6 +386,8 @@ class NFC(object):
 		#else:
 		#	if RFIDIOtconfig.debug:
 		#		self.log.debug("Card found")
+		self.powerOff()
+		self.powerOn()
 		nm= NFC_MODULATION()
 		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
 		nm.nmt = NMT_ISO14443A
