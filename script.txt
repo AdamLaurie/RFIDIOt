@@ -11,9 +11,9 @@ mf key a 112233445566 mf auth a 0
 #mf write 0 mifare.dat
 # blank lines are ignored
 
-prompt 'Continue (Y/N)?'
 mf dump 0 3
-wait 'Waiting for you to change TAG!'
+prompt 'Remove TAG and continue (Y/N)?'
+wait 'Place a TAG on reader...' identify change 'Now provide a different TAG...' identify
 select
 select # comments are allowed on end of lines
 

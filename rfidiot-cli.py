@@ -49,6 +49,7 @@ if help or len(sys.argv) == 1:
 	print '     AID <AID|"ALL"|"ANY">                            Select ISO 7816 AID'
 	print '     AIDS                                             List well known AIDs'
 	print '     APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>      Send raw ISO 7816 APDU (use "" for empty elements)'
+	print '     CHANGE <MESSAGE>                                 Print message and wait for TAG to change'
 	print '     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE'
 	print '     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:'
 	print '                                                        1 == 106 kBaud'
@@ -70,7 +71,7 @@ if help or len(sys.argv) == 1:
 	print '     PROMPT <MESSAGE>                                 Print message and wait for Y/N answer (exit if N)'
 	print '     SCRIPT <FILE>                                    Read commands from FILE (see script.txt for example)'   
 	print '     SELECT                                           Select TAG'
-	print '     WAIT <MESSAGE>                                   Print message and wait for TAG to change'
+	print '     WAIT <MESSAGE>                                   Print message and wait for TAG'
 	print
 	print '  Commands will be executed sequentially and must be combined as appropriate.'
 	print '  Block numbers must be specified in HEX.'
@@ -156,6 +157,15 @@ while args:
 			print '    Data:', card.data
 		else:
 			print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
+		continue
+	if command == 'CHANGE':
+		message= args.pop()
+		print
+		current= card.uid
+		card.waitfortag(message)
+		while card.uid == current or card.uid == '':
+			card.waitfortag('')
+		print
 		continue
 	if command == 'FILE':
 		mode= args.pop().upper()
@@ -490,8 +500,6 @@ while args:
 		print
 		current= card.uid
 		card.waitfortag(message)
-		while card.uid == current or card.uid == '':
-			card.waitfortag('')
 		print
 		continue
 	print
