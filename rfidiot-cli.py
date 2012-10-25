@@ -55,6 +55,7 @@ if help or len(sys.argv) == 1:
 	print '                                                        2 == 212 kBaud'
 	print '                                                        4 == 424 kBaud'
 	print '                                                        8 == 848 kBaud'
+	print '     IDENTIFY                                         Show TAG type'
 	print '     MF <COMMAND> [<ARGS> ... ]                       Mifare commands:'
 	print '        AUTH <"A|B"> <BLOCK>                            Authenticate with KEY A or B (future authentications'
 	print '                                                        are automated)'
@@ -129,7 +130,7 @@ while args:
 				if arg == 'ANY':
 					break
 			else:
-				print '    '+card.ISO7816ErrorCodes[card.errorcode]
+				print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 		continue
 	if command == 'AIDS':
 		print
@@ -154,7 +155,7 @@ while args:
 			print '    OK'
 			print '    Data:', card.data
 		else:
-			print '    '+card.ISO7816ErrorCodes[card.errorcode]
+			print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 		continue
 	if command == 'FILE':
 		mode= args.pop().upper()
@@ -171,7 +172,7 @@ while args:
 		if card.iso_7816_select_file(isofile,card.ISO_7816_SELECT_BY_NAME,'00'):
 			print '    OK'
 		else:
-			print '    '+card.ISO7816ErrorCodes[card.errorcode]
+			print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 		continue
 	if command == 'HSS':
 		speed= '%02X' % int(args.pop())
@@ -179,12 +180,36 @@ while args:
 		print '  High Speed Selecting (%s)' % card.ISO_SPEED[speed]
 		print
 		if card.hsselect(speed):
-			print '    Card ID: ' + card.uid
+			print '    Tag ID: ' + card.uid
 		else:
 			if card.errorcode:
 				print '    '+card.ISO7816ErrorCodes[card.errorcode]
 			else:
 				print '    No card present'
+		continue
+	if command == 'IDENTIFY':
+		print
+		print '  Identiying TAG'
+		print
+		if card.select():
+			print '    Tag ID:', card.uid, '   Tag Type:',
+			if (card.readertype == card.READER_ACG and card.readername.find('LFX') == 0):
+				print card.LFXTags[card.tagtype]
+			else:
+				print card.tagtype
+			if card.readertype == card.READER_PCSC:
+				if card.tagtype.find('ISO 15693') >= 0:
+					print
+					print '         Manufacturer:',
+					try:
+						print card.ISO7816Manufacturer[card.uid[2:4]]
+					except:
+						print 'Unknown (%s)' % card.uid[2:4]
+				if not card.readersubtype == card.READER_ACS:
+					print
+					card.PCSCPrintATR(card.pcsc_atr)
+		else:
+			print '    No card present',
 		continue
 	if command == 'MF':
 		print
@@ -207,7 +232,7 @@ while args:
 			if card.login(sector, Mifare_KeyType, Mifare_Key):
 				print '    OK'
 			else:
-				print '    '+card.ISO7816ErrorCodes[card.errorcode]
+				print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 			continue
 		if mfcommand == 'CLONE':
 			print '  Cloning Mifare TAG',
@@ -231,7 +256,7 @@ while args:
 				if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
 					data += card.MIFAREdata.decode('hex')
 				else:
-					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+					print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 				sector += 1
 			print
 			print '      OK'
@@ -259,7 +284,7 @@ while args:
 						print '      Sector 0 write failed'
 						card.select()
 					else:
-						print '      '+card.ISO7816ErrorCodes[card.errorcode]
+						print '      Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 						exit(True)
 				sector += 1
 				p += 16
@@ -280,7 +305,7 @@ while args:
 				if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
 					print '    %02X: %s %s' % (sector, card.MIFAREdata, card.ReadablePrint(card.MIFAREdata.decode('hex')))
 				else:
-					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+					print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 				sector += 1
 			continue
 		if mfcommand == 'KEY':
@@ -315,7 +340,7 @@ while args:
 				if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
 					outfile.write(card.MIFAREdata.decode('hex'))
 				else:
-					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+					print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 				sector += 1
 			outfile.close()
 			print '    OK'
@@ -347,7 +372,7 @@ while args:
 				else:
 					block= '00' * 16
 				if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
-					print '    '+card.ISO7816ErrorCodes[card.errorcode]
+					print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 					exit(True)
 				sector += 1
 			print '    OK'
@@ -392,7 +417,7 @@ while args:
 						print '    Sector 0 write failed'
 						card.select()
 					else:
-						print '    '+card.ISO7816ErrorCodes[card.errorcode]
+						print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
 						exit(True)
 				sector += 1
 				p += 16
@@ -451,12 +476,12 @@ while args:
 		print '  Selecting TAG'
 		print
 		if card.select():
-			print '    Card ID: ' + card.uid
+			print '    Tag ID: ' + card.uid
 			if card.readertype == card.READER_PCSC:
 				print '    ATR: ' + card.pcsc_atr
 		else:
 			if card.errorcode:
-				print '    '+card.ISO7816ErrorCodes[card.errorcode]
+				print '    Failed:  '+card.ISO7816ErrorCodes[card.errorcode]
 			else:
 				print '    No card present'
 		continue

@@ -7,7 +7,7 @@ scripts = ['cardselect.py', 'ChAP.py', 'copytag.py', 'demotag.py',
 	   'hitag2reset.py', 'isotype.py', 'jcopmifare.py', 'jcopsetatrhist.py', 'jcoptool.py',
 	   'lfxtype.py', 'loginall.py', 'mifarekeys.py', 'mrpkey.py', 'multiselect.py', 'pn532emulate.py', 
 	   'pn532mitm.py', 'q5reset.py', 'readlfx.py', 'readmifare1k.py', 
-	   'readmifaresimple.py', 'readmifareultra.py', 'readtag.py', 'send_apdu.py', 'sod.py', 'transit.py',
+	   'readmifaresimple.py', 'readmifareultra.py', 'readtag.py', 'rfidiot-cli.py', 'send_apdu.py', 'sod.py', 'transit.py',
 	   'unique.py', 'writelfx.py', 'writemifare1k.py', 'testacg.sh', 'testlahf.sh'
 	]
 
