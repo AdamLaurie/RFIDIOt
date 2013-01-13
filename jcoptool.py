@@ -434,7 +434,7 @@ if command == 'INFO' or command == 'INSTALL':
 		session_pad= '000000000000000000000000'
 		derivation_data= '0182' + card_sc_sequence_counter + session_pad
 		# create encryption object with ENC key
-		e_enc= DES3.new(card.ToBinary(enc_key),DES3.MODE_CBC)
+		e_enc= DES3.new(card.ToBinary(enc_key),DES3.MODE_CBC,'\x00'*8)
 		enc_s_key= e_enc.encrypt(card.ToBinary(derivation_data))
 		# data for cryptograms
 		card_cryptogram_source= host_challenge + card_sc_sequence_counter + card_challenge
@@ -449,12 +449,12 @@ if command == 'INFO' or command == 'INSTALL':
 
 		# cryptogram checks out, so we can use session key
 		# create encryption object with ENC Session key
-		s_enc= DES3.new(enc_s_key,DES3.MODE_CBC)
+		s_enc= DES3.new(enc_s_key,DES3.MODE_CBC,'\x00'*8)
 
 		# authenticate to card
 		host_cryptogram= card.DES3MAC(card.ToBinary(host_cryptogram_source), enc_s_key, '')
 		# create encryption object with MAC key
-		e_enc= DES3.new(card.ToBinary(mac_key),DES3.MODE_CBC)
+		e_enc= DES3.new(card.ToBinary(mac_key),DES3.MODE_CBC,'\x00'*8)
 		# create C-MAC session key
 		derivation_data= '0101' + card_sc_sequence_counter + session_pad
 		cmac_s_key= e_enc.encrypt(card.ToBinary(derivation_data))
