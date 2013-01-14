@@ -116,7 +116,7 @@ deskeyABA= ''
 # build key MSB first
 for n in range(len(newkeyA+newkeyB+newkeyA)-2,-2,-2):
 	deskeyABA += chr(int((newkeyA+newkeyB+newkeyA)[n:n + 2],16))
-des3= DES3.new(deskeyABA,DES.MODE_CBC)
+des3= DES3.new(deskeyABA,DES.MODE_CBC,'\0\0\0\0\0\0\0\0')
 mifarePWD= des3.encrypt('\0\0\0\0\0\0\0\0')
 # reverse LSB/MSB for final output
 mifarePWDout= ''
