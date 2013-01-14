@@ -355,9 +355,11 @@ class NFC(object):
 				self.log.debug("Deconfiguring NFC reader")
 			#self.powerOff()
 			self.libnfc.nfc_close(self.device)
+			self.libnfc.nfc_exit(self.context)
 			if rfidiotglobals.Debug:
 				self.log.debug("Disconnected NFC reader")
-			self.device == None
+			self.device = None
+			self.context = ctypes.POINTER(ctypes.c_int)()
 	
 	def powerOn(self):
 		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, True)
