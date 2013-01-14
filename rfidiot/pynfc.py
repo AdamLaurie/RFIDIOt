@@ -421,12 +421,12 @@ class NFC(object):
 			self.log.debug('APDU rxlen = ' + str(rxlen))
 		if rxlen < 0:
 			if rfidiotglobals.Debug:
-				self.log.error("Error sending/recieving APDU")
+				self.log.error("Error sending/receiving APDU")
 			return False, rxlen
 		else:
 			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
 			if rfidiotglobals.Debug:
-				self.log.debug("Recieved %d byte APDU: %s" % (rxlen, rxAPDU))
+				self.log.debug("Received %d byte APDU: %s" % (rxlen, rxAPDU))
 			return True, string.upper(rxAPDU)
 
 if __name__ == "__main__":
