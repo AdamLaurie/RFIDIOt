@@ -45,7 +45,7 @@ if card.readertype == card.READER_ACG:
 		if card.select():
 			print '     ID: ' + card.uid
 			print "       Tag is " + cardtype
-			typed= 1
+			typed= True
 			if command == card.ISO15693:
 				print '         Manufacturer:',
 				try:
@@ -59,7 +59,7 @@ if card.readertype == card.READER_ACG:
 			os._exit(True)
 if card.readertype == card.READER_PCSC:
 	if card.select():
-		print '\n     ID: ' + card.uid
+		print '     ID: ' + card.uid
 		print "       Tag is " + card.tagtype
 		if string.find(card.tagtype,"ISO 15693") >= 0:
 			print '         Manufacturer:',
@@ -75,6 +75,13 @@ if card.readertype == card.READER_PCSC:
 	else:
 		print card.ISO7816ErrorCodes[card.errorcode]
 		os._exit(True)
+if card.readertype == card.READER_LIBNFC:
+	if card.select():
+		print '     ID: ' + card.uid
+		if card.atr:
+			print '     ATS: ' + card.atr
+		print "       Tag is ISO 14443A"
+		typed= True
 if not typed:
 	print "Could not determine type"
 	os._exit(True)
