@@ -1306,6 +1306,7 @@ class rfidiot:
 		#if self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
 		ret, self.errorcode= self.nfc.sendAPDU([keytype]+[loginblock]+[key]+[self.uid])
 		if not ret:
+			self.errorcode= self.ISO_SECURE
 			return False
 		self.errorcode= self.ISO_OK
 		return True
