@@ -1306,6 +1306,7 @@ class rfidiot:
 		#if self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
 		ret, self.errorcode= self.nfc.sendAPDU([keytype]+[loginblock]+[key]+[self.uid])
 		if not ret:
+			self.errorcode= self.ISO_SECURE
 			return False
 		self.errorcode= self.ISO_OK
 		return True
@@ -1468,14 +1469,14 @@ class rfidiot:
 				return False
 			return True
 		if self.readertype == self.READER_ANDROID:
-			result = self.android.sendAPDU(cla+self.ins+p1+p2+lc+data+le)
+			result = self.android.sendAPDU(cla+ins+p1+p2+lc+data+le)
 			self.data = result[0:-4]
 			self.errorcode = result[len(result)-4:len(result)]
 			if self.errorcode == self.ISO_OK:
 				return True
 			return False
 			dlength= 5
-		command= pcb+cla+self.ins+p1+p2+lc+data+le
+		command= pcb+cla+ins+p1+p2+lc+data+le
 		dlength += len(data) / 2
 		dlength += len(lc) / 2
 		dlength += len(le) / 2

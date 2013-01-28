@@ -250,6 +250,7 @@ class NFC(object):
 		#self.LIB = "./libnfc_26102009.so.0.0.0"		
 		#self.LIB = "/data/RFID/libnfc/libnfc-svn-1.3.0/src/lib/.libs/libnfc.so"		
 		self.device = None
+		self.context = ctypes.POINTER(ctypes.c_int)()
 		self.poweredUp = False
 
 		self.initLog()
@@ -284,12 +285,13 @@ class NFC(object):
 		self.libnfc.nfc_close.argtypes = [ctypes.c_void_p]
 		self.libnfc.nfc_initiator_list_passive_targets.argtypes = [ctypes.c_void_p, ctypes.Structure, ctypes.c_void_p, ctypes.c_size_t]
 		self.libnfc.nfc_initiator_transceive_bytes.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint32]
+		self.libnfc.nfc_init(ctypes.byref(self.context))
 		return self.libnfc.nfc_version()
 
 	def listreaders(self, target):
 		devices = NFC_DEVICE_LIST()
 		nfc_num_devices = ctypes.c_size_t()
-		nfc_num_devices= self.libnfc.nfc_list_devices(0,ctypes.byref(devices),MAX_DEVICES)
+		nfc_num_devices= self.libnfc.nfc_list_devices(self.context,ctypes.byref(devices),MAX_DEVICES)
 		if target != None:
 			if target > nfc_num_devices - 1:
 				print 'Reader number %d not found!' % target
@@ -301,10 +303,10 @@ class NFC(object):
 			return
 		for i in range(nfc_num_devices):
 			if devices[i]:
-				dev = self.libnfc.nfc_open(0, ctypes.byref(devices[i]))
+				dev = self.libnfc.nfc_open(self.context, ctypes.byref(devices[i]))
 				devname= self.libnfc.nfc_device_get_name(dev)
 				print '    No: %d\t\t%s' % (i,devname)
-				self.libnfc.nfc_close(0, ctypes.byref(devices[i]))
+				self.libnfc.nfc_close(dev)
 				#print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
 				#print '    \t\t\t\tDriver:',devices[i].pcDriver
 				#if devices[i].pcPort != None:
@@ -323,7 +325,7 @@ class NFC(object):
 			target= None 
 		if target:
 			target= ctypes.byref(target)
-		self.device = self.libnfc.nfc_open(0, target)
+		self.device = self.libnfc.nfc_open(self.context, target)
 		self.LIBNFC_READER= self.libnfc.nfc_device_get_name(self.device)
 		if rfidiotglobals.Debug:
 			if self.device == None:
@@ -353,9 +355,11 @@ class NFC(object):
 				self.log.debug("Deconfiguring NFC reader")
 			#self.powerOff()
 			self.libnfc.nfc_close(self.device)
+			self.libnfc.nfc_exit(self.context)
 			if rfidiotglobals.Debug:
 				self.log.debug("Disconnected NFC reader")
-			self.device == None
+			self.device = None
+			self.context = ctypes.POINTER(ctypes.c_int)()
 	
 	def powerOn(self):
 		self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, True)
@@ -421,12 +425,12 @@ class NFC(object):
 			self.log.debug('APDU rxlen = ' + str(rxlen))
 		if rxlen < 0:
 			if rfidiotglobals.Debug:
-				self.log.error("Error sending/recieving APDU")
+				self.log.error("Error sending/receiving APDU")
 			return False, rxlen
 		else:
 			rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
 			if rfidiotglobals.Debug:
-				self.log.debug("Recieved %d byte APDU: %s" % (rxlen, rxAPDU))
+				self.log.debug("Received %d byte APDU: %s" % (rxlen, rxAPDU))
 			return True, string.upper(rxAPDU)
 
 if __name__ == "__main__":

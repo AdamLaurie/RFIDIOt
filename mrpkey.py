@@ -994,7 +994,7 @@ except:
 args= rfidiot.args
 Help= rfidiot.help
 Nogui= rfidiot.nogui
-DEBUG= rfidiot.debug
+DEBUG= rfidiot.rfidiotglobals.Debug
 
 myver= 'mrpkey v0.1t'
 passport.info(myver)
