@@ -1035,19 +1035,22 @@ def help():
 if len(args) == 0 or Help:
 	help()
 
-if not(len(args[0]) == 44 or len(args[0]) == 21 or args[0] == 'TEST' or args[0] == 'CHECK' or args[0] == 'PLAIN' or args[0] == 'SETBAC' or args[0] == 'UNSETBAC' or os.access(args[0],os.F_OK)) or len(args) > 2:
+arg0= args[0].upper()
+
+if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(arg0,os.F_OK)) or len(args) > 2:
 	help()
 
 if len(args) == 2:
-        if not (args[1] == 'WRITE' or args[1] == 'WRITELOCK'):
+        arg1= args[1].upper()
+        if not (arg1 == 'WRITE' or arg1 == 'WRITELOCK'):
                 help()
 
 print
 
 # check if we are reading from files
-if os.access(args[0],os.F_OK):
+if os.access(arg0,os.F_OK):
 	FILES= True
-	filespath= args[0]
+	filespath= arg0
 	if not filespath[len(filespath) - 1] == '/':
 		filespath += '/'
 	try:
@@ -1060,47 +1063,48 @@ if os.access(args[0],os.F_OK):
 	raw_efcom= data
 	passfile.close()
 
-if args[0] == 'PLAIN' or len(args[0]) == 44 or len(args[0]) == 21 or FILES:
+if arg0 == 'PLAIN' or len(arg0) == 44 or len(arg0) == 21 or FILES:
 	if len(args) == 2:
-		if args[1] == "WRITE":
+		if arg1 == "WRITE":
 			Jmrtd= True
-		if args[1] == "WRITELOCK":
+		if arg1 == "WRITELOCK":
 			Jmrtd= True
 			JmrtdLock= True
 
-if args[0] == 'TEST':
+if arg0 == 'TEST':
 	TEST= True
 
-if args[0] == 'SETBAC':
+if arg0 == 'SETBAC':
 	MRZ=False
 	SETBAC= True
 
-if args[0] == 'UNSETBAC':
+if arg0 == 'UNSETBAC':
 	MRZ=False
 	UNSETBAC= True
 
-if args[0] == 'CHECK':
+if arg0 == 'CHECK':
 	while not passport.hsselect('08'):
 		print 'Waiting for passport... (%s)' % passport.errorcode
 	if passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
 		print 'Device is a Machine Readable Document'
 		os._exit(False)
 	else:
-		print 'Device is NOT a Machine Readable Document'
+		print 'Device may NOT be a Machine Readable Document'
+		passport.iso_7816_fail(passport.errorcode)
 		os._exit(True)
 
-if args[0] == 'PLAIN':
+if arg0 == 'PLAIN':
 	MRZ=False
 
 if TEST:
 	passport.MRPmrzl(TEST_MRZ)
 	print 'Test MRZ: ' + TEST_MRZ
 if not TEST and not FILES and MRZ:
-	key=args[0]
+	key=arg0
 	# expands short MRZ version if needed
 	if len(key) == 21:
-		key= key[0:9] + 'xxxx' + key[9:15] + 'xx' + key[15:21] + 'xxxxxxxxxxxxxxxxx'
-	passport.MRPmrzl(string.upper(key))
+		key= key[0:9] + 'XXXX' + key[9:15] + 'XX' + key[15:21] + 'XXXXXXXXXXXXXXXXX'
+	passport.MRPmrzl(key)
 
 if not FILES and not TEST:
 	# set communication speed
@@ -1177,7 +1181,7 @@ if not FILES and BAC:
 		print 'Generate local keys:'
 		print
 		if not TEST:
-			print 'Supplied MRZ:  ' + string.upper(args[0])
+			print 'Supplied MRZ:  ' + arg0
 			print 'Corrected MRZ: ' + passport.MRPnumber + passport.MRPnumbercd + passport.MRPnationality + passport.MRPdob + passport.MRPdobcd + passport.MRPsex + passport.MRPexpiry + passport.MRPexpirycd + passport.MRPoptional + passport.MRPoptionalcd+passport.MRPcompsoitecd
 		print 'Key MRZ Info (kmrz): ' + kmrz
 		print
