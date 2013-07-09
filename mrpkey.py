@@ -1037,7 +1037,7 @@ if len(args) == 0 or Help:
 
 arg0= args[0].upper()
 
-if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(arg0,os.F_OK)) or len(args) > 2:
+if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(args[0],os.F_OK)) or len(args) > 2:
 	help()
 
 if len(args) == 2:
@@ -1048,9 +1048,9 @@ if len(args) == 2:
 print
 
 # check if we are reading from files
-if os.access(arg0,os.F_OK):
+if os.access(args[0],os.F_OK):
 	FILES= True
-	filespath= arg0
+	filespath= args[0]
 	if not filespath[len(filespath) - 1] == '/':
 		filespath += '/'
 	try:
