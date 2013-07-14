@@ -76,11 +76,15 @@ if card.readertype == card.READER_PCSC:
 		print card.ISO7816ErrorCodes[card.errorcode]
 		os._exit(True)
 if card.readertype == card.READER_LIBNFC:
-	if card.select():
+	if card.select('A'):
 		print '     ID: ' + card.uid
 		if card.atr:
 			print '     ATS: ' + card.atr
 		print "       Tag is ISO 14443A"
+		typed= True
+	if card.select('B'):
+		print '   PUPI: ' + card.pupi
+		print "       Tag is ISO 14443B"
 		typed= True
 if not typed:
 	print "Could not determine type"
