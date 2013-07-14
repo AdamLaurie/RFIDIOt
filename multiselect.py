@@ -46,7 +46,7 @@ else:
         card.settagtype(card.ALL)
 
 while 42:
-	if card.select():
+	if card.select('A') or card.select('B'):
 		print '    Tag ID: ' + card.uid,
 		if (card.readertype == card.READER_ACG and string.find(card.readername,"LFX") == 0):
 			print "    Tag Type:" + card.LFXTags[card.tagtype]

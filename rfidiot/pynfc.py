@@ -241,6 +241,15 @@ class ISO14443A(object):
 		rv = "ISO14443A(uid='%s', atr='%s')" % (self.uid, self.atr)
 		return rv
 
+class ISO14443B(object):
+	def __init__(self, ti):
+		self.pupi = "".join(["%02X" % x for x in ti.abtPupi[:4]])
+		self.uid = self.pupi # for sake of compatibility with apps written for typeA
+		self.atr = ""        # idem
+	def __str__(self):
+		rv = "ISO14443B(pupi='%s')" % (self.pupi)
+		return rv
+
 class NFC(object):
 	def __init__(self, nfcreader):
 		self.LIB = ctypes.util.find_library('nfc')
@@ -398,6 +407,20 @@ class NFC(object):
 		nm.nbr = NBR_106
 		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
 			return ISO14443A(target[0].nti.nai)
+		return None
+
+	def selectISO14443B(self):
+		"""Detect and initialise an ISO14443B card, returns an ISO14443B() object."""
+		if rfidiotglobals.Debug:
+			self.log.debug("Polling for ISO14443B cards")
+		self.powerOff()
+		self.powerOn()
+		nm= NFC_MODULATION()
+		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
+		nm.nmt = NMT_ISO14443B
+		nm.nbr = NBR_106
+		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
+			return ISO14443B(target[0].nti.nbi)
 		return None
 
 	# set Mifare specific parameters
