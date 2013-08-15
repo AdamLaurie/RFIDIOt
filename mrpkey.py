@@ -1037,7 +1037,7 @@ if len(args) == 0 or Help:
 
 arg0= args[0].upper()
 
-if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(arg0,os.F_OK)) or len(args) > 2:
+if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(args[0],os.F_OK)) or len(args) > 2:
 	help()
 
 if len(args) == 2:
@@ -1048,9 +1048,9 @@ if len(args) == 2:
 print
 
 # check if we are reading from files
-if os.access(arg0,os.F_OK):
+if os.access(args[0],os.F_OK):
 	FILES= True
-	filespath= arg0
+	filespath= args[0]
 	if not filespath[len(filespath) - 1] == '/':
 		filespath += '/'
 	try:
@@ -1083,7 +1083,7 @@ if arg0 == 'UNSETBAC':
 	UNSETBAC= True
 
 if arg0 == 'CHECK':
-	while not passport.hsselect('08'):
+	while not passport.hsselect('08', 'A') and not passport.hsselect('08', 'B'):
 		print 'Waiting for passport... (%s)' % passport.errorcode
 	if passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
 		print 'Device is a Machine Readable Document'
@@ -1112,7 +1112,7 @@ if not FILES and not TEST:
 	# 02 = 212 kBaud
 	# 04 = 414 kBaud
 	# 08 = 818 kBaud
-	while not passport.hsselect('08'):
+	while not passport.hsselect('08', 'A') and not passport.hsselect('08', 'B'):
 		print 'Waiting for passport... (%s)' % passport.errorcode
 	print 'Device set to %s transfers' % passport.ISO_SPEED[passport.speed]
 	print 'Device supports %s Byte transfers' % passport.ISO_FRAMESIZE[passport.framesize]
@@ -1433,7 +1433,7 @@ if Jmrtd:
 		filespath=tempfiles
 		print
 		raw_input('Please replace passport with a JMRTD or vonJeek emulator card and press ENTER when ready...')
-	if not passport.hsselect('08') or not passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
+	if (not passport.hsselect('08', 'A') and not passport.hsselect('08', 'B')) or not passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
 		print "Couldn't select JMRTD!"
 		os._exit(True)
 	print "Initialising JMRTD or vonJeek..."

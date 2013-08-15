@@ -971,7 +971,7 @@ class rfidiot:
 				# do nothing
 				time.sleep(0.1)
 		return True
-	def select(self):
+	def select(self, cardtype='A'):
 		if self.DEBUG:
 			print 'in select'
 		self.uid= ''
@@ -1044,18 +1044,36 @@ class rfidiot:
 			try:
 				if self.DEBUG:
 					print 'selecting card using LIBNFC'
-				result = self.nfc.selectISO14443A()
-				if result:
-					self.atr = result.atr
-					self.uid = result.uid
-					if self.DEBUG:
-						print 'ATR: ' + self.atr
-						print 'UID: ' + self.uid
-					return True
+				if cardtype == 'A':
+					result = self.nfc.selectISO14443A()
+					if result:
+						self.atr = result.atr
+						self.uid = result.uid
+						if self.DEBUG:
+							print 'UID: ' + self.uid
+						return True
+					else:
+						if self.DEBUG:
+							print 'Error selecting card'
+						return False
 				else:
-					if self.DEBUG:
-						print 'Error selecting card'
-					return False
+					if cardtype == 'B':
+						result = self.nfc.selectISO14443B()
+						if result:
+							self.pupi = result.pupi
+							self.atr = result.atr
+							self.uid = result.uid
+							if self.DEBUG:
+								print 'PUPI: ' + self.pupi
+							return True
+						else:
+							if self.DEBUG:
+								print 'Error selecting card'
+							return False
+					else:
+						if self.DEBUG:
+							print 'Error: Unknown card type specified: %s' % cardtype
+						return False
 			except ValueError:
 				self.errorcode = 'Error selecting card using LIBNFC' + e
 		
@@ -1095,10 +1113,10 @@ class rfidiot:
 			self.errorcode= ret
 			return False
 		return True
-	def hsselect(self,speed):
+	def hsselect(self,speed,cardtype='A'):
 		if self.readertype == self.READER_PCSC or self.readertype == self.READER_LIBNFC or self.READER_ANDROID:
 			# low level takes care of this, so normal select only
-			if self.select():
+			if self.select(cardtype):
 				#fixme - find true speed/framesize
 				self.speed= '04'
 				self.framesize= '08'
