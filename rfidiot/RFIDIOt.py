@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0e'
+	VERSION= '1.0f'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -711,7 +711,31 @@ class rfidiot:
 		     '0023':'I.CODE EPC',\
 		     '0024':'LRI12',\
 		     '0025':'LRI128',\
-		     '0026':'Mifare Mini'}
+		     '0026':'Mifare Mini',\
+		     '0027':'my-d move (SLE 66R01P)',\
+		     '0028':'my-d NFC (SLE 66RxxP)',\
+		     '0029':'my-d proximity 2 (SLE 66RxxS)',\
+		     '002A':'my-d proximity enhanced (SLE 55RxxE)',\
+		     '002B':'my-d light (SRF 55V01P)',\
+		     '002C':'PJM Stack Tag (SRF 66V10ST)',\
+		     '002D':'PJM Item Tag (SRF 66V10IT)',\
+		     '002E':'PJM Light (SRF 66V01ST)',\
+		     '002F':'Jewel Tag',\
+		     '0030':'Topaz NFC Tag',\
+		     '0031':'AT88SC0104CRF',\
+		     '0032':'AT88SC0404CRF',\
+		     '0033':'AT88RF01C',\
+		     '0034':'AT88RF04C',\
+		     '0035':'i-Code SL2',\
+		     '0036':'MIFARE Plus SL1_2K',\
+		     '0037':'MIFARE Plus SL1_4K',\
+		     '0038':'MIFARE Plus SL2_2K',\
+		     '0039':'MIFARE Plus SL2_4K',\
+		     '003A':'MIFARE Ultralight C',\
+		     '003B':'FeliCa',\
+		     '003C':'Melexis Sensor Tag (MLX90129)',\
+		     '003D':'MIFARE Ultralight EV1',\
+		     }
 	# ACS Constants
 	ACS_TAG_FOUND= 'D54B'
 	ACS_DATA_OK= 'D541'
