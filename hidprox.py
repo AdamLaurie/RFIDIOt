@@ -33,7 +33,7 @@ except:
 	print "Couldn't open reader!"
         os._exit(True)
 
-card.info('hidprox v0.1e')
+card.info('hidprox v0.1f')
 
 if not card.readersubtype == card.READER_OMNIKEY:
 	print 'Reader type not supported!', card.ReaderSubType, card.READER_OMNIKEY
@@ -57,11 +57,31 @@ if prox == card.HID_PROX_H10301:
 	cn= card.pcsc_atr[11:16]
 	octal= '%o' % int(card.pcsc_atr[7:16])
 
+# H10301 - 26 bit (FAC + CN) (ATR in HEX)
+if prox == card.HID_PROX_H10301_H:
+	binary= card.ToBinaryString(card.pcsc_atr[6:].decode('hex'))
+	# strip leading zeros and parity
+	binary= binary[7:]
+	binary= binary[:-1]
+	fc= int(binary[:8],2)
+	cn= int(binary[8:],2)
+	octal= '%o' % int(card.pcsc_atr[6:],16)
+
 # H10302 - 37 bit (CN)
 if prox == card.HID_PROX_H10302:
 	fc= 'n/a'
 	cn= card.pcsc_atr[6:18]
 	octal= '%o' % int(card.pcsc_atr[6:18])
+
+# H10302 - 37 bit (CN) (ATR in HEX)
+if prox == card.HID_PROX_H10302_H:
+	fc= 'n/a'
+	binary= card.ToBinaryString(card.pcsc_atr[6:].decode('hex'))
+	# strip leading zeros and parity
+	binary= binary[8:]
+	binary= binary[:-1]
+	cn= int(binary,2)
+	octal= '%o' % int(card.pcsc_atr[6:],16)
 
 # H10304 - 37 bit (FAC + CN)
 if prox == card.HID_PROX_H10304:

@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0f'
+	VERSION= '1.0g'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -762,14 +762,18 @@ class rfidiot:
 			'98':ACS_TAG_GEMPLUS_MPCOS,
 			}
 	# HID constants
+	HID_PROX_H10301_H= '3B0500'
 	HID_PROX_H10301= '3B0601'
 	HID_PROX_H10302= '3B0702'
+	HID_PROX_H10302_H= '3B0600'
 	HID_PROX_H10304= '3B0704'
 	HID_PROX_H10320= '3B0514'
 	HID_PROX_CORP1K= '3B0764'
 	HID_PROX_TYPES=	{
+			HID_PROX_H10301_H:'HID Prox H10301 - 26 bit (FAC + CN)',
 			HID_PROX_H10301:'HID Prox H10301 - 26 bit (FAC + CN)',
 			HID_PROX_H10302:'HID Prox H10302 - 37 bit (CN)',
+			HID_PROX_H10302_H:'HID Prox H10302 - 37 bit (CN)',
 			HID_PROX_H10304:'HID Prox H10304 - 37 bit (FAC + CN)',
 			HID_PROX_H10320:'HID Prox H10320 - 32 bit clock/data card',
 			HID_PROX_CORP1K:'HID Prox Corp 1000 - 35 bit (CIC + CN)',
