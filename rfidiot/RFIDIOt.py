@@ -115,13 +115,13 @@ class rfidiot:
 					if string.find(self.readername,'SDI010') == 0:
 						self.readersubtype= self.READER_SCM
 					else:
-						if string.find(self.readername,'ACS ACR 38U') == 0 or string.find(self.readername,'ACS ACR38U') == 0:
-							self.readersubtype= self.READER_ACS
-							self.pcsc_protocol= smartcard.scard.SCARD_PROTOCOL_T0
-							self.hcard = None
-						elif string.find(self.readername,'ACS ACR122U PICC') == 0:
+						if string.find(self.readername,'ACS ACR122U PICC') == 0:
 							self.readersubtype= self.READER_ACS
 							self.pcsc_protocol= smartcard.scard.SCARD_PROTOCOL_T1
+							self.hcard = None
+						elif string.find(self.readername,'ACS') == 0:
+							self.readersubtype= self.READER_ACS
+							self.pcsc_protocol= smartcard.scard.SCARD_PROTOCOL_T0
 							self.hcard = None
 						else:
 							# default to Omnikey for now
@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0g'
+	VERSION= '1.0h'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02

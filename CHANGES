@@ -240,3 +240,6 @@ Android support [Nick von Dadelszen]
 
 v1.0e
 move to a package style implementation
+
+v1.0h
+detect ACS reader type more reliably
