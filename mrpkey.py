@@ -44,7 +44,7 @@ import string
 from operator import *
 import StringIO
 from Tkinter import *
-import Image
+from PIL.Image import *
 import ImageTk
 
 # Machine Readable Document types
