@@ -996,7 +996,7 @@ Help= rfidiot.help
 Nogui= rfidiot.nogui
 DEBUG= rfidiot.rfidiotglobals.Debug
 
-myver= 'mrpkey v0.1t'
+myver= 'mrpkey v0.1u'
 passport.info(myver)
 
 TEST= False
