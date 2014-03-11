@@ -44,8 +44,8 @@ import string
 from operator import *
 import StringIO
 from Tkinter import *
-from PIL.Image import *
-import ImageTk
+import PIL.Image as Image
+import PIL.ImageTk as ImageTk
 
 # Machine Readable Document types
 DOC_UNDEF= {
