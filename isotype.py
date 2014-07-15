@@ -34,7 +34,7 @@ except:
         os._exit(True)
 
 
-card.info('isotype v0.1m')
+card.info('isotype v0.1n')
 
 typed= 0
 if card.readertype == card.READER_ACG:
@@ -84,6 +84,9 @@ if card.readertype == card.READER_LIBNFC:
 		typed= True
 	if card.select('B'):
 		print '   PUPI: ' + card.pupi
+		print '    APP: ' + card.appdata
+		print '  PROTO: ' + card.protocol
+		print '    CID: ' + card.cid
 		print "       Tag is ISO 14443B"
 		typed= True
 if not typed:

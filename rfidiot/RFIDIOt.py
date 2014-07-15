@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0h'
+	VERSION= '1.0i'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -1067,8 +1067,16 @@ class rfidiot:
 							self.pupi = result.pupi
 							self.atr = result.atr
 							self.uid = result.uid
+							self.appdata = result.appdata
+							self.protocol = result.protocol
+							self.cid = result.cardid
 							if self.DEBUG:
 								print 'PUPI: ' + self.pupi
+								print 'ATR: ' + self.atr
+								print 'UID: ' + self.uid
+								print 'APPDATA: ' + self.appdata
+								print 'PROTOCOL: ' + self.protocol
+								print 'CID: ' + self.cid
 							return True
 						else:
 							if self.DEBUG:
@@ -1909,19 +1917,17 @@ class rfidiot:
 		return self.ToBinaryString(self.ToBinary(data))
 	def crcccitt(self,data):
 		crcvalue= 0x0000
-		for x in range(len(data)):
-			crcvalue= self.crc(crcvalue,data[x],MASK_CCITT)
-		return crcvalue
+		return self.crc(crcvalue, data, MASK_CCITT)
 	def crc(self, crc, data, mask=MASK_CRC16):
 		for char in data:
 			c = ord(char)
 			c = c << 8
-		for j in xrange(8):
-			if (crc ^ c) & 0x8000:
-				crc = (crc << 1) ^ mask
-			else:
-				crc = crc << 1
-			c = c << 1
+			for j in xrange(8):
+				if (crc ^ c) & 0x8000:
+					crc = (crc << 1) ^ mask
+				else:
+					crc = crc << 1
+				c = c << 1
 		return crc & 0xffff
 	def crc16(self,data):
 		crcValue=0x0000
