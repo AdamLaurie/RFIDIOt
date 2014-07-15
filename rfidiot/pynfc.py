@@ -247,7 +247,7 @@ class ISO14443B(object):
 		self.uid = self.pupi # for sake of compatibility with apps written for typeA
 		self.appdata= "".join(["%02X" % x for x in ti.abtApplicationData[:4]])
 		self.protocol= "".join(["%02X" % x for x in ti.abtProtocolInfo[:3]])
-		self.cardid= "%02x" % ti.ui8CardIdentifier
+		self.cid= "%02x" % ti.ui8CardIdentifier
 		self.atr = ""        # idem
 	def __str__(self):
 		rv = "ISO14443B(pupi='%s')" % (self.pupi)

@@ -1069,7 +1069,7 @@ class rfidiot:
 							self.uid = result.uid
 							self.appdata = result.appdata
 							self.protocol = result.protocol
-							self.cid = result.cardid
+							self.cid = result.cid
 							if self.DEBUG:
 								print 'PUPI: ' + self.pupi
 								print 'ATR: ' + self.atr
