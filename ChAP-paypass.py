@@ -38,6 +38,28 @@ from operator import *
 from rfidiot.iso3166 import ISO3166CountryCodes
 from ChAPlib import * 
 
+def printhelp():
+    print '\nChAP-paypass.py - Chip And PIN in Python, paypass edition'
+    print 'Ver 0.1c\n'
+    print 'usage:\n\n ChAP.py [options] [PIN]'
+    print
+    print 'If the optional numeric PIN argument is given, the PIN will be verified (note that this' 
+    print 'updates the PIN Try Counter and may result in the card being PIN blocked).'
+    print '\nOptions:\n'
+    print '\t-a\t\tBruteforce AIDs'
+    print '\t-A\t\tPrint list of known AIDs'
+    print '\t-d\t\tDebug - Show PC/SC APDU data'
+    print '\t-e\t\tBruteforce EMV AIDs'
+    print '\t-f\t\tBruteforce files'
+    print '\t-h\t\tPrint detailed help message'
+    print '\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)'
+    print '\t-p\t\tBruteforce primitives'
+    print '\t-r\t\tRaw output - do not interpret EMV data'
+    print '\t-t\t\tUse T1 protocol (default is T0)'
+    print '\t-v\t\tVerbose on'
+    print '\t-
+    print
+
 try:
     # 'args' will be set to remaining arguments (if any)
     opts, args  = getopt.getopt(sys.argv[1:],'aAdefoprtv')

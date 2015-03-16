@@ -181,8 +181,8 @@ TAGS=   {
     0x9f63:['Track 1 Bit Map for UN and ATC (PUNATCTRACK1)', BINARY, VALUE], 
     0x9f64:['Track 1 Nr of ATC Digits (NATCTRACK1)', BINARY, VALUE],
     0x9f65:['Track 2 Bit Map for CVC3 (PCVC3TRACK2)', BINARY, VALUE],
-    #0x9f66:['Track 2 Bit Map for UN and ATC (PUNATCTRACK2)', BINARY, VALUE], 
-    0x9f66:['Card Production Life Cycle',BINARY,ITEM],
+    0x9f66:['Track 2 Bit Map for UN and ATC (PUNATCTRACK2)', BINARY, VALUE], 
+    #0x9f66:['Card Production Life Cycle',BINARY,ITEM],
     0xbf0c:['File Control Information (FCI) Issuer Discretionary Data',BER_TLV,TEMPLATE],
     }
 
@@ -265,27 +265,6 @@ LOG_FORMAT= [0x9f, 0x4f]
 # define TAGs after BER-TVL decoding
 BER_TLV_AIP= 0x02
 BER_TLV_AFL= 0x14 
-
-def printhelp():
-    print '\nChAP.py - Chip And PIN in Python'
-    print 'Ver 0.1c\n'
-    print 'usage:\n\n ChAP.py [options] [PIN]'
-    print
-    print 'If the optional numeric PIN argument is given, the PIN will be verified (note that this' 
-    print 'updates the PIN Try Counter and may result in the card being PIN blocked).'
-    print '\nOptions:\n'
-    print '\t-a\t\tBruteforce AIDs'
-    print '\t-A\t\tPrint list of known AIDs'
-    print '\t-d\t\tDebug - Show PC/SC APDU data'
-    print '\t-e\t\tBruteforce EMV AIDs'
-    print '\t-f\t\tBruteforce files'
-    print '\t-h\t\tPrint detailed help message'
-    print '\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)'
-    print '\t-p\t\tBruteforce primitives'
-    print '\t-r\t\tRaw output - do not interpret EMV data'
-    print '\t-t\t\tUse T1 protocol (default is T0)'
-    print '\t-v\t\tVerbose on'
-    print
 
 def hexprint(data):
     index= 0
@@ -375,7 +354,6 @@ def decode_pse(data):
             if(data[index+taglen] & 0x80 == 0): 
                 itemlength = data[index + taglen]
                 offset= 1
-                print "OFFSET=", offset
                 print '(%d bytes):' % itemlength,
             else:
                 valuebytelen = data[index+taglen] & 0x7F
@@ -384,7 +362,6 @@ def decode_pse(data):
                     currentval = data[index+taglen+i]
                     itemlength = (itemlength << 8) + currentval   
                 offset = 2  
-                print "OFFSET=",offset
                 print '(%d bytes):' % itemlength,
         # store CDOLs for later use
         if tag == CDOL1:

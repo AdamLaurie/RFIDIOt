@@ -36,11 +36,60 @@ import sys
 from operator import *
 # local imports
 from rfidiot.iso3166 import ISO3166CountryCodes
-from ChAPlib import * 
+from ChAPlibVISA import * 
+
+#defines for CVV generation technique
+DCVV = 0
+CVN17 = 1
+FDDA0 = 2
+FDDA1 = 3
+
+#setup for CVV generation
+#DCVV = 
+#CVN17 = 9F02, 9F37, 9F36, 9F10, amount, UN, ATC, Issuer app data.
+#FDDA0
+#FDD1
+
+#hardcoded list of values for a transaction
+
+TRANS_VALS= {
+       0x9f02:[0x00,0x00,0x00,0x00,0x00,0x01],
+       0x9f03:[0x00,0x00,0x00,0x00,0x00,0x00],
+       0x9f1a:[0x08,0x26],
+       0x95:[0x00,0x00,0x00,0x00,0x00],
+       0x5f2a:[0x08,0x26],
+       0x9a:[0x08,0x04,0x01],
+       0x9c:[0x01],
+       0x9f37:[0xba,0xdf,0x00,0x0d],
+       0x9f66:[0xD7,0x20,0xC0,0x00]   #TTQ    
+}
+
+def printpaywavehelp():
+    print '\nChAP-paywave.py - Chip And PIN in Python, paywave edition'
+    print 'Ver 0.1c\n'
+    print 'usage:\n\n ChAP.py [options] [PIN]'
+    print
+    print 'If the optional numeric PIN argument is given, the PIN will be verified (note that this' 
+    print 'updates the PIN Try Counter and may result in the card being PIN blocked).'
+    print '\nOptions:\n'
+    print '\t-a\t\tBruteforce AIDs'
+    print '\t-A\t\tPrint list of known AIDs'
+    print '\t-d\t\tDebug - Show PC/SC APDU data'
+    print '\t-h\t\tPrint detailed help message'
+    print '\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)'
+    print '\t-r\t\tRaw output - do not interpret EMV data'
+    print '\t-t\t\tUse T1 protocol (default is T0)'
+    print '\t-v\t\tVerbose on'
+    print '\t-C\t\tCVV generation mode (dCVV, CVN17, fDDA0, fDDA1)'
+    print '\t-R\t\tUnpredictable Number' 
+    print
+
 
 try:
     # 'args' will be set to remaining arguments (if any)
-    opts, args  = getopt.getopt(sys.argv[1:],'aAdefoprtv')
+    UN = list()
+    countrycode = list() 
+    opts, args  = getopt.getopt(sys.argv[1:],'aAdefoprtvC:R:c:')
     for o, a in opts:
         if o == '-a':
             BruteforceAID= True
@@ -53,11 +102,6 @@ try:
             sys.exit(False) 
         if o == '-d':
             Debug= True
-        if o == '-e':
-            BruteforceAID= True
-            BruteforceEMV= True
-        if o == '-f':
-            BruteforceFiles= True
         if o == '-o':
             OutputFiles= True
         if o == '-p':
@@ -68,10 +112,30 @@ try:
             Protocol= CardConnection.T1_protocol
         if o == '-v':
             Verbose= True
-
+        if o == '-C':
+            if a == 'dCVV':
+                CVV = DCVV 
+            elif a == 'CVN17':
+                CVV = CVN17 
+            elif a == 'fDDA0':        
+                CVV = FDDA0 
+            elif a == 'fDDA1':        
+                CVV = FDDA1
+        if o == '-R':
+            UNstring = "%08x"%int(a)
+            UN.append(int(UNstring[0:2]))
+            UN.append(int(UNstring[2:4]))
+            UN.append(int(UNstring[4:6]))
+            UN.append(int(UNstring[6:8]))
+        if o == '-c':
+            #country code
+            ccstring = "%04x"%int(a)
+            countrycode.append(int(ccstring[0:2]))
+            countrycode.append(int(ccstring[2:4])) 
+             
 except getopt.GetoptError:
     # -h will cause an exception as it doesn't exist!
-    printhelp()
+    printpaywavehelp()
     sys.exit(True)
 
 PIN= ''
@@ -108,14 +172,27 @@ try:
         decode_pse(response)
         #get the returned AID 
         status, length, AID = get_tag(response,0x4F)
+        print 'Selecting AID from card' 
         status, response, sw1, sw2 = select_aid(AID, cardservice) 
         status, length, pdol = get_tag(response,0x9F38)
-        #status,response = read_record(1,1, cardservice)     
-        #status,response = read_record(2,1, cardservice)     
-        #status,response = read_record(2,1, cardservice)     
-        #status,response = read_record(3,1, cardservice)     
-        #status,response = read_record(4,1, cardservice)     
+        print 'Processing Data Options List='
+        decode_DOL(pdol)      
         #get processing options 
+        if CVV == DCVV:
+            TRANS_VALS[0x9f66] = [0x80, 0x00, 0x00, 0x00] #MSD required, no cryptogram
+        elif CVV == CVN17:
+            TRANS_VALS[0x9f66] = [0x80, 0x80, 0x00, 0x00] #MSD, with cryptogram
+        elif CVV == FDDA0:
+            TRANS_VALS[0x9f66] = [0x20, 0x80, 0x00, 0x00]  #qVSDC
+        elif CVV == FDDA0:
+            TRANS_VALS[0x9f66] = [0xB7, 0x80, 0x00, 0x00]
+        if len(UN) > 0:
+            TRANS_VALS[0x9F37] = [UN[0],UN[1],UN[2],UN[3]]
+        if len(countrycode) > 0:
+            TRANS_VALS[0x9F1A] = [countrycode[0], countrycode[1]]
+            TRANS_VALS[0x5f2a] = [countrycode[0], countrycode[1]]
+         
+        #generate list of PDOL tags from response 
         pdollist = list() 
         x = 0
         while x < (len(pdol)): 
@@ -134,9 +211,12 @@ try:
             tags = int(tags,16) 
             pdollist.append(tags) 
             x += 1
-        status, response = get_processing_options(pdollist, cardservice)
+        status, response = get_processing_options(pdollist,TRANS_VALS, cardservice)
         decode_processing_options(response, cardservice) 
-        bruteforce_files(cardservice) 
+        if CVV == CVN17 | CVV == FDDA0 | CVV == FDDA1:
+            status,length,CTQdata = get_tag(response,0x9f06)     
+            print decodeCTQ(CTQdata)
+        #bruteforce_files(cardservice) 
         #get_UNSize() 
     else:
         print 'no PSE: %02x %02x' % (sw1,sw2)
