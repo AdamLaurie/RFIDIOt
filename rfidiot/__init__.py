@@ -125,7 +125,7 @@ OptsEnv= 'RFIDIOtconfig_opts'
 if os.environ.has_key(OptsEnv):
 	try:
 		configfile= open(os.environ[OptsEnv])
-		extraopts= string.split(configfile.read())
+		extraopts= string.split(configfile.readline())
 	except:
     		print "*** warning: config file set by ENV not found (%s) or empty!" % (os.environ[OptsEnv])
 		print "*** not checking for other option files!"
@@ -133,7 +133,7 @@ else:
 	for path in ['.','/etc']:
 		try:
 			configfile= open(path + '/RFIDIOtconfig.opts')
-			extraopts= string.split(configfile.read())
+			extraopts= string.split(configfile.readline())
 			break
 		except:
 			pass
