@@ -691,6 +691,8 @@ def decode_ef_dg2(data):
 	datahex= passport.ToHex(data)
 	position= 0
 	end= len(datahex)
+	instance = 1
+	instances = 1
 	while position < end:
 		decoded= False
 		# check for presence of tags
@@ -698,7 +700,7 @@ def decode_ef_dg2(data):
 			if DG2_ELEMENTS.has_key(datahex[position:position + length]):
 				decoded= True
 				tag= datahex[position:position + length]
-				print '  Tag:', tag, '('+DG2_ELEMENTS[tag]+')'
+				print '  Tag:', tag, '('+DG2_ELEMENTS[tag]+')', '@', position/2,
 				# don't skip TEMPLATE fields as they contain sub-fields
 				# except BDB which is a special case (CBEFF formatted) so for now
 				# just try and extract the image which is 65 bytes in
@@ -709,6 +711,7 @@ def decode_ef_dg2(data):
 					if tag == BDB or tag == BDB1:
 						# process CBEFF block
 						position += asn1fieldlength(datahex[position:])
+						startposition = position/2
 						# FACE header
 						length= len(FAC)
 						tag= datahex[position:position + length]
@@ -775,12 +778,17 @@ def decode_ef_dg2(data):
                                                 position += 6
 						print '      Image Quality: %s' % ISO19794_5_IMG_QUALITY[datahex[position:position + 2]]
 						position += 2
-						img= open(tempfiles+'EF_DG2.' + Filetype,'wb+')
-						img.write(data[position / 2:position + imagelength])
+						if instances > 1:
+							filename = '%sEF_DG2_%i.%s' % (tempfiles,instance,Filetype)
+							instance += 1
+						else:
+							filename = '%sEF_DG2.%s' % (tempfiles,Filetype)
+						img= open(filename,'wb+')
+						img.write(data[position / 2:startposition + fieldlength])
 						img.flush()
 						img.close()
-						print '     JPEG image stored in %sEF_DG2.%s' % (tempfiles,Filetype)
-						position += imagelength * 2
+						print '     JPEG image stored in %s' % filename
+						position = (startposition + fieldlength) * 2
 					else:
 						position += asn1fieldlength(datahex[position:])
 				else:
@@ -789,9 +797,11 @@ def decode_ef_dg2(data):
 					print '     length:', fieldlength
 					position += asn1fieldlength(datahex[position:])
 					print '     data:', datahex[position:position + fieldlength * 2]
+					if tag == '02':
+						instances = int(datahex[position:position + fieldlength * 2], 16)
 					position += fieldlength * 2
 		if not decoded:
-			print 'Unrecognised element:', datahex[position:position + 4]
+			print 'Unrecognised element @', position/2, ':', datahex[position:position + 4]
 			os._exit(True)
 	return img_features	
 
@@ -1600,6 +1610,7 @@ if not Nogui:
 			os.system("convert %sJP2 %sJPG" % (tempfiles+'EF_DG7.',tempfiles+'EF_DG7.'))
 			print "      (converted %sJP2 to %sJPG for display)" % (tempfiles+'EF_DG7.',tempfiles+'EF_DG7.')
 		Filetype= 'JPG'
+    # TODO need to open EF_DG2_* in case of multiple images??
 	imagedata = ImageTk.PhotoImage(file=tempfiles + 'EF_DG2.' + Filetype)
 	canvas= Canvas(frame, height= imagedata.height(), width= imagedata.width())
 	canvas.grid(row= 3, sticky= NW, rowspan= 20)
