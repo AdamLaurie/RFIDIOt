@@ -1482,8 +1482,8 @@ if Jmrtd:
 			if tag=='5C'.decode('hex'):
 				# Keeping only known files in the tag index
 				oldindex=raw_efcom[i:i+length]
-				clearDGs=[chr(0x61), chr(0x75), chr(0x67), chr(0x6b), chr(0x6c), chr(0x6d), chr(0x63)]
-				newindex=''.join(filter(lambda x: x in clearDGs, list(oldindex)))
+				clearDGs=[EF_DG1, EF_DG2, EF_DG3, EF_DG7, EF_DG11, EF_DG12, EF_DG13]
+				newindex=''.join(filter(lambda x: x.encode('hex') in clearDGs, list(oldindex)))
 				newlength=len(newindex)
 				tmp+= chr(newlength)+newindex
 				i+= newlength
