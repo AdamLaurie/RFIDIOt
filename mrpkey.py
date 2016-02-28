@@ -563,6 +563,8 @@ def asn1fieldlength(data):
 		return 4
 	if int(data[:2],16) == 0x82:
 		return 6
+	if int(data[:2],16) == 0x83:
+		return 8
 
 def asn1datalength(data):
 	#return actual length represented by asn.1 field
@@ -572,6 +574,8 @@ def asn1datalength(data):
 		return  int(data[2:4],16)
 	if int(data[:2],16) == 0x82:
 		return int(data[2:6],16)
+	if int(data[:2],16) == 0x83:
+		return int(data[2:8],16)
 
 def secure_read_file(keyenc,keymac,file):
 #	MAXCHUNK= int(passport.ISO_FRAMESIZE[passport.framesize])
