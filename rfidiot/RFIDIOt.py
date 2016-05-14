@@ -1060,32 +1060,45 @@ class rfidiot:
 						if self.DEBUG:
 							print 'Error selecting card'
 						return False
-				else:
-					if cardtype == 'B':
-						result = self.nfc.selectISO14443B()
-						if result:
-							self.pupi = result.pupi
-							self.atr = result.atr
-							self.uid = result.uid
-							self.appdata = result.appdata
-							self.protocol = result.protocol
-							self.cid = result.cid
-							if self.DEBUG:
-								print 'PUPI: ' + self.pupi
-								print 'ATR: ' + self.atr
-								print 'UID: ' + self.uid
-								print 'APPDATA: ' + self.appdata
-								print 'PROTOCOL: ' + self.protocol
-								print 'CID: ' + self.cid
-							return True
-						else:
-							if self.DEBUG:
-								print 'Error selecting card'
-							return False
+				elif cardtype == 'B':
+					result = self.nfc.selectISO14443B()
+					if result:
+						self.pupi = result.pupi
+						self.atr = result.atr
+						self.uid = result.uid
+						self.appdata = result.appdata
+						self.protocol = result.protocol
+						self.cid = result.cid
+						if self.DEBUG:
+							print 'PUPI: ' + self.pupi
+							print 'ATR: ' + self.atr
+							print 'UID: ' + self.uid
+							print 'APPDATA: ' + self.appdata
+							print 'PROTOCOL: ' + self.protocol
+							print 'CID: ' + self.cid
+						return True
 					else:
 						if self.DEBUG:
-							print 'Error: Unknown card type specified: %s' % cardtype
+							print 'Error selecting card'
 						return False
+				elif cardtype == 'JEWEL':
+					result = self.nfc.selectJEWEL()
+					if result:
+						self.btsensres = result.btSensRes
+						self.btid = result.btId
+						self.uid = result.uid
+						if self.DEBUG:
+							print 'SENSRES: ' + self.btsensres
+							print 'ID: ' + self.btid
+						return True
+					else:
+						if self.DEBUG:
+							print 'Error selecting card'
+						return False
+				else:
+					if self.DEBUG:
+						print 'Error: Unknown card type specified: %s' % cardtype
+					return False
 			except ValueError:
 				self.errorcode = 'Error selecting card using LIBNFC' + e
 		
