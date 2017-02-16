@@ -50,6 +50,7 @@ if help or len(sys.argv) == 1:
 	print '     AIDS                                             List well known AIDs'
 	print '     APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>      Send raw ISO 7816 APDU (use "" for empty elements)'
 	print '     CHANGE <MESSAGE>                                 Print message and wait for TAG to change'
+	print '     DUMP <START> <END>                               Show data blocks'
 	print '     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE'
 	print '     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:'
 	print '                                                        1 == 106 kBaud'
@@ -72,6 +73,7 @@ if help or len(sys.argv) == 1:
 	print '     SCRIPT <FILE>                                    Read commands from FILE (see script.txt for example)'   
 	print '     SELECT                                           Select TAG'
 	print '     WAIT <MESSAGE>                                   Print message and wait for TAG'
+	print '     WRITEHEX <BLOCK> <HEX>                           Write HEX data to BLOCK'
 	print
 	print '  Commands will be executed sequentially and must be combined as appropriate.'
 	print '  Block numbers must be specified in HEX.'
@@ -166,6 +168,20 @@ while args:
 		while card.uid == current or card.uid == '':
 			card.waitfortag('')
 		print
+		continue
+	if command == 'DUMP':
+		start= int(args.pop(),16)
+		end= int(args.pop(),16)
+		print
+		print '  Dumping data blocks %02X to %02X:' % (start, end)
+		print
+		sector= start
+		while sector <= end:
+			if card.readblock(sector):
+				print '    %02X: %s %s' % (sector, card.data, card.ReadablePrint(card.data.decode('hex')))
+			else:
+				print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
+			sector += 1
 		continue
 	if command == 'FILE':
 		mode= args.pop().upper()
@@ -501,6 +517,16 @@ while args:
 		current= card.uid
 		card.waitfortag(message)
 		print
+		continue
+	if command == 'WRITEHEX':
+		block= int(args.pop(),16)
+		data= args.pop().upper()
+		print
+		print '  Writing data %s to block %02x' % (data, block),
+		if not (card.writeblock(block, data)):
+			print '    Failed: '+card.ISO7816ErrorCodes[card.errorcode]
+			exit(True)
+		print '    OK'
 		continue
 	print
 	print 'Unrecognised command:', command
