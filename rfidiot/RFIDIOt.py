@@ -206,7 +206,7 @@ class rfidiot:
 	#
 	# MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
 	# MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-	VERSION= '1.0i'
+	VERSION= '1.0k'
 	# Reader types
 	READER_ACG= 0x01
 	READER_FROSCH= 0x02
@@ -659,7 +659,7 @@ class rfidiot:
 		   '01':'ISO 14443 A, part 1',\
 		   '02':'ISO 14443 A, part 2',\
 		   '03':'ISO 14443 A, part 3',\
-		   '04':'RFU',\
+		   '04':'Low frequency contactless cards',\
 		   '05':'ISO 14443 B, part 1',\
 		   '06':'ISO 14443 B, part 2',\
 		   '07':'ISO 14443 B, part 3',\
@@ -672,6 +672,7 @@ class rfidiot:
 		   '0E':'Contact (7816-10) Extended I2 C',\
 		   '0F':'Contact (7816-10) 2WBP',\
 		   '10':'Contact (7816-10) 3WBP',\
+		   '11':'FeliCa',\
 		   'FF':'RFU'}
 	# PCSC card names
 	PCSC_NAME= { '0000':'No name given',\
