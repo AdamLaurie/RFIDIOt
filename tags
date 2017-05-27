@@ -1,0 +1,2043 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+AAC	ChAP-PrePlayAttack.py	/^AAC= 0$/;"	v
+AAC	ChAP.py	/^AAC= 0$/;"	v
+AAC	ChAPlib.py	/^AAC= 0$/;"	v
+AAC	ChAPlibVISA.py	/^AAC= 0$/;"	v
+ACG_FAIL	rfidiot/RFIDIOt.py	/^	ACG_FAIL= 'N'$/;"	v	class:rfidiot
+ACS_DATA_OK	rfidiot/RFIDIOt.py	/^	ACS_DATA_OK= 'D541'$/;"	v	class:rfidiot
+ACS_NO_SAM	rfidiot/RFIDIOt.py	/^	ACS_NO_SAM= '3B00'$/;"	v	class:rfidiot
+ACS_TAG_FOUND	rfidiot/RFIDIOt.py	/^	ACS_TAG_FOUND= 'D54B'$/;"	v	class:rfidiot
+ACS_TAG_GEMPLUS_MPCOS	rfidiot/RFIDIOt.py	/^	ACS_TAG_GEMPLUS_MPCOS= 'Gemplus MPCOS'$/;"	v	class:rfidiot
+ACS_TAG_JCOP30	rfidiot/RFIDIOt.py	/^	ACS_TAG_JCOP30= 'JCOP30'$/;"	v	class:rfidiot
+ACS_TAG_JCOP40	rfidiot/RFIDIOt.py	/^	ACS_TAG_JCOP40= 'JCOP40'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_1K	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_1K= 'MIFARE 1K'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_4K	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_4K= 'MIFARE 4K'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_DESFIRE	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_DESFIRE= 'MIFARE DESFIRE'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_MINI	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_MINI= 'MIFARE MINI'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_OYSTER	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_OYSTER= 'London Transport Oyster'$/;"	v	class:rfidiot
+ACS_TAG_MIFARE_ULTRA	rfidiot/RFIDIOt.py	/^	ACS_TAG_MIFARE_ULTRA= 'MIFARE Ultralight'$/;"	v	class:rfidiot
+ACS_TAG_TYPES	rfidiot/RFIDIOt.py	/^	ACS_TAG_TYPES=	{$/;"	v	class:rfidiot
+AFI	rfidiot/RFIDIOt.py	/^	def AFI(self):$/;"	m	class:rfidiot
+AIDS	rfidiot/RFIDIOt.py	/^	AIDS= {$/;"	v	class:rfidiot
+AID_CARD_MANAGER	rfidiot/RFIDIOt.py	/^	AID_CARD_MANAGER= 'A000000003000000'$/;"	v	class:rfidiot
+AID_FIPS_140_2	rfidiot/RFIDIOt.py	/^	AID_FIPS_140_2= 'A000000167413001'$/;"	v	class:rfidiot
+AID_GSD_MANAGER	rfidiot/RFIDIOt.py	/^	AID_GSD_MANAGER= 'A000000476A110'$/;"	v	class:rfidiot
+AID_JAVACARD_BIOMETRY	rfidiot/RFIDIOt.py	/^	AID_JAVACARD_BIOMETRY= 'A0000001320001'$/;"	v	class:rfidiot
+AID_JAVACARD_FRAMEWORK	rfidiot/RFIDIOt.py	/^	AID_JAVACARD_FRAMEWORK= 'A0000000620101'$/;"	v	class:rfidiot
+AID_JAVACARD_SECURITY	rfidiot/RFIDIOt.py	/^	AID_JAVACARD_SECURITY= 'A0000000620102'$/;"	v	class:rfidiot
+AID_JAVARCARDX_CRYPTO	rfidiot/RFIDIOt.py	/^	AID_JAVARCARDX_CRYPTO= 'A0000000620201'$/;"	v	class:rfidiot
+AID_JAVA_LANG	rfidiot/RFIDIOt.py	/^	AID_JAVA_LANG= 'A0000000620001'$/;"	v	class:rfidiot
+AID_JCOP_IDENTIFY	rfidiot/RFIDIOt.py	/^	AID_JCOP_IDENTIFY= 'A000000167413000FF'$/;"	v	class:rfidiot
+AID_MRTD	rfidiot/RFIDIOt.py	/^	AID_MRTD= 'A0000002471001'$/;"	v	class:rfidiot
+AID_PKCS_15	rfidiot/RFIDIOt.py	/^	AID_PKCS_15= 'A000000063'$/;"	v	class:rfidiot
+AID_SECURITY_DOMAIN	rfidiot/RFIDIOt.py	/^	AID_SECURITY_DOMAIN= 'A0000000035350'$/;"	v	class:rfidiot
+AIP_MASK	ChAP-PrePlayAttack.py	/^AIP_MASK= {$/;"	v
+AIP_MASK	ChAP.py	/^AIP_MASK= {$/;"	v
+AIP_MASK	ChAPlib.py	/^AIP_MASK= {$/;"	v
+AIP_MASK	ChAPlibVISA.py	/^AIP_MASK= {$/;"	v
+ALL	rfidiot/RFIDIOt.py	/^	ALL= 'all'$/;"	v	class:rfidiot
+APDU_BAC	mrpkey.py	/^APDU_BAC= '6982'$/;"	v
+APDU_OK	mrpkey.py	/^APDU_OK= '9000'$/;"	v
+APPLET_AID	java/Makefile	/^APPLET_AID=0xDC:0x44:0x20:0x06:0x06:0x07$/;"	m
+APPLET_AID_LENGTH	java/Makefile	/^APPLET_AID_LENGTH=6$/;"	m
+APPLET_CLASS	java/Makefile	/^APPLET_CLASS=JCOPSetATRHist$/;"	m
+APPLET_PACKAGE	java/Makefile	/^APPLET_PACKAGE=jcop_set_atr_hist$/;"	m
+ARQC	ChAP-PrePlayAttack.py	/^ARQC= 0x80$/;"	v
+ARQC	ChAP.py	/^ARQC= 0x80$/;"	v
+ARQC	ChAPlib.py	/^ARQC= 0x80$/;"	v
+ARQC	ChAPlibVISA.py	/^ARQC= 0x80$/;"	v
+ATC	ChAP-PrePlayAttack.py	/^ATC= [0x9f,0x36]$/;"	v
+ATC	ChAP.py	/^ATC= [0x9f,0x36]$/;"	v
+ATC	ChAPlib.py	/^ATC= [0x9f,0x36]$/;"	v
+ATC	ChAPlibVISA.py	/^ATC= [0x9f,0x36]$/;"	v
+ATRGlobal	java/src/jcop_set_atr_hist/ATRGlobal.java	/^public class ATRGlobal {$/;"	c
+ATR_HIST	java/src/jcop_set_atr_hist/ATRGlobal.java	/^	public static byte[] ATR_HIST= {(byte) 0x00,(byte) 0x00,(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,$/;"	f	class:ATRGlobal
+Android	rfidiot/pyandroid.py	/^class Android(object):$/;"	c
+AnyCardType	ChAP-PrePlayAttack.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAP-cardemulation.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAP-paypass.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAP-paywave.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAP-test.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAP.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAPlib.py	/^from smartcard.CardType import AnyCardType$/;"	i
+AnyCardType	ChAPlibVISA.py	/^from smartcard.CardType import AnyCardType$/;"	i
+B1	q5reset.py	/^				B1= '%08x' % int(out[:32],2)$/;"	v
+B1	q5reset.py	/^B1='ff801bc2'$/;"	v
+B2	q5reset.py	/^				B2= '%08x' % int(out[32:64],2)$/;"	v
+B2	q5reset.py	/^B2='52500006'$/;"	v
+BAC	mrpkey.py	/^			BAC=False$/;"	v
+BAC	mrpkey.py	/^			BAC=True$/;"	v
+BAC	mrpkey.py	/^BAC=True$/;"	v
+BAUD	rfidiot/RFIDIOt.py	/^	def BAUD(self):$/;"	m	class:rfidiot
+BDB	mrpkey.py	/^BDB= '5f2e'$/;"	v
+BDB1	mrpkey.py	/^BDB1= '7f2e'$/;"	v
+BER_TLV	ChAP-PrePlayAttack.py	/^BER_TLV= 2$/;"	v
+BER_TLV	ChAP.py	/^BER_TLV= 2$/;"	v
+BER_TLV	ChAPlib.py	/^BER_TLV= 2$/;"	v
+BER_TLV	ChAPlibVISA.py	/^BER_TLV= 2$/;"	v
+BER_TLV_AFL	ChAP-PrePlayAttack.py	/^BER_TLV_AFL= 0x14 $/;"	v
+BER_TLV_AFL	ChAP.py	/^BER_TLV_AFL= 0x14 $/;"	v
+BER_TLV_AFL	ChAPlib.py	/^BER_TLV_AFL= 0x14 $/;"	v
+BER_TLV_AFL	ChAPlibVISA.py	/^BER_TLV_AFL= 0x14 $/;"	v
+BER_TLV_AIP	ChAP-PrePlayAttack.py	/^BER_TLV_AIP= 0x02$/;"	v
+BER_TLV_AIP	ChAP.py	/^BER_TLV_AIP= 0x02$/;"	v
+BER_TLV_AIP	ChAPlib.py	/^BER_TLV_AIP= 0x02$/;"	v
+BER_TLV_AIP	ChAPlibVISA.py	/^BER_TLV_AIP= 0x02$/;"	v
+BINARY	ChAP-PrePlayAttack.py	/^BINARY= 0$/;"	v
+BINARY	ChAP.py	/^BINARY= 0$/;"	v
+BINARY	ChAPlib.py	/^BINARY= 0$/;"	v
+BINARY	ChAPlibVISA.py	/^BINARY= 0$/;"	v
+BLK1	hitag2reset.py	/^			BLK1= args[1]$/;"	v
+BLK1	hitag2reset.py	/^BLK1= card.HITAG2_TRANSPORT_RWD$/;"	v
+BLOCKS_PER_SECT	readmifaresimple.py	/^BLOCKS_PER_SECT= 4$/;"	v
+BRUTE_AID	ChAP-PrePlayAttack.py	/^BRUTE_AID= []$/;"	v
+BRUTE_AID	ChAP.py	/^BRUTE_AID= []$/;"	v
+BRUTE_AID	ChAPlib.py	/^BRUTE_AID= []$/;"	v
+BRUTE_AID	ChAPlibVISA.py	/^BRUTE_AID= []$/;"	v
+BUFSIZ	rfidiot/pynfc.py	/^BUFSIZ 			= 8192$/;"	v
+BinaryPrint	rfidiot/RFIDIOt.py	/^	def BinaryPrint(self,data):$/;"	m	class:rfidiot
+BinaryToManchester	rfidiot/RFIDIOt.py	/^	def BinaryToManchester(self,data):$/;"	m	class:rfidiot
+BitReverse	rfidiot/RFIDIOt.py	/^	def BitReverse(self,data):$/;"	m	class:rfidiot
+BruteforceAID	ChAP-PrePlayAttack.py	/^            BruteforceAID= True$/;"	v
+BruteforceAID	ChAP-PrePlayAttack.py	/^BruteforceAID= False$/;"	v
+BruteforceAID	ChAP-cardemulation.py	/^            BruteforceAID= True$/;"	v
+BruteforceAID	ChAP-test.py	/^            BruteforceAID= True$/;"	v
+BruteforceAID	ChAP.py	/^            BruteforceAID= True$/;"	v
+BruteforceAID	ChAP.py	/^BruteforceAID= False$/;"	v
+BruteforceAID	ChAPlib.py	/^BruteforceAID= False$/;"	v
+BruteforceAID	ChAPlibVISA.py	/^BruteforceAID= False$/;"	v
+BruteforceEMV	ChAP-PrePlayAttack.py	/^            BruteforceEMV= True$/;"	v
+BruteforceEMV	ChAP-PrePlayAttack.py	/^BruteforceEMV= False$/;"	v
+BruteforceEMV	ChAP-cardemulation.py	/^            BruteforceEMV= True$/;"	v
+BruteforceEMV	ChAP-test.py	/^            BruteforceEMV= True$/;"	v
+BruteforceEMV	ChAP.py	/^            BruteforceEMV= True$/;"	v
+BruteforceEMV	ChAP.py	/^BruteforceEMV= False$/;"	v
+BruteforceEMV	ChAPlib.py	/^BruteforceEMV= False$/;"	v
+BruteforceEMV	ChAPlibVISA.py	/^BruteforceEMV= False$/;"	v
+BruteforceFiles	ChAP-PrePlayAttack.py	/^            BruteforceFiles= True$/;"	v
+BruteforceFiles	ChAP-PrePlayAttack.py	/^BruteforceFiles= False$/;"	v
+BruteforceFiles	ChAP-cardemulation.py	/^            BruteforceFiles= True$/;"	v
+BruteforceFiles	ChAP-test.py	/^            BruteforceFiles= True$/;"	v
+BruteforceFiles	ChAP.py	/^            BruteforceFiles= True$/;"	v
+BruteforceFiles	ChAP.py	/^BruteforceFiles= False$/;"	v
+BruteforceFiles	ChAPlib.py	/^BruteforceFiles= False$/;"	v
+BruteforceFiles	ChAPlibVISA.py	/^BruteforceFiles= False$/;"	v
+BruteforcePrimitives	ChAP-PrePlayAttack.py	/^            BruteforcePrimitives= True$/;"	v
+BruteforcePrimitives	ChAP-PrePlayAttack.py	/^BruteforcePrimitives= False$/;"	v
+BruteforcePrimitives	ChAP-cardemulation.py	/^            BruteforcePrimitives= True$/;"	v
+BruteforcePrimitives	ChAP-test.py	/^            BruteforcePrimitives= True$/;"	v
+BruteforcePrimitives	ChAP.py	/^            BruteforcePrimitives= True$/;"	v
+BruteforcePrimitives	ChAP.py	/^BruteforcePrimitives= False$/;"	v
+BruteforcePrimitives	ChAPlib.py	/^BruteforcePrimitives= False$/;"	v
+BruteforcePrimitives	ChAPlibVISA.py	/^BruteforcePrimitives= False$/;"	v
+CDOL1	ChAP-PrePlayAttack.py	/^CDOL1= 0x8c$/;"	v
+CDOL1	ChAP.py	/^CDOL1= 0x8c$/;"	v
+CDOL1	ChAPlib.py	/^CDOL1= 0x8c$/;"	v
+CDOL1	ChAPlibVISA.py	/^CDOL1= 0x8c$/;"	v
+CDOL2	ChAP-PrePlayAttack.py	/^CDOL2= 0x8d$/;"	v
+CDOL2	ChAP.py	/^CDOL2= 0x8d$/;"	v
+CDOL2	ChAPlib.py	/^CDOL2= 0x8d$/;"	v
+CDOL2	ChAPlibVISA.py	/^CDOL2= 0x8d$/;"	v
+CFB	hitag2reset.py	/^CFB=card.HITAG2_PASSWORD + card.HITAG2_TRANSPORT_TAG$/;"	v
+CFB	q5reset.py	/^CFB='e601f004'$/;"	v
+CGT	rfidiot/RFIDIOt.py	/^	def CGT(self):$/;"	m	class:rfidiot
+CLA	jcopmifare.py	/^CLA= '00'$/;"	v
+CLA	jcopsetatrhist.py	/^CLA= '80'$/;"	v
+CLA	jcoptool.py	/^CLA= '80'$/;"	v
+CLA_GLOBAL_PLATFORM	rfidiot/RFIDIOt.py	/^	CLA_GLOBAL_PLATFORM= '80'$/;"	v	class:rfidiot
+COMPUTE_CRYPTOGRAPHIC_CHECKSUM	ChAPlib.py	/^COMPUTE_CRYPTOGRAPHIC_CHECKSUM = [0x80, 0x2A, 0x8E, 0x80];$/;"	v
+COMPUTE_CRYPTOGRAPHIC_CHECKSUM	ChAPlibVISA.py	/^COMPUTE_CRYPTOGRAPHIC_CHECKSUM = [0x80, 0x2A, 0x8E, 0x80];$/;"	v
+CVN17	ChAP-paywave.py	/^CVN17 = 1$/;"	v
+CardConnection	ChAP-PrePlayAttack.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAP-cardemulation.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAP-paypass.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAP-paywave.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAP-test.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAP.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAPlib.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnection	ChAPlibVISA.py	/^from smartcard.CardConnection import CardConnection$/;"	i
+CardConnectionException	ChAP-test.py	/^from smartcard.Exceptions import CardConnectionException$/;"	i
+CardConnectionException	ChAPlib.py	/^from smartcard.Exceptions import CardConnectionException $/;"	i
+CardConnectionException	ChAPlibVISA.py	/^from smartcard.Exceptions import CardConnectionException $/;"	i
+CardRequest	ChAP-PrePlayAttack.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAP-cardemulation.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAP-paypass.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAP-paywave.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAP-test.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAP.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAPlib.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	ChAPlibVISA.py	/^from smartcard.CardRequest import CardRequest$/;"	i
+CardRequest	rfidiot/RFIDIOt.py	/^	import smartcard, smartcard.CardRequest$/;"	i
+CardRequestTimeoutException	ChAP-PrePlayAttack.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAP-cardemulation.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAP-paypass.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAP-paywave.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAP-test.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAP.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAPlib.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+CardRequestTimeoutException	ChAPlibVISA.py	/^from smartcard.Exceptions import CardRequestTimeoutException$/;"	i
+Cdol1	ChAP-PrePlayAttack.py	/^Cdol1= ''$/;"	v
+Cdol1	ChAP.py	/^Cdol1= ''$/;"	v
+Cdol1	ChAPlib.py	/^Cdol1= ''$/;"	v
+Cdol1	ChAPlibVISA.py	/^Cdol1= ''$/;"	v
+Cdol2	ChAP-PrePlayAttack.py	/^Cdol2= ''$/;"	v
+Cdol2	ChAP.py	/^Cdol2= ''$/;"	v
+Cdol2	ChAPlib.py	/^Cdol2= ''$/;"	v
+Cdol2	ChAPlibVISA.py	/^Cdol2= ''$/;"	v
+CloneData	readmifaresimple.py	/^CloneData= []$/;"	v
+ConsoleCardConnectionObserver	ChAP-PrePlayAttack.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAP-cardemulation.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAP-paypass.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAP-paywave.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAP-test.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAP.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAPlib.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	ChAPlibVISA.py	/^from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+ConsoleCardConnectionObserver	rfidiot/RFIDIOt.py	/^						from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver$/;"	i
+CurrentAID	ChAP-PrePlayAttack.py	/^CurrentAID= ''$/;"	v
+CurrentAID	ChAP.py	/^                CurrentAID= ''$/;"	v
+CurrentAID	ChAP.py	/^CurrentAID= ''$/;"	v
+CurrentAID	ChAPlib.py	/^CurrentAID= ''$/;"	v
+CurrentAID	ChAPlibVISA.py	/^CurrentAID= ''$/;"	v
+DCVV	ChAP-paywave.py	/^DCVV = 0$/;"	v
+DEBUG	mrpkey.py	/^DEBUG= False$/;"	v
+DEBUG	mrpkey.py	/^DEBUG= rfidiot.rfidiotglobals.Debug$/;"	v
+DEBUG	rfidiot/RFIDIOt.py	/^	DEBUG= False$/;"	v	class:rfidiot
+DEFAULT_KEY	readmifaresimple.py	/^DEFAULT_KEY= 'FFFFFFFFFFFF'$/;"	v
+DEFAULT_KEYTYPE	readmifaresimple.py	/^DEFAULT_KEYTYPE= 'AA'$/;"	v
+DES	jcoptool.py	/^from Crypto.Cipher import DES$/;"	i
+DES	mifarekeys.py	/^from Crypto.Cipher import DES$/;"	i
+DES	mrpkey.py	/^from Crypto.Cipher import DES$/;"	i
+DES	rfidiot/RFIDIOt.py	/^from Crypto.Cipher import DES$/;"	i
+DES3	jcoptool.py	/^from Crypto.Cipher import DES3$/;"	i
+DES3	mifarekeys.py	/^from Crypto.Cipher import DES3$/;"	i
+DES3	mrpkey.py	/^from Crypto.Cipher import DES3$/;"	i
+DES3	rfidiot/RFIDIOt.py	/^from Crypto.Cipher import DES3$/;"	i
+DES3MAC	rfidiot/RFIDIOt.py	/^	def DES3MAC(self,message,key,ssc):$/;"	m	class:rfidiot
+DESKey	rfidiot/RFIDIOt.py	/^	def DESKey(self,seed,type,length):$/;"	m	class:rfidiot
+DESMAC	rfidiot/RFIDIOt.py	/^	def DESMAC(self,message,key,ssc):$/;"	m	class:rfidiot
+DESParity	rfidiot/RFIDIOt.py	/^	def DESParity(self,data):$/;"	m	class:rfidiot
+DES_IV	rfidiot/RFIDIOt.py	/^	DES_IV='\\0\\0\\0\\0\\0\\0\\0\\0'$/;"	v	class:rfidiot
+DES_PAD	rfidiot/RFIDIOt.py	/^	DES_PAD= [chr(0x80),chr(0),chr(0),chr(0),chr(0),chr(0),chr(0),chr(0)]$/;"	v	class:rfidiot
+DES_PAD_HEX	rfidiot/RFIDIOt.py	/^	DES_PAD_HEX= '8000000000000000'$/;"	v	class:rfidiot
+DEVICE_NAME_LENGTH	rfidiot/pynfc.py	/^DEVICE_NAME_LENGTH	= 256$/;"	v
+DEVICE_PORT_LENGTH	rfidiot/pynfc.py	/^DEVICE_PORT_LENGTH	= 64$/;"	v
+DF_PSE	ChAP-PrePlayAttack.py	/^DF_PSE = [0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]$/;"	v
+DF_PSE	ChAP.py	/^DF_PSE = [0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]$/;"	v
+DF_PSE	ChAPlib.py	/^DF_PSE = [0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]$/;"	v
+DF_PSE	ChAPlibVISA.py	/^DF_PSE = [0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]$/;"	v
+DG1_ELEMENTS	mrpkey.py	/^	       '5c':'Tag list. List of all Data Groups present.'}$/;"	v
+DG2_ELEMENTS	mrpkey.py	/^	       FAC:'Format Identifier ASCII FAC\\0'}$/;"	v
+DG2_TYPE	mrpkey.py	/^	     '7f60':TEMPLATE}$/;"	v
+DG7_ELEMENTS	mrpkey.py	/^	       '02':'Integer - Number of instances of this type of displayed image'}$/;"	v
+DO87	rfidiot/RFIDIOt.py	/^	DO87= '870901'$/;"	v	class:rfidiot
+DO8E	rfidiot/RFIDIOt.py	/^	DO8E= '8E08'$/;"	v	class:rfidiot
+DO97	rfidiot/RFIDIOt.py	/^	DO97= '9701'$/;"	v	class:rfidiot
+DO99	rfidiot/RFIDIOt.py	/^	DO99= '99029000'$/;"	v	class:rfidiot
+DOCUMENT_TYPE	mrpkey.py	/^DOCUMENT_TYPE= {}$/;"	v
+DOC_ID	mrpkey.py	/^DOC_ID= {$/;"	v
+DOC_PASS	mrpkey.py	/^DOC_PASS=  {$/;"	v
+DOC_UNDEF	mrpkey.py	/^DOC_UNDEF= {$/;"	v
+DT_ERROR	rfidiot/RFIDIOt.py	/^	DT_ERROR= '?'$/;"	v	class:rfidiot
+DT_SET_UID	rfidiot/RFIDIOt.py	/^	DT_SET_UID= 'u'$/;"	v	class:rfidiot
+Debug	ChAP-PrePlayAttack.py	/^            Debug= True$/;"	v
+Debug	ChAP-PrePlayAttack.py	/^Debug= False$/;"	v
+Debug	ChAP-cardemulation.py	/^            Debug= True$/;"	v
+Debug	ChAP-test.py	/^            Debug= True$/;"	v
+Debug	ChAP.py	/^            Debug= True$/;"	v
+Debug	ChAP.py	/^Debug= False$/;"	v
+Debug	ChAPlib.py	/^Debug= False$/;"	v
+Debug	ChAPlibVISA.py	/^Debug= False$/;"	v
+Debug	rfidiot/rfidiotglobals.py	/^Debug=False$/;"	v
+Display_DG7	mrpkey.py	/^Display_DG7= False$/;"	v
+Displayed	mrpkey.py	/^Displayed= False$/;"	v
+DocumentType	mrpkey.py	/^DocumentType= '?'$/;"	v
+EBCC	rfidiot/pynfc.py	/^EBCC            	= 0x23$/;"	v
+EBITCOLL	rfidiot/pynfc.py	/^EBITCOLL        	= 0x06$/;"	v
+EBITCOUNT	rfidiot/pynfc.py	/^EBITCOUNT       	= 0x04$/;"	v
+EBUFOVF	rfidiot/pynfc.py	/^EBUFOVF         	= 0x09$/;"	v
+ECDISCARDED	rfidiot/pynfc.py	/^ECDISCARDED     	= 0x2b$/;"	v
+ECID	rfidiot/pynfc.py	/^ECID            	= 0x2a$/;"	v
+ECMD	rfidiot/pynfc.py	/^ECMD            	= 0x27$/;"	v
+ECRC	rfidiot/pynfc.py	/^ECRC            	= 0x02$/;"	v
+EDEPINVSTATE	rfidiot/pynfc.py	/^EDEPINVSTATE    	= 0x25$/;"	v
+EDEPUNKCMD	rfidiot/pynfc.py	/^EDEPUNKCMD      	= 0x12$/;"	v
+EFRAMING	rfidiot/pynfc.py	/^EFRAMING        	= 0x05$/;"	v
+EF_COM	mrpkey.py	/^EF_COM= '60'$/;"	v
+EF_DG1	mrpkey.py	/^EF_DG1= '61'$/;"	v
+EF_DG10	mrpkey.py	/^EF_DG10= '6a'$/;"	v
+EF_DG11	mrpkey.py	/^EF_DG11= '6b'$/;"	v
+EF_DG12	mrpkey.py	/^EF_DG12= '6c'$/;"	v
+EF_DG13	mrpkey.py	/^EF_DG13= '6d'$/;"	v
+EF_DG14	mrpkey.py	/^EF_DG14= '6e'$/;"	v
+EF_DG15	mrpkey.py	/^EF_DG15= '6f'$/;"	v
+EF_DG16	mrpkey.py	/^EF_DG16= '70'$/;"	v
+EF_DG2	mrpkey.py	/^EF_DG2= '75'$/;"	v
+EF_DG3	mrpkey.py	/^EF_DG3= '63'$/;"	v
+EF_DG4	mrpkey.py	/^EF_DG4= '76'$/;"	v
+EF_DG5	mrpkey.py	/^EF_DG5= '65'$/;"	v
+EF_DG6	mrpkey.py	/^EF_DG6= '66'$/;"	v
+EF_DG7	mrpkey.py	/^EF_DG7= '67'$/;"	v
+EF_DG8	mrpkey.py	/^EF_DG8= '68'$/;"	v
+EF_DG9	mrpkey.py	/^EF_DG9= '69'$/;"	v
+EF_SOD	mrpkey.py	/^EF_SOD= '77'$/;"	v
+EF_TAGS	mrpkey.py	/^EF_TAGS= '5c'$/;"	v
+EINBUFOVF	rfidiot/pynfc.py	/^EINBUFOVF       	= 0x0e$/;"	v
+EINVPARAM	rfidiot/pynfc.py	/^EINVPARAM       	= 0x10$/;"	v
+EINVRXFRAM	rfidiot/pynfc.py	/^EINVRXFRAM      	= 0x13$/;"	v
+EM4x02	rfidiot/RFIDIOt.py	/^	EM4x02= 'U'$/;"	v	class:rfidiot
+EM4x05	rfidiot/RFIDIOt.py	/^	EM4x05= 'Z'$/;"	v	class:rfidiot
+EMFAUTH	rfidiot/pynfc.py	/^EMFAUTH         	= 0x14$/;"	v
+EMToUnique	rfidiot/RFIDIOt.py	/^	def EMToUnique(self,data):$/;"	m	class:rfidiot
+ENAD	rfidiot/pynfc.py	/^ENAD            	= 0x2e$/;"	v
+END_BLOCK	readmifaresimple.py	/^END_BLOCK= 63$/;"	v
+ENFCID3	rfidiot/pynfc.py	/^ENFCID3         	= 0x2c$/;"	v
+ENSECNOTSUPP	rfidiot/pynfc.py	/^ENSECNOTSUPP    	= 0x18    # PN533 only$/;"	v
+EOPNOTALL	rfidiot/pynfc.py	/^EOPNOTALL       	= 0x26$/;"	v
+EOVCURRENT	rfidiot/pynfc.py	/^EOVCURRENT      	= 0x2d$/;"	v
+EOVHEAT	rfidiot/pynfc.py	/^EOVHEAT         	= 0x0d$/;"	v
+EPARITY	rfidiot/pynfc.py	/^EPARITY         	= 0x03$/;"	v
+ERFPROTO	rfidiot/pynfc.py	/^ERFPROTO        	= 0x0b$/;"	v
+ERFTIMEOUT	rfidiot/pynfc.py	/^ERFTIMEOUT      	= 0x0a$/;"	v
+ERRORS	ChAP-PrePlayAttack.py	/^ERRORS= {$/;"	v
+ERRORS	ChAP.py	/^ERRORS= {$/;"	v
+ERRORS	ChAPlib.py	/^ERRORS= {$/;"	v
+ERRORS	ChAPlibVISA.py	/^ERRORS= {$/;"	v
+ESMALLBUF	rfidiot/pynfc.py	/^ESMALLBUF       	= 0x07$/;"	v
+ETGREL	rfidiot/pynfc.py	/^ETGREL          	= 0x29$/;"	v
+ETIMEOUT	rfidiot/pynfc.py	/^ETIMEOUT        	= 0x01$/;"	v
+EXPORTPATH	java/Makefile	/^EXPORTPATH=$(JCPATH)\/api_export_files$/;"	m
+Eifd	mrpkey.py	/^		Eifd= tdes.encrypt(S)$/;"	v
+Extension	setup.py	/^from distutils.core import setup, Extension$/;"	i
+FAC	mrpkey.py	/^FAC= '46414300'$/;"	v
+FDDA0	ChAP-paywave.py	/^FDDA0 = 2$/;"	v
+FDDA1	ChAP-paywave.py	/^FDDA1 = 3$/;"	v
+FDXBID	rfidiot/RFIDIOt.py	/^	def FDXBID(self,data):$/;"	m	class:rfidiot
+FDXBID128Bit	rfidiot/RFIDIOt.py	/^	def FDXBID128Bit(self,data):$/;"	m	class:rfidiot
+FDXBID128BitDecode	rfidiot/RFIDIOt.py	/^	def FDXBID128BitDecode(self,data):$/;"	m	class:rfidiot
+FDXBIDEncode	rfidiot/RFIDIOt.py	/^	def FDXBIDEncode(self,appid,ccode,natid):$/;"	m	class:rfidiot
+FDXBIDPrint	rfidiot/RFIDIOt.py	/^	def FDXBIDPrint(self,data):$/;"	m	class:rfidiot
+FILES	mrpkey.py	/^	FILES= True$/;"	v
+FILES	mrpkey.py	/^FILES= False$/;"	v
+FROSCH_Errors	rfidiot/RFIDIOt.py	/^			 'ff':'Serial port fail or wrong mode'}$/;"	v	class:rfidiot
+FR_BAUD_RATE	rfidiot/RFIDIOt.py	/^		  	115200:chr(0x06)}$/;"	v	class:rfidiot
+FR_BCC_Mode	rfidiot/RFIDIOt.py	/^	FR_BCC_Mode= FR_COMMAND_MODE$/;"	v	class:rfidiot
+FR_COMMAND_MODE	rfidiot/RFIDIOt.py	/^	FR_COMMAND_MODE= 0x00$/;"	v	class:rfidiot
+FR_CRYPTO	rfidiot/RFIDIOt.py	/^	FR_CRYPTO= chr(0x01)$/;"	v	class:rfidiot
+FR_HT1_Get_Snr	rfidiot/RFIDIOt.py	/^	FR_HT1_Get_Snr= chr(0x47)$/;"	v	class:rfidiot
+FR_HT1_Get_Snr_Adv	rfidiot/RFIDIOt.py	/^	FR_HT1_Get_Snr_Adv= chr(0xA2)$/;"	v	class:rfidiot
+FR_HT1_Read_Page	rfidiot/RFIDIOt.py	/^	FR_HT1_Read_Page= chr(0x50)$/;"	v	class:rfidiot
+FR_HT1_Select_Last	rfidiot/RFIDIOt.py	/^	FR_HT1_Select_Last= chr(0x53)$/;"	v	class:rfidiot
+FR_HT1_Select_Snr	rfidiot/RFIDIOt.py	/^	FR_HT1_Select_Snr= chr(0x53)$/;"	v	class:rfidiot
+FR_HT2_Get_Snr_PWD	rfidiot/RFIDIOt.py	/^	FR_HT2_Get_Snr_PWD= chr(0x80) + chr(0x00)$/;"	v	class:rfidiot
+FR_HT2_Get_Snr_Reset	rfidiot/RFIDIOt.py	/^	FR_HT2_Get_Snr_Reset= chr(0x80)$/;"	v	class:rfidiot
+FR_HT2_Halt_Selected	rfidiot/RFIDIOt.py	/^	FR_HT2_Halt_Selected= chr(0x81)$/;"	v	class:rfidiot
+FR_HT2_Read_Miro	rfidiot/RFIDIOt.py	/^	FR_HT2_Read_Miro= chr(0x4d)$/;"	v	class:rfidiot
+FR_HT2_Read_Page	rfidiot/RFIDIOt.py	/^	FR_HT2_Read_Page= chr(0x82)$/;"	v	class:rfidiot
+FR_HT2_Read_PublicB	rfidiot/RFIDIOt.py	/^	FR_HT2_Read_PublicB= chr(0x9e)$/;"	v	class:rfidiot
+FR_HT2_Write_Page	rfidiot/RFIDIOt.py	/^	FR_HT2_Write_Page= chr(0x84)$/;"	v	class:rfidiot
+FR_KEY_INIT_MODE	rfidiot/RFIDIOt.py	/^	FR_KEY_INIT_MODE= 0x01$/;"	v	class:rfidiot
+FR_NO_ERROR	rfidiot/RFIDIOt.py	/^	FR_NO_ERROR= chr(0x00)$/;"	v	class:rfidiot
+FR_PLAIN	rfidiot/RFIDIOt.py	/^	FR_PLAIN= chr(0x00)$/;"	v	class:rfidiot
+FR_RWD_Get_Version	rfidiot/RFIDIOt.py	/^	FR_RWD_Get_Version= chr(0x56)$/;"	v	class:rfidiot
+FR_RWD_HF_Reset	rfidiot/RFIDIOt.py	/^	FR_RWD_HF_Reset= chr(0x68)$/;"	v	class:rfidiot
+FR_RWD_KI_Read_EE_Data	rfidiot/RFIDIOt.py	/^	FR_RWD_KI_Read_EE_Data= chr(0x58)$/;"	v	class:rfidiot
+FR_RWD_KI_Reset	rfidiot/RFIDIOt.py	/^	FR_RWD_KI_Reset= chr(0x52)$/;"	v	class:rfidiot
+FR_RWD_Key_Init_Mode	rfidiot/RFIDIOt.py	/^	FR_RWD_Key_Init_Mode= chr(0x4B)$/;"	v	class:rfidiot
+FR_RWD_Stop_Cmd	rfidiot/RFIDIOt.py	/^	FR_RWD_Stop_Cmd= chr(0xA6)$/;"	v	class:rfidiot
+FR_TIMEOUT	rfidiot/RFIDIOt.py	/^	FR_TIMEOUT= 'fc'$/;"	v	class:rfidiot
+FieldKeys	mrpkey.py	/^FieldKeys= ()$/;"	v
+FieldLengths	mrpkey.py	/^FieldLengths= ()$/;"	v
+FieldNames	mrpkey.py	/^FieldNames= ()$/;"	v
+Fields	mrpkey.py	/^Fields= ()$/;"	v
+Filetype	mrpkey.py	/^Filetype= ''$/;"	v
+GENERATE_AC	ChAP-PrePlayAttack.py	/^GENERATE_AC= [0x80,0xae]$/;"	v
+GENERATE_AC	ChAP.py	/^GENERATE_AC= [0x80,0xae]$/;"	v
+GENERATE_AC	ChAPlib.py	/^GENERATE_AC= [0x80,0xae]$/;"	v
+GENERATE_AC	ChAPlibVISA.py	/^GENERATE_AC= [0x80,0xae]$/;"	v
+GET_CHALLENGE	ChAP-PrePlayAttack.py	/^GET_CHALLENGE= [0x00,0x84,0x00]$/;"	v
+GET_CHALLENGE	ChAP.py	/^GET_CHALLENGE= [0x00,0x84,0x00]$/;"	v
+GET_CHALLENGE	ChAPlib.py	/^GET_CHALLENGE= [0x00,0x84,0x00]$/;"	v
+GET_CHALLENGE	ChAPlibVISA.py	/^GET_CHALLENGE= [0x00,0x84,0x00]$/;"	v
+GET_DATA	ChAP-PrePlayAttack.py	/^GET_DATA = [0x80, 0xca]$/;"	v
+GET_DATA	ChAP.py	/^GET_DATA = [0x80, 0xca]$/;"	v
+GET_DATA	ChAPlib.py	/^GET_DATA = [0x80, 0xca]$/;"	v
+GET_DATA	ChAPlibVISA.py	/^GET_DATA = [0x80, 0xca]$/;"	v
+GET_PROCESSING_OPTIONS	ChAP-PrePlayAttack.py	/^GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00]$/;"	v
+GET_PROCESSING_OPTIONS	ChAP.py	/^GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00,0x02,0x83,0x00,0x00]$/;"	v
+GET_PROCESSING_OPTIONS	ChAPlib.py	/^GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00]$/;"	v
+GET_PROCESSING_OPTIONS	ChAPlibVISA.py	/^GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00]$/;"	v
+GET_RESPONSE	ChAP-PrePlayAttack.py	/^GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00 ]$/;"	v
+GET_RESPONSE	ChAP.py	/^GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00 ]$/;"	v
+GET_RESPONSE	ChAPlib.py	/^GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00 ]$/;"	v
+GET_RESPONSE	ChAPlibVISA.py	/^GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00 ]$/;"	v
+GPDIR	java/Makefile	/^GPDIR=GP_exportA00000015100$/;"	m
+GPEXPORTPATH	java/Makefile	/^GPEXPORTPATH=.\/gp21$/;"	m
+GPLIB	java/Makefile	/^GPLIB=.\/gp21.jar$/;"	m
+GPSHELL	Makefile	/^GPSHELL= "gpshell"$/;"	m
+GPSHELL	java/Makefile	/^GPSHELL= "gpshell"$/;"	m
+GPSHELL_ATR_SCRIPT	Makefile	/^GPSHELL_ATR_SCRIPT="jcop_set_atr_hist.gpsh"$/;"	m
+GPSHELL_ATR_UNINSTALL_SCRIPT	Makefile	/^GPSHELL_ATR_UNINSTALL_SCRIPT="jcop_delete_atr_hist.gpsh"$/;"	m
+GPSHELL_MIFARE_SCRIPT	Makefile	/^GPSHELL_MIFARE_SCRIPT="jcop_mifare_access.gpsh"$/;"	m
+GPSHELL_NOKIA_MIFARE_SCRIPT	Makefile	/^GPSHELL_NOKIA_MIFARE_SCRIPT="nokia_jcop_mifare_access.gpsh"$/;"	m
+GPSHELL_SCRIPT	java/Makefile	/^GPSHELL_SCRIPT="jcop_set_atr_hist.gpsh"$/;"	m
+GPSHELL_UNINSTALL_SCRIPT	java/Makefile	/^GPSHELL_UNINSTALL_SCRIPT="jcop_delete_atr_hist.gpsh"$/;"	m
+GPSHELL_VONJEEK_NOKIA_SCRIPT	Makefile	/^GPSHELL_VONJEEK_NOKIA_SCRIPT="upload2nokia.gpsh"$/;"	m
+GPSHELL_VONJEEK_SCRIPT	Makefile	/^GPSHELL_VONJEEK_SCRIPT="upload2jcop.gpsh"$/;"	m
+GPZIP	java/Makefile	/^GPZIP=Java_Export_v2_1_or_v2_1_1_API.zip$/;"	m
+GP_C_MAC	rfidiot/RFIDIOt.py	/^	GP_C_MAC= '01'$/;"	v	class:rfidiot
+GP_C_MAC_DECRYPTION	rfidiot/RFIDIOt.py	/^	GP_C_MAC_DECRYPTION= '02'$/;"	v	class:rfidiot
+GP_ENC_KEY	rfidiot/RFIDIOt.py	/^	GP_ENC_KEY= '404142434445464748494A4B4C4D4E4F'$/;"	v	class:rfidiot
+GP_FILTER_ASSD	rfidiot/RFIDIOt.py	/^	GP_FILTER_ASSD= '40'$/;"	v	class:rfidiot
+GP_FILTER_ELF	rfidiot/RFIDIOt.py	/^	GP_FILTER_ELF= '20'$/;"	v	class:rfidiot
+GP_FILTER_ISD	rfidiot/RFIDIOt.py	/^	GP_FILTER_ISD= '80'$/;"	v	class:rfidiot
+GP_KEK_KEY	rfidiot/RFIDIOt.py	/^	GP_KEK_KEY= '404142434445464748494A4B4C4D4E4F'$/;"	v	class:rfidiot
+GP_MAC_KEY	rfidiot/RFIDIOt.py	/^	GP_MAC_KEY= '404142434445464748494A4B4C4D4E4F'$/;"	v	class:rfidiot
+GP_NO_ENCRYPTION	rfidiot/RFIDIOt.py	/^	GP_NO_ENCRYPTION= '00'$/;"	v	class:rfidiot
+GP_REG_AID	rfidiot/RFIDIOt.py	/^	GP_REG_AID= '4F'$/;"	v	class:rfidiot
+GP_REG_DATA	rfidiot/RFIDIOt.py	/^	GP_REG_DATA= 'E3'$/;"	v	class:rfidiot
+GP_REG_LCS	rfidiot/RFIDIOt.py	/^	GP_REG_LCS= '9F70'$/;"	v	class:rfidiot
+GP_REG_PRIV	rfidiot/RFIDIOt.py	/^	GP_REG_PRIV= 'C5'$/;"	v	class:rfidiot
+GP_SCP02	rfidiot/RFIDIOt.py	/^	GP_SCP02= '02'$/;"	v	class:rfidiot
+GetRandom	rfidiot/RFIDIOt.py	/^	def GetRandom(self,size):$/;"	m	class:rfidiot
+H2CFB	unique.py	/^H2CFB= card.HITAG2_PUBLIC_A + card.HITAG2_TRANSPORT_TAG$/;"	v
+HID_PROX_CORP1K	rfidiot/RFIDIOt.py	/^	HID_PROX_CORP1K= '3B0764'$/;"	v	class:rfidiot
+HID_PROX_H10301	rfidiot/RFIDIOt.py	/^	HID_PROX_H10301= '3B0601'$/;"	v	class:rfidiot
+HID_PROX_H10301_H	rfidiot/RFIDIOt.py	/^	HID_PROX_H10301_H= '3B0500'$/;"	v	class:rfidiot
+HID_PROX_H10302	rfidiot/RFIDIOt.py	/^	HID_PROX_H10302= '3B0702'$/;"	v	class:rfidiot
+HID_PROX_H10302_H	rfidiot/RFIDIOt.py	/^	HID_PROX_H10302_H= '3B0600'$/;"	v	class:rfidiot
+HID_PROX_H10304	rfidiot/RFIDIOt.py	/^	HID_PROX_H10304= '3B0704'$/;"	v	class:rfidiot
+HID_PROX_H10320	rfidiot/RFIDIOt.py	/^	HID_PROX_H10320= '3B0514'$/;"	v	class:rfidiot
+HID_PROX_TYPES	rfidiot/RFIDIOt.py	/^	HID_PROX_TYPES=	{$/;"	v	class:rfidiot
+HITAG1	rfidiot/RFIDIOt.py	/^	HITAG1= 'h'$/;"	v	class:rfidiot
+HITAG2	rfidiot/RFIDIOt.py	/^	HITAG2= 'H'$/;"	v	class:rfidiot
+HITAG2_CRYPTO	rfidiot/RFIDIOt.py	/^	HITAG2_CRYPTO= '0e'$/;"	v	class:rfidiot
+HITAG2_PASSWORD	rfidiot/RFIDIOt.py	/^	HITAG2_PASSWORD= '06'$/;"	v	class:rfidiot
+HITAG2_PUBLIC_A	rfidiot/RFIDIOt.py	/^	HITAG2_PUBLIC_A= '02'$/;"	v	class:rfidiot
+HITAG2_PUBLIC_B	rfidiot/RFIDIOt.py	/^	HITAG2_PUBLIC_B= '00'$/;"	v	class:rfidiot
+HITAG2_PUBLIC_C	rfidiot/RFIDIOt.py	/^	HITAG2_PUBLIC_C= '04'$/;"	v	class:rfidiot
+HITAG2_TRANSPORT_HIGH	rfidiot/RFIDIOt.py	/^	HITAG2_TRANSPORT_HIGH='4F4E'$/;"	v	class:rfidiot
+HITAG2_TRANSPORT_RWD	rfidiot/RFIDIOt.py	/^	HITAG2_TRANSPORT_RWD='4D494B52'$/;"	v	class:rfidiot
+HITAG2_TRANSPORT_TAG	rfidiot/RFIDIOt.py	/^	HITAG2_TRANSPORT_TAG='AA4854'$/;"	v	class:rfidiot
+Help	jcopmifare.py	/^Help= rfidiot.help$/;"	v
+Help	jcopsetatrhist.py	/^Help= rfidiot.help$/;"	v
+Help	jcoptool.py	/^Help= rfidiot.help$/;"	v
+Help	mrpkey.py	/^Help= rfidiot.help$/;"	v
+HexArray	mifarekeys.py	/^def HexArray(data):$/;"	f
+HexArrayToList	rfidiot/RFIDIOt.py	/^	def HexArrayToList(self,array):$/;"	m	class:rfidiot
+HexArrayToString	rfidiot/RFIDIOt.py	/^	def HexArrayToString(self,array):$/;"	m	class:rfidiot
+HexArraysToArray	rfidiot/RFIDIOt.py	/^	def HexArraysToArray(self,array):$/;"	m	class:rfidiot
+HexBitReverse	rfidiot/RFIDIOt.py	/^	def HexBitReverse(self,data):$/;"	m	class:rfidiot
+HexByteReverse	rfidiot/RFIDIOt.py	/^	def HexByteReverse(self,data):$/;"	m	class:rfidiot
+HexNibbleReverse	rfidiot/RFIDIOt.py	/^	def HexNibbleReverse(self,data):$/;"	m	class:rfidiot
+HexPrint	rfidiot/RFIDIOt.py	/^	def HexPrint(self,data):$/;"	m	class:rfidiot
+HexReverse	rfidiot/RFIDIOt.py	/^	def HexReverse(self,data):$/;"	m	class:rfidiot
+HexToList	rfidiot/RFIDIOt.py	/^	def HexToList(self,string):$/;"	m	class:rfidiot
+HexToQ5	rfidiot/RFIDIOt.py	/^	def HexToQ5(self,data):$/;"	m	class:rfidiot
+ID	lfxtype.py	/^ID= card.uid$/;"	v
+ID	readlfx.py	/^		ID= Q5ID$/;"	v
+ID	readlfx.py	/^ID= card.uid$/;"	v
+ID	writelfx.py	/^		ID= Q5ID$/;"	v
+ID	writelfx.py	/^ID= card.uid$/;"	v
+INS	jcopmifare.py	/^INS= 'MIFARE_ACCESS'$/;"	v
+IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE	rfidiot/RFIDIOt.py	/^	IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE = smartcard.scard.SCARD_CTL_CODE(1)$/;"	v
+ISO14443A	rfidiot/pynfc.py	/^class ISO14443A(object):$/;"	c
+ISO14443B	rfidiot/pynfc.py	/^class ISO14443B(object):$/;"	c
+ISO15693	rfidiot/RFIDIOt.py	/^	ISO15693= 'v'$/;"	v	class:rfidiot
+ISO19794_5_EXPRESSION	mrpkey.py	/^		  	'0007':'Frowning'}$/;"	v
+ISO19794_5_EYECOLOUR	mrpkey.py	/^			'08':'Other'}$/;"	v
+ISO19794_5_FEATURE	mrpkey.py	/^		     0x400:'Distorted'}$/;"	v
+ISO19794_5_GENDER	mrpkey.py	/^		     'ff':'Other'}$/;"	v
+ISO19794_5_HAIRCOLOUR	mrpkey.py	/^			 'ff':'Other'}	$/;"	v
+ISO19794_5_IMG_CSPACE	mrpkey.py	/^			'04':'Other'}$/;"	v
+ISO19794_5_IMG_DTYPE	mrpkey.py	/^		       '01':'JPEG 2000'}$/;"	v
+ISO19794_5_IMG_FTYPE	mrpkey.py	/^		       '01':'JP2'}$/;"	v
+ISO19794_5_IMG_QUALITY	mrpkey.py	/^ISO19794_5_IMG_QUALITY= {'00':'Unspecified'}$/;"	v
+ISO19794_5_IMG_SOURCE	mrpkey.py	/^			'07':'Unknown'}$/;"	v
+ISO19794_5_IMG_TYPE	mrpkey.py	/^		      '04':'Other'}$/;"	v
+ISO3166CountryCodes	ChAP-PrePlayAttack.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAP-cardemulation.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAP-paypass.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAP-paywave.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAP-test.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAP.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAPlib.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	ChAPlibVISA.py	/^from rfidiot.iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	rfidiot/RFIDIOt.py	/^	from iso3166 import ISO3166CountryCodes$/;"	i
+ISO3166CountryCodes	rfidiot/iso3166.py	/^		      '1022':'UNREGISTERED MANUF: VeriChip Corporation'}$/;"	v
+ISO3166CountryCodesAlpha	rfidiot/RFIDIOt.py	/^	from iso3166 import ISO3166CountryCodesAlpha$/;"	i
+ISO3166CountryCodesAlpha	rfidiot/iso3166.py	/^			}$/;"	v
+ISO7816ErrorCodes	rfidiot/RFIDIOt.py	/^	ISO7816ErrorCodes=  {$/;"	v	class:rfidiot
+ISO7816Manufacturer	rfidiot/RFIDIOt.py	/^			       '16':'EM Microelectronic-Marin SA',$/;"	v	class:rfidiot
+ISOAPDU	rfidiot/RFIDIOt.py	/^	ISOAPDU=  {'ERASE BINARY':'0E',$/;"	v	class:rfidiot
+ISOTags	rfidiot/RFIDIOt.py	/^		  'v':'ISO 15693         '}$/;"	v	class:rfidiot
+ISOTagsA	rfidiot/RFIDIOt.py	/^	ISOTagsA= {'t':'All Supported Tags'}$/;"	v	class:rfidiot
+ISO_7816_OPTION_FIRST_OR_ONLY	rfidiot/RFIDIOt.py	/^	ISO_7816_OPTION_FIRST_OR_ONLY= '00'$/;"	v	class:rfidiot
+ISO_7816_OPTION_NEXT_OCCURRENCE	rfidiot/RFIDIOt.py	/^	ISO_7816_OPTION_NEXT_OCCURRENCE= '02'$/;"	v	class:rfidiot
+ISO_7816_SELECT_BY_EF	rfidiot/RFIDIOt.py	/^	ISO_7816_SELECT_BY_EF= '02'$/;"	v	class:rfidiot
+ISO_7816_SELECT_BY_NAME	rfidiot/RFIDIOt.py	/^	ISO_7816_SELECT_BY_NAME= '04'$/;"	v	class:rfidiot
+ISO_FRAMESIZE	rfidiot/RFIDIOt.py	/^			 '08':'256'}$/;"	v	class:rfidiot
+ISO_NOINFO	rfidiot/RFIDIOt.py	/^	ISO_NOINFO= '6200'$/;"	v	class:rfidiot
+ISO_OK	rfidiot/RFIDIOt.py	/^	ISO_OK= '9000'$/;"	v	class:rfidiot
+ISO_SECURE	rfidiot/RFIDIOt.py	/^	ISO_SECURE= '6982'$/;"	v	class:rfidiot
+ISO_SPEED	rfidiot/RFIDIOt.py	/^		    '08':'848kBaud'}$/;"	v	class:rfidiot
+ITEM	ChAP-PrePlayAttack.py	/^ITEM= 1$/;"	v
+ITEM	ChAP.py	/^ITEM= 1$/;"	v
+ITEM	ChAPlib.py	/^ITEM= 1$/;"	v
+ITEM	ChAPlibVISA.py	/^ITEM= 1$/;"	v
+Image	mrpkey.py	/^import PIL.Image as Image$/;"	i
+ImageTk	mrpkey.py	/^import PIL.ImageTk as ImageTk$/;"	i
+JAVA	java/Makefile	/^JAVA=$(JAVA_HOME)\/bin\/java$/;"	m
+JAVAC	java/Makefile	/^JAVAC=$(JAVA_HOME)\/bin\/javac$/;"	m
+JAVADOC	java/Makefile	/^JAVADOC=$(JAVA_HOME)\/bin\/javadoc$/;"	m
+JCAPI	java/Makefile	/^JCAPI=$(JCPATH)\/lib\/api.jar$/;"	m
+JCCONV	java/Makefile	/^JCCONV=$(JCPATH)\/lib\/converter.jar$/;"	m
+JCOPSetATRHist	java/src/jcop_set_atr_hist/JCOPSetATRHist.java	/^public class JCOPSetATRHist extends Applet $/;"	c
+JCOP_ATR_AID	jcopsetatrhist.py	/^JCOP_ATR_AID= 'DC4420060607'$/;"	v
+JCPATH	java/Makefile	/^JCPATH=.\/java_card_kit-2_2_1$/;"	m
+JCVERIFIER	java/Makefile	/^JCVERIFIER=$(JCPATH)\/lib\/offcardverifier.jar$/;"	m
+JCZIP	java/Makefile	/^JCZIP=java_card_kit-2_2_1-linux-dom.zip$/;"	m
+Jmrtd	mrpkey.py	/^			Jmrtd= True$/;"	v
+Jmrtd	mrpkey.py	/^Jmrtd= False$/;"	v
+JmrtdLock	mrpkey.py	/^			JmrtdLock= True$/;"	v
+JmrtdLock	mrpkey.py	/^JmrtdLock= False$/;"	v
+KENC	rfidiot/RFIDIOt.py	/^	KENC= '\\0\\0\\0\\1'$/;"	v	class:rfidiot
+KEYS	readmifaresimple.py	/^KEYS= ['FFFFFFFFFFFF','A0A1A2A3A4A5','B0B1B2B3B4B5','000000000000','ABCDEF012345','4D3A99C351DD','1A982C7E459A','D3F7D3F7D3F7','AABBCCDDEEFF']$/;"	v
+KEYTYPES	readmifaresimple.py	/^KEYTYPES=['AA','BB','FF']$/;"	v
+KMAC	rfidiot/RFIDIOt.py	/^	KMAC= '\\0\\0\\0\\2'$/;"	v	class:rfidiot
+KNOWN_AIDS	ChAP-PrePlayAttack.py	/^KNOWN_AIDS=     [$/;"	v
+KNOWN_AIDS	ChAP.py	/^KNOWN_AIDS=     [$/;"	v
+KNOWN_AIDS	ChAPlib.py	/^KNOWN_AIDS=     [$/;"	v
+KNOWN_AIDS	ChAPlibVISA.py	/^KNOWN_AIDS=     [$/;"	v
+KSenc	mrpkey.py	/^	KSenc= passport.DESKey(kseed,passport.KENC,16)$/;"	v
+KSmac	mrpkey.py	/^		KSmac= passport.ToBinary('F1CB1F1FB5ADF208806B89DC579DC1F8')$/;"	v
+KSmac	mrpkey.py	/^	KSmac= passport.DESKey(kseed,passport.KMAC,16)$/;"	v
+Kenc	mrpkey.py	/^		Kenc= passport.DESKey(kseed,passport.KENC,16)$/;"	v
+Kifd	mrpkey.py	/^			Kifd= TEST_Kifd$/;"	v
+Kifd	mrpkey.py	/^			Kifd= passport.GetRandom(16)$/;"	v
+Kmac	mrpkey.py	/^		Kmac= passport.DESKey(kseed,passport.KMAC,16)$/;"	v
+LAST_ATC	ChAP-PrePlayAttack.py	/^LAST_ATC= [0x9f,0x13]$/;"	v
+LAST_ATC	ChAP.py	/^LAST_ATC= [0x9f,0x13]$/;"	v
+LAST_ATC	ChAPlib.py	/^LAST_ATC= [0x9f,0x13]$/;"	v
+LAST_ATC	ChAPlibVISA.py	/^LAST_ATC= [0x9f,0x13]$/;"	v
+LFXTagBlocks	rfidiot/RFIDIOt.py	/^		  'N':0}$/;"	v	class:rfidiot
+LFXTags	rfidiot/RFIDIOt.py	/^		  'N':'No TAG present!'}$/;"	v	class:rfidiot
+LOG_FORMAT	ChAP-PrePlayAttack.py	/^LOG_FORMAT= [0x9f, 0x4f]$/;"	v
+LOG_FORMAT	ChAP.py	/^LOG_FORMAT= [0x9f, 0x4f]$/;"	v
+LOG_FORMAT	ChAPlib.py	/^LOG_FORMAT= [0x9f, 0x4f]$/;"	v
+LOG_FORMAT	ChAPlibVISA.py	/^LOG_FORMAT= [0x9f, 0x4f]$/;"	v
+ListToHex	rfidiot/RFIDIOt.py	/^	def ListToHex(self,data):$/;"	m	class:rfidiot
+MACVerify	rfidiot/RFIDIOt.py	/^	def MACVerify(self,message,key):$/;"	m	class:rfidiot
+MASK_11785	rfidiot/RFIDIOt.py	/^MASK_11785 = 0x8408$/;"	v
+MASK_CCITT	rfidiot/RFIDIOt.py	/^MASK_CCITT = 0x1021 # CRC-CCITT mask (ISO 3309, used in X25, HDLC)$/;"	v
+MASK_CRC16	rfidiot/RFIDIOt.py	/^MASK_CRC16 = 0xA001 # CRC16 mask (used in ARC files)$/;"	v
+MAXCHUNK	mrpkey.py	/^MAXCHUNK= 118$/;"	v
+MAX_DEVICES	rfidiot/pynfc.py	/^MAX_DEVICES 		= 16$/;"	v
+MAX_FRAME_LEN	rfidiot/pynfc.py	/^MAX_FRAME_LEN 		= 264$/;"	v
+MAX_TARGET_COUNT	rfidiot/pynfc.py	/^MAX_TARGET_COUNT 	= 1$/;"	v
+MC_AUTH_A	rfidiot/pynfc.py	/^MC_AUTH_A 		= 0x60$/;"	v
+MC_AUTH_B	rfidiot/pynfc.py	/^MC_AUTH_B 		= 0x61$/;"	v
+MC_DECREMENT	rfidiot/pynfc.py	/^MC_DECREMENT 		= 0xC0$/;"	v
+MC_INCREMENT	rfidiot/pynfc.py	/^MC_INCREMENT 		= 0xC1$/;"	v
+MC_READ	rfidiot/pynfc.py	/^MC_READ 		= 0x30$/;"	v
+MC_STORE	rfidiot/pynfc.py	/^MC_STORE 		= 0xC2$/;"	v
+MC_TRANSFER	rfidiot/pynfc.py	/^MC_TRANSFER 		= 0xB0$/;"	v
+MC_WRITE	rfidiot/pynfc.py	/^MC_WRITE 		= 0xA0$/;"	v
+MIFAREACDB	rfidiot/RFIDIOt.py	/^		     '111':'Read: NONE, Write: NONE, Increment: NONE, Decrement\/Transfer\/Restore: NONE'}$/;"	v	class:rfidiot
+MIFAREACKB	rfidiot/RFIDIOt.py	/^		     '111':'Write KeyA: NONE, Read Access bits: KEYA\/B, Write Access bits: NONE, Read KeyB: NONE, Write KeyB: NONE'}$/;"	v	class:rfidiot
+MIFAREBLOCKLEN	rfidiot/RFIDIOt.py	/^	MIFAREBLOCKLEN=32$/;"	v	class:rfidiot
+MIFAREC1	rfidiot/RFIDIOt.py	/^	MIFAREC1= 0$/;"	v	class:rfidiot
+MIFAREC2	rfidiot/RFIDIOt.py	/^	MIFAREC2= 0$/;"	v	class:rfidiot
+MIFAREC3	rfidiot/RFIDIOt.py	/^	MIFAREC3= 0$/;"	v	class:rfidiot
+MIFAREVALUELEN	rfidiot/RFIDIOt.py	/^	MIFAREVALUELEN=8$/;"	v	class:rfidiot
+MIFARE_AID	jcopmifare.py	/^MIFARE_AID= 'DC4420060606'$/;"	v
+MIFARE_TK	rfidiot/RFIDIOt.py	/^		     'FF' : 'FFFFFFFFFFFF'}$/;"	v	class:rfidiot
+MIFAREaccessconditions	rfidiot/RFIDIOt.py	/^	MIFAREaccessconditions= ''$/;"	v	class:rfidiot
+MIFAREaccessconditionsuserbyte	rfidiot/RFIDIOt.py	/^	MIFAREaccessconditionsuserbyte= ' '$/;"	v	class:rfidiot
+MIFAREbinary	rfidiot/RFIDIOt.py	/^	MIFAREbinary=''$/;"	v	class:rfidiot
+MIFAREblock0AC	rfidiot/RFIDIOt.py	/^	MIFAREblock0AC= ''$/;"	v	class:rfidiot
+MIFAREblock1AC	rfidiot/RFIDIOt.py	/^	MIFAREblock1AC= ''$/;"	v	class:rfidiot
+MIFAREblock2AC	rfidiot/RFIDIOt.py	/^	MIFAREblock2AC= ''$/;"	v	class:rfidiot
+MIFAREblock3AC	rfidiot/RFIDIOt.py	/^	MIFAREblock3AC= ''$/;"	v	class:rfidiot
+MIFAREcheckbyte	rfidiot/RFIDIOt.py	/^	MIFAREcheckbyte= ''$/;"	v	class:rfidiot
+MIFAREdata	rfidiot/RFIDIOt.py	/^	MIFAREdata=''$/;"	v	class:rfidiot
+MIFAREkb	rfidiot/RFIDIOt.py	/^	def MIFAREkb(self,data):$/;"	m	class:rfidiot
+MIFAREkeyA	rfidiot/RFIDIOt.py	/^	MIFAREkeyA= ''$/;"	v	class:rfidiot
+MIFAREkeyB	rfidiot/RFIDIOt.py	/^	MIFAREkeyB= ''$/;"	v	class:rfidiot
+MIFAREmanufacturerdata	rfidiot/RFIDIOt.py	/^	MIFAREmanufacturerdata= ''$/;"	v	class:rfidiot
+MIFAREmfb	rfidiot/RFIDIOt.py	/^	def MIFAREmfb(self,data):$/;"	m	class:rfidiot
+MIFAREserialnumber	rfidiot/RFIDIOt.py	/^	MIFAREserialnumber= ''$/;"	v	class:rfidiot
+MIFAREvb	rfidiot/RFIDIOt.py	/^	def MIFAREvb(self,data):$/;"	m	class:rfidiot
+MIXED	ChAP-PrePlayAttack.py	/^MIXED= 4$/;"	v
+MIXED	ChAP.py	/^MIXED= 4$/;"	v
+MIXED	ChAPlib.py	/^MIXED= 4$/;"	v
+MIXED	ChAPlibVISA.py	/^MIXED= 4$/;"	v
+MRPmrzl	rfidiot/RFIDIOt.py	/^	def MRPmrzl(self,data):$/;"	m	class:rfidiot
+MRZ	mrpkey.py	/^	MRZ=False$/;"	v
+MRZ	mrpkey.py	/^MRZ=True$/;"	v
+MRZ_FIELD_DISPLAY	mrpkey.py	/^MRZ_FIELD_DISPLAY= (0,3,1,2,5,6,8,9,11)$/;"	v
+MRZ_FIELD_DISPLAY_ID	mrpkey.py	/^MRZ_FIELD_DISPLAY_ID= (0,2,1,13,11,6,8,9,4)$/;"	v
+MRZ_FIELD_KEYS	mrpkey.py	/^MRZ_FIELD_KEYS= (44,57,65)$/;"	v
+MRZ_FIELD_KEYS_ID	mrpkey.py	/^MRZ_FIELD_KEYS_ID= (5,30,38)$/;"	v
+MRZ_FIELD_LENGTHS	mrpkey.py	/^MRZ_FIELD_LENGTHS= (2,3,39,9,1,3,6,1,1,6,1,14,1,1)$/;"	v
+MRZ_FIELD_LENGTHS_ID	mrpkey.py	/^MRZ_FIELD_LENGTHS_ID= (2,3,9,1,14,1,6,1,1,6,1,14,1,30)$/;"	v
+MRZ_FIELD_NAMES	mrpkey.py	/^MRZ_FIELD_NAMES= ('Document code','Issuing State or Organisation','Name','Passport Number','Check Digit','Nationality','Date of Birth','Check Digit','Sex','Date of Expiry','Check Digit','Personal Number or other optional elements','Check Digit','Composite Check Digit')$/;"	v
+MRZ_FIELD_NAMES_ID	mrpkey.py	/^MRZ_FIELD_NAMES_ID= ('Document code','Issuing State or Organisation','Document Number','Check Digit','Personal Number or other optional elements','Check Digit','Date of Birth','Check Digit','Sex','Date of Expiry','Check Digit','Nationality','Check Digit','Name')$/;"	v
+MRZ_WEIGHT	mrpkey.py	/^MRZ_WEIGHT= [7,3,1]$/;"	v
+Mifare_Key	rfidiot-cli.py	/^				Mifare_Key= Mifare_KeyA$/;"	v
+Mifare_Key	rfidiot-cli.py	/^				Mifare_Key= Mifare_KeyB$/;"	v
+Mifare_Key	rfidiot-cli.py	/^Mifare_Key= None$/;"	v
+Mifare_KeyA	rfidiot-cli.py	/^				Mifare_KeyA= args.pop().upper()$/;"	v
+Mifare_KeyA	rfidiot-cli.py	/^Mifare_KeyA= None$/;"	v
+Mifare_KeyB	rfidiot-cli.py	/^				Mifare_KeyB= args.pop().upper()$/;"	v
+Mifare_KeyB	rfidiot-cli.py	/^Mifare_KeyB= None$/;"	v
+Mifare_KeyType	rfidiot-cli.py	/^			Mifare_KeyType= keytype$/;"	v
+Mifare_KeyType	rfidiot-cli.py	/^Mifare_KeyType= None$/;"	v
+Mifd	mrpkey.py	/^		Mifd= passport.DESMAC(Eifd,Kmac,'')$/;"	v
+NBR_106	rfidiot/pynfc.py	/^NBR_106			= 0x01$/;"	v
+NBR_212	rfidiot/pynfc.py	/^NBR_212			= 0x02$/;"	v
+NBR_424	rfidiot/pynfc.py	/^NBR_424			= 0x03$/;"	v
+NBR_847	rfidiot/pynfc.py	/^NBR_847			= 0x04$/;"	v
+NBR_UNDEFINED	rfidiot/pynfc.py	/^NBR_UNDEFINED		= 0x00$/;"	v
+NDM_ACTIVE	rfidiot/pynfc.py	/^NDM_ACTIVE		= 0x02$/;"	v
+NDM_PASSIVE	rfidiot/pynfc.py	/^NDM_PASSIVE		= 0x01$/;"	v
+NDM_UNDEFINED	rfidiot/pynfc.py	/^NDM_UNDEFINED		= 0x00$/;"	v
+NFC	rfidiot/pynfc.py	/^class NFC(object):$/;"	c
+NFCReader	rfidiot/RFIDIOt.py	/^	NFCReader= None$/;"	v	class:rfidiot
+NFC_CONNSTRING	rfidiot/pynfc.py	/^class NFC_CONNSTRING(ctypes.Structure):$/;"	c
+NFC_CONNSTRING_LENGTH	rfidiot/pynfc.py	/^NFC_CONNSTRING_LENGTH	= 1024$/;"	v
+NFC_DEP_INFO	rfidiot/pynfc.py	/^class NFC_DEP_INFO(ctypes.Structure):$/;"	c
+NFC_DEVICE_LIST	rfidiot/pynfc.py	/^NFC_DEVICE_LIST = NFC_CONNSTRING * MAX_DEVICES$/;"	v
+NFC_FELICA_INFO	rfidiot/pynfc.py	/^class NFC_FELICA_INFO(ctypes.Structure):$/;"	c
+NFC_ISO14443A_INFO	rfidiot/pynfc.py	/^class NFC_ISO14443A_INFO(ctypes.Structure):$/;"	c
+NFC_ISO14443B2CT_INFO	rfidiot/pynfc.py	/^class NFC_ISO14443B2CT_INFO(ctypes.Structure):$/;"	c
+NFC_ISO14443B2SR_INFO	rfidiot/pynfc.py	/^class NFC_ISO14443B2SR_INFO(ctypes.Structure):$/;"	c
+NFC_ISO14443BI_INFO	rfidiot/pynfc.py	/^class NFC_ISO14443BI_INFO(ctypes.Structure):$/;"	c
+NFC_ISO14443B_INFO	rfidiot/pynfc.py	/^class NFC_ISO14443B_INFO(ctypes.Structure):$/;"	c
+NFC_JEWEL_INFO	rfidiot/pynfc.py	/^class NFC_JEWEL_INFO(ctypes.Structure):$/;"	c
+NFC_MODULATION	rfidiot/pynfc.py	/^class NFC_MODULATION(ctypes.Structure):$/;"	c
+NFC_TARGET	rfidiot/pynfc.py	/^class NFC_TARGET(ctypes.Structure):$/;"	c
+NFC_TARGET_INFO	rfidiot/pynfc.py	/^class NFC_TARGET_INFO(ctypes.Union):$/;"	c
+NMT_DEP	rfidiot/pynfc.py	/^NMT_DEP			= 0x08$/;"	v
+NMT_FELICA	rfidiot/pynfc.py	/^NMT_FELICA		= 0x07$/;"	v
+NMT_ISO14443A	rfidiot/pynfc.py	/^NMT_ISO14443A		= 0x01$/;"	v
+NMT_ISO14443B	rfidiot/pynfc.py	/^NMT_ISO14443B		= 0x03$/;"	v
+NMT_ISO14443B2CT	rfidiot/pynfc.py	/^NMT_ISO14443B2CT	= 0x06$/;"	v
+NMT_ISO14443B2SR	rfidiot/pynfc.py	/^NMT_ISO14443B2SR	= 0x05$/;"	v
+NMT_ISO14443BI	rfidiot/pynfc.py	/^NMT_ISO14443BI		= 0x04$/;"	v
+NMT_JEWEL	rfidiot/pynfc.py	/^NMT_JEWEL		= 0x02$/;"	v
+NOBAC_FILE	mrpkey.py	/^NOBAC_FILE='NOBAC'$/;"	v
+NP_ACCEPT_INVALID_FRAMES	rfidiot/pynfc.py	/^NP_ACCEPT_INVALID_FRAMES	= 0x08$/;"	v
+NP_ACCEPT_MULTIPLE_FRAMES	rfidiot/pynfc.py	/^NP_ACCEPT_MULTIPLE_FRAMES	= 0x09$/;"	v
+NP_ACTIVATE_CRYPTO1	rfidiot/pynfc.py	/^NP_ACTIVATE_CRYPTO1		= 0x06$/;"	v
+NP_ACTIVATE_FIELD	rfidiot/pynfc.py	/^NP_ACTIVATE_FIELD		= 0x05$/;"	v
+NP_AUTO_ISO14443_4	rfidiot/pynfc.py	/^NP_AUTO_ISO14443_4		= 0x0a$/;"	v
+NP_EASY_FRAMING	rfidiot/pynfc.py	/^NP_EASY_FRAMING			= 0x0b$/;"	v
+NP_FORCE_ISO14443_A	rfidiot/pynfc.py	/^NP_FORCE_ISO14443_A		= 0x0c$/;"	v
+NP_FORCE_ISO14443_B	rfidiot/pynfc.py	/^NP_FORCE_ISO14443_B		= 0x0d$/;"	v
+NP_FORCE_SPEED_106	rfidiot/pynfc.py	/^NP_FORCE_SPEED_106		= 0x0e$/;"	v
+NP_HANDLE_CRC	rfidiot/pynfc.py	/^NP_HANDLE_CRC			= 0x03$/;"	v
+NP_HANDLE_PARITY	rfidiot/pynfc.py	/^NP_HANDLE_PARITY		= 0x04$/;"	v
+NP_INFINITE_SELECT	rfidiot/pynfc.py	/^NP_INFINITE_SELECT		= 0x07$/;"	v
+NP_TIMEOUT_ATR	rfidiot/pynfc.py	/^NP_TIMEOUT_ATR			= 0x01$/;"	v
+NP_TIMEOUT_COM	rfidiot/pynfc.py	/^NP_TIMEOUT_COM			= 0x02$/;"	v
+NP_TIMEOUT_COMMAND	rfidiot/pynfc.py	/^NP_TIMEOUT_COMMAND		= 0x00$/;"	v
+NUMERIC	ChAP-PrePlayAttack.py	/^NUMERIC= 3$/;"	v
+NUMERIC	ChAP.py	/^NUMERIC= 3$/;"	v
+NUMERIC	ChAPlib.py	/^NUMERIC= 3$/;"	v
+NUMERIC	ChAPlibVISA.py	/^NUMERIC= 3$/;"	v
+NibbleReverse	rfidiot/RFIDIOt.py	/^	def NibbleReverse(self,data):$/;"	m	class:rfidiot
+NoInit	rfidiot/RFIDIOt.py	/^	NoInit= False$/;"	v	class:rfidiot
+Nogui	mrpkey.py	/^Nogui= rfidiot.nogui$/;"	v
+OptsEnv	rfidiot/__init__.py	/^OptsEnv= 'RFIDIOtconfig'$/;"	v
+OptsEnv	rfidiot/__init__.py	/^OptsEnv= 'RFIDIOtconfig_opts'$/;"	v
+OutputFiles	ChAP-PrePlayAttack.py	/^            OutputFiles= True$/;"	v
+OutputFiles	ChAP-PrePlayAttack.py	/^OutputFiles= False$/;"	v
+OutputFiles	ChAP-cardemulation.py	/^            OutputFiles= True$/;"	v
+OutputFiles	ChAP-test.py	/^            OutputFiles= True$/;"	v
+OutputFiles	ChAP.py	/^            OutputFiles= True$/;"	v
+OutputFiles	ChAP.py	/^OutputFiles= False$/;"	v
+OutputFiles	ChAPlib.py	/^OutputFiles= False$/;"	v
+OutputFiles	ChAPlibVISA.py	/^OutputFiles= False$/;"	v
+P1	jcopmifare.py	/^P1= '03'$/;"	v
+P1	jcopsetatrhist.py	/^P1= '00'$/;"	v
+P1	jcoptool.py	/^P1= '00'$/;"	v
+P2	jcopsetatrhist.py	/^P2= '00'$/;"	v
+P2	jcoptool.py	/^P2= '00'$/;"	v
+PACKAGE_AID	java/Makefile	/^PACKAGE_AID=0xDC:0x44:0x20:0x06:0x06$/;"	m
+PADBlock	rfidiot/RFIDIOt.py	/^	def PADBlock(self,block):$/;"	m	class:rfidiot
+PCON	rfidiot/RFIDIOt.py	/^	def PCON(self):$/;"	m	class:rfidiot
+PCON2	rfidiot/RFIDIOt.py	/^	def PCON2(self):$/;"	m	class:rfidiot
+PCON3	rfidiot/RFIDIOt.py	/^	def PCON3(self):$/;"	m	class:rfidiot
+PCSCGetTagType	rfidiot/RFIDIOt.py	/^	def PCSCGetTagType(self,atr):$/;"	m	class:rfidiot
+PCSCPrintATR	rfidiot/RFIDIOt.py	/^	def PCSCPrintATR(self,data):$/;"	m	class:rfidiot
+PCSC_APDU	rfidiot/RFIDIOt.py	/^	PCSC_APDU= {$/;"	v	class:rfidiot
+PCSC_COMMS_ERROR	rfidiot/RFIDIOt.py	/^	PCSC_COMMS_ERROR= 'PC01'$/;"	v	class:rfidiot
+PCSC_CSC	rfidiot/RFIDIOt.py	/^	PCSC_CSC= '804F'$/;"	v	class:rfidiot
+PCSC_Keys	rfidiot/RFIDIOt.py	/^	PCSC_Keys= {}$/;"	v	class:rfidiot
+PCSC_NAME	rfidiot/RFIDIOt.py	/^		     }$/;"	v	class:rfidiot
+PCSC_NON_VOLATILE	rfidiot/RFIDIOt.py	/^	PCSC_NON_VOLATILE= '20'$/;"	v	class:rfidiot
+PCSC_NO_CARD	rfidiot/RFIDIOt.py	/^	PCSC_NO_CARD= 'PC00'$/;"	v	class:rfidiot
+PCSC_RID	rfidiot/RFIDIOt.py	/^	PCSC_RID= 'A000000306'$/;"	v	class:rfidiot
+PCSC_SS	rfidiot/RFIDIOt.py	/^		   'FF':'RFU'}$/;"	v	class:rfidiot
+PCSC_VOLATILE	rfidiot/RFIDIOt.py	/^	PCSC_VOLATILE= '00'$/;"	v	class:rfidiot
+PIL	mrpkey.py	/^import PIL.Image as Image$/;"	i
+PIL	mrpkey.py	/^import PIL.ImageTk as ImageTk$/;"	i
+PIN	ChAP-PrePlayAttack.py	/^        PIN= args[0]$/;"	v
+PIN	ChAP-PrePlayAttack.py	/^PIN= ''$/;"	v
+PIN	ChAP-paypass.py	/^        PIN= args[0]$/;"	v
+PIN	ChAP-paypass.py	/^PIN= ''$/;"	v
+PIN	ChAP-paywave.py	/^        PIN= args[0]$/;"	v
+PIN	ChAP-paywave.py	/^PIN= ''$/;"	v
+PIN	ChAP-test.py	/^        PIN= args[0]$/;"	v
+PIN	ChAP-test.py	/^PIN= ''$/;"	v
+PIN	ChAP.py	/^        PIN= args[0]$/;"	v
+PIN	ChAP.py	/^PIN= ''$/;"	v
+PIN_BLOCKED	ChAP-PrePlayAttack.py	/^PIN_BLOCKED= [0x69,0x83]$/;"	v
+PIN_BLOCKED	ChAP.py	/^PIN_BLOCKED= [0x69,0x83]$/;"	v
+PIN_BLOCKED	ChAPlib.py	/^PIN_BLOCKED= [0x69,0x83]$/;"	v
+PIN_BLOCKED	ChAPlibVISA.py	/^PIN_BLOCKED= [0x69,0x83]$/;"	v
+PIN_BLOCKED2	ChAP-PrePlayAttack.py	/^PIN_BLOCKED2= [0x69,0x84]$/;"	v
+PIN_BLOCKED2	ChAP.py	/^PIN_BLOCKED2= [0x69,0x84]$/;"	v
+PIN_BLOCKED2	ChAPlib.py	/^PIN_BLOCKED2= [0x69,0x84]$/;"	v
+PIN_BLOCKED2	ChAPlibVISA.py	/^PIN_BLOCKED2= [0x69,0x84]$/;"	v
+PIN_TRY_COUNTER	ChAP-PrePlayAttack.py	/^PIN_TRY_COUNTER= [0x9f,0x17]$/;"	v
+PIN_TRY_COUNTER	ChAP.py	/^PIN_TRY_COUNTER= [0x9f,0x17]$/;"	v
+PIN_TRY_COUNTER	ChAPlib.py	/^PIN_TRY_COUNTER= [0x9f,0x17]$/;"	v
+PIN_TRY_COUNTER	ChAPlibVISA.py	/^PIN_TRY_COUNTER= [0x9f,0x17]$/;"	v
+PIN_WRONG	ChAP-PrePlayAttack.py	/^PIN_WRONG= 0x63$/;"	v
+PIN_WRONG	ChAP.py	/^PIN_WRONG= 0x63$/;"	v
+PIN_WRONG	ChAPlib.py	/^PIN_WRONG= 0x63$/;"	v
+PIN_WRONG	ChAPlibVISA.py	/^PIN_WRONG= 0x63$/;"	v
+PN532_APDU	rfidiot/pn532.py	/^PN532_APDU=		{$/;"	v
+PN532_BAUDRATES	rfidiot/pn532.py	/^PN532_BAUDRATES= 	{$/;"	v
+PN532_ERRORS	rfidiot/pn532.py	/^PN532_ERRORS=		{$/;"	v
+PN532_FRAMING	rfidiot/pn532.py	/^PN532_FRAMING= 		{$/;"	v
+PN532_FUNCTIONS	rfidiot/pn532.py	/^PN532_FUNCTIONS=	{$/;"	v
+PN532_MODULATION	rfidiot/pn532.py	/^PN532_MODULATION=	{$/;"	v
+PN532_OK	rfidiot/pn532.py	/^PN532_OK= 'D503'$/;"	v
+PN532_RF	rfidiot/pn532.py	/^PN532_RF=	{$/;"	v
+PN532_TARGETS	rfidiot/pn532.py	/^PN532_TARGETS=		{$/;"	v
+PORT	rfidiot/pyandroid.py	/^PORT = 4444$/;"	v
+PWD	hitag2brute.py	/^	PWD= '%08X' % pwd$/;"	v
+Parity	rfidiot/RFIDIOt.py	/^	def Parity(self,data,parity):$/;"	m	class:rfidiot
+Protocol	ChAP-PrePlayAttack.py	/^            Protocol= CardConnection.T1_protocol$/;"	v
+Protocol	ChAP-PrePlayAttack.py	/^Protocol= CardConnection.T0_protocol$/;"	v
+Protocol	ChAP-cardemulation.py	/^            Protocol= CardConnection.T1_protocol$/;"	v
+Protocol	ChAP-test.py	/^            Protocol= CardConnection.T1_protocol$/;"	v
+Protocol	ChAP.py	/^            Protocol= CardConnection.T1_protocol$/;"	v
+Protocol	ChAP.py	/^Protocol= CardConnection.T0_protocol$/;"	v
+Protocol	ChAPlib.py	/^Protocol= CardConnection.T0_protocol$/;"	v
+Protocol	ChAPlibVISA.py	/^Protocol= CardConnection.T0_protocol$/;"	v
+Q5	rfidiot/RFIDIOt.py	/^	Q5= 'Q'$/;"	v	class:rfidiot
+Q5CFB	unique.py	/^Q5CFB='e601f004'$/;"	v
+Q5ID	readlfx.py	/^	Q5ID= card.uid$/;"	v
+Q5ID	writelfx.py	/^	Q5ID= card.uid$/;"	v
+Q5Mod	readlfx.py	/^	 '111':'NRZ \/ direct'}$/;"	v
+Q5Mod	writelfx.py	/^	 '111':'NRZ \/ direct'}$/;"	v
+Quiet	nfcid.py	/^Quiet= True$/;"	v
+RANDOM	jcopmifare.py	/^RANDOM= '03'$/;"	v
+READ	jcopmifare.py	/^READ= '02'$/;"	v
+READER_ACG	rfidiot/RFIDIOt.py	/^	READER_ACG= 0x01$/;"	v	class:rfidiot
+READER_ACS	rfidiot/RFIDIOt.py	/^	READER_ACS= 0x07$/;"	v	class:rfidiot
+READER_ANDROID	rfidiot/RFIDIOt.py	/^	READER_ANDROID = 0x10$/;"	v	class:rfidiot
+READER_DEMOTAG	rfidiot/RFIDIOt.py	/^	READER_DEMOTAG= 0x03$/;"	v	class:rfidiot
+READER_FROSCH	rfidiot/RFIDIOt.py	/^	READER_FROSCH= 0x02$/;"	v	class:rfidiot
+READER_LIBNFC	rfidiot/RFIDIOt.py	/^	READER_LIBNFC = 0x08$/;"	v	class:rfidiot
+READER_NONE	rfidiot/RFIDIOt.py	/^	READER_NONE = 0x09$/;"	v	class:rfidiot
+READER_OMNIKEY	rfidiot/RFIDIOt.py	/^	READER_OMNIKEY= 0x05$/;"	v	class:rfidiot
+READER_PCSC	rfidiot/RFIDIOt.py	/^	READER_PCSC= 0x04$/;"	v	class:rfidiot
+READER_SCM	rfidiot/RFIDIOt.py	/^	READER_SCM= 0x06$/;"	v	class:rfidiot
+READ_RECORD	ChAP-PrePlayAttack.py	/^READ_RECORD = [0x00, 0xb2]$/;"	v
+READ_RECORD	ChAP.py	/^READ_RECORD = [0x00, 0xb2]$/;"	v
+READ_RECORD	ChAPlib.py	/^READ_RECORD = [0x00, 0xb2]$/;"	v
+READ_RECORD	ChAPlibVISA.py	/^READ_RECORD = [0x00, 0xb2]$/;"	v
+RESET_DATA	readmifaresimple.py	/^RESET_DATA=    '00000000000000000000000000000000'$/;"	v
+RESET_TRAILER	readmifaresimple.py	/^RESET_TRAILER= 'FFFFFFFFFFFFFF078069FFFFFFFFFFFF'$/;"	v
+RFIDIOt	rfidiot/__init__.py	/^import RFIDIOt$/;"	i
+ROT	rfidiot/RFIDIOt.py	/^	def ROT(self):$/;"	m	class:rfidiot
+RRT	rfidiot/RFIDIOt.py	/^	def RRT(self):$/;"	m	class:rfidiot
+RawOutput	ChAP-PrePlayAttack.py	/^            RawOutput= True$/;"	v
+RawOutput	ChAP-PrePlayAttack.py	/^RawOutput= False$/;"	v
+RawOutput	ChAP-cardemulation.py	/^            RawOutput= True$/;"	v
+RawOutput	ChAP-test.py	/^            RawOutput= True$/;"	v
+RawOutput	ChAP.py	/^            RawOutput= True$/;"	v
+RawOutput	ChAP.py	/^RawOutput= False$/;"	v
+RawOutput	ChAPlib.py	/^RawOutput= False$/;"	v
+RawOutput	ChAPlibVISA.py	/^RawOutput= False$/;"	v
+ReadablePrint	rfidiot/RFIDIOt.py	/^	def ReadablePrint(self,data):$/;"	m	class:rfidiot
+S	mrpkey.py	/^		S= passport.ToBinary(rnd_ifd + rnd_icc + Kifd)$/;"	v
+SELECT	ChAP-PrePlayAttack.py	/^SELECT = [0x00, 0xA4, 0x04, 0x00]$/;"	v
+SELECT	ChAP.py	/^SELECT = [0x00, 0xA4, 0x04, 0x00]$/;"	v
+SELECT	ChAPlib.py	/^SELECT = [0x00, 0xA4, 0x04, 0x00]$/;"	v
+SELECT	ChAPlibVISA.py	/^SELECT = [0x00, 0xA4, 0x04, 0x00]$/;"	v
+SETBAC	mrpkey.py	/^	SETBAC= True$/;"	v
+SETBAC	mrpkey.py	/^SETBAC=False$/;"	v
+SFI	ChAP-PrePlayAttack.py	/^SFI= 0x88$/;"	v
+SFI	ChAP.py	/^SFI= 0x88$/;"	v
+SFI	ChAPlib.py	/^SFI= 0x88$/;"	v
+SFI	ChAPlibVISA.py	/^SFI= 0x88$/;"	v
+SHA	mrpkey.py	/^from Crypto.Hash import SHA$/;"	i
+SHA	rfidiot/RFIDIOt.py	/^from Crypto.Hash import SHA$/;"	i
+SSC	mrpkey.py	/^	SSC= passport.ToBinary(rnd_icc[8:16] + rnd_ifd[8:16])$/;"	v
+SSC	mrpkey.py	/^SSC= ''$/;"	v
+SSCIncrement	rfidiot/RFIDIOt.py	/^	def SSCIncrement(self,ssc):$/;"	m	class:rfidiot
+SST	rfidiot/RFIDIOt.py	/^	def SST(self):$/;"	m	class:rfidiot
+START_BLOCK	readmifaresimple.py	/^START_BLOCK= 0$/;"	v
+STOa	rfidiot/RFIDIOt.py	/^	def STOa(self):$/;"	m	class:rfidiot
+STOb	rfidiot/RFIDIOt.py	/^	def STOb(self):$/;"	m	class:rfidiot
+STOs	rfidiot/RFIDIOt.py	/^	def STOs(self):$/;"	m	class:rfidiot
+STRIP_INDEX	mrpkey.py	/^STRIP_INDEX=True$/;"	v
+SUB	mrpkey.py	/^SUB= 1$/;"	v
+SW12_COND_NOT_SAT	ChAP-PrePlayAttack.py	/^SW12_COND_NOT_SAT= [0x69,0x85]      # conditions of use not satisfied $/;"	v
+SW12_COND_NOT_SAT	ChAP.py	/^SW12_COND_NOT_SAT= [0x69,0x85]      # conditions of use not satisfied $/;"	v
+SW12_COND_NOT_SAT	ChAPlib.py	/^SW12_COND_NOT_SAT= [0x69,0x85]      # conditions of use not satisfied $/;"	v
+SW12_COND_NOT_SAT	ChAPlibVISA.py	/^SW12_COND_NOT_SAT= [0x69,0x85]      # conditions of use not satisfied $/;"	v
+SW12_NOT_FOUND	ChAP-PrePlayAttack.py	/^SW12_NOT_FOUND= [0x6a,0x82]$/;"	v
+SW12_NOT_FOUND	ChAP.py	/^SW12_NOT_FOUND= [0x6a,0x82]$/;"	v
+SW12_NOT_FOUND	ChAPlib.py	/^SW12_NOT_FOUND= [0x6a,0x82]$/;"	v
+SW12_NOT_FOUND	ChAPlibVISA.py	/^SW12_NOT_FOUND= [0x6a,0x82]$/;"	v
+SW12_NOT_SUPORTED	ChAP-PrePlayAttack.py	/^SW12_NOT_SUPORTED= [0x6a,0x81]$/;"	v
+SW12_NOT_SUPORTED	ChAP.py	/^SW12_NOT_SUPORTED= [0x6a,0x81]$/;"	v
+SW12_NOT_SUPORTED	ChAPlib.py	/^SW12_NOT_SUPORTED= [0x6a,0x81]$/;"	v
+SW12_NOT_SUPORTED	ChAPlibVISA.py	/^SW12_NOT_SUPORTED= [0x6a,0x81]$/;"	v
+SW12_OK	ChAP-PrePlayAttack.py	/^SW12_OK= [0x90,0x00]$/;"	v
+SW12_OK	ChAP.py	/^SW12_OK= [0x90,0x00]$/;"	v
+SW12_OK	ChAPlib.py	/^SW12_OK= [0x90,0x00]$/;"	v
+SW12_OK	ChAPlibVISA.py	/^SW12_OK= [0x90,0x00]$/;"	v
+SW1_RESPONSE_BYTES	ChAP-PrePlayAttack.py	/^SW1_RESPONSE_BYTES= 0x61$/;"	v
+SW1_RESPONSE_BYTES	ChAP.py	/^SW1_RESPONSE_BYTES= 0x61$/;"	v
+SW1_RESPONSE_BYTES	ChAPlib.py	/^SW1_RESPONSE_BYTES= 0x61$/;"	v
+SW1_RESPONSE_BYTES	ChAPlibVISA.py	/^SW1_RESPONSE_BYTES= 0x61$/;"	v
+SW1_WRONG_LENGTH	ChAP-PrePlayAttack.py	/^SW1_WRONG_LENGTH= 0x6c$/;"	v
+SW1_WRONG_LENGTH	ChAP.py	/^SW1_WRONG_LENGTH= 0x6c$/;"	v
+SW1_WRONG_LENGTH	ChAPlib.py	/^SW1_WRONG_LENGTH= 0x6c$/;"	v
+SW1_WRONG_LENGTH	ChAPlibVISA.py	/^SW1_WRONG_LENGTH= 0x6c$/;"	v
+StringIO	mrpkey.py	/^import StringIO$/;"	i
+Style	mrpkey.py	/^Style= 'Arrow'$/;"	v
+TAGS	ChAP-PrePlayAttack.py	/^TAGS=   {   $/;"	v
+TAGS	ChAP.py	/^TAGS=   {   $/;"	v
+TAGS	ChAPlib.py	/^TAGS=   {   $/;"	v
+TAGS	ChAPlibVISA.py	/^TAGS=   {   $/;"	v
+TAG_FID	mrpkey.py	/^	   EF_SOD:'011D'}$/;"	v
+TAG_FILE	mrpkey.py	/^	   EF_SOD:'EF_SOD.BIN'}$/;"	v
+TAG_NAME	mrpkey.py	/^	   EF_TAGS:'Tag List'}$/;"	v
+TC	ChAP-PrePlayAttack.py	/^TC= 0x40$/;"	v
+TC	ChAP.py	/^TC= 0x40$/;"	v
+TC	ChAPlib.py	/^TC= 0x40$/;"	v
+TC	ChAPlibVISA.py	/^TC= 0x40$/;"	v
+TEMPLATE	ChAP-PrePlayAttack.py	/^TEMPLATE= 0$/;"	v
+TEMPLATE	ChAP.py	/^TEMPLATE= 0$/;"	v
+TEMPLATE	ChAPlib.py	/^TEMPLATE= 0$/;"	v
+TEMPLATE	ChAPlibVISA.py	/^TEMPLATE= 0$/;"	v
+TEMPLATE	mrpkey.py	/^TEMPLATE= 0$/;"	v
+TEST	mrpkey.py	/^	TEST= True$/;"	v
+TEST	mrpkey.py	/^TEST= False$/;"	v
+TEST_Kifd	mrpkey.py	/^TEST_Kifd= '0B795240CB7049B01C19B33E32804F0B'$/;"	v
+TEST_MRZ	mrpkey.py	/^TEST_MRZ= 'L898902C<3UTO6908061F9406236ZE184226B<<<<<14'$/;"	v
+TEST_respdata	mrpkey.py	/^TEST_respdata= '46B9342A41396CD7386BF5803104D7CEDC122B9132139BAF2EEDC94EE178534F2F2D235D074D7449'$/;"	v
+TEST_rnd_icc	mrpkey.py	/^TEST_rnd_icc= '4608F91988702212'$/;"	v
+TEST_rnd_ifd	mrpkey.py	/^TEST_rnd_ifd= '781723860C06C226'$/;"	v
+TEXT	ChAP-PrePlayAttack.py	/^TEXT= 1$/;"	v
+TEXT	ChAP.py	/^TEXT= 1$/;"	v
+TEXT	ChAPlib.py	/^TEXT= 1$/;"	v
+TEXT	ChAPlibVISA.py	/^TEXT= 1$/;"	v
+TLV_CLASS_MASK	ChAP-PrePlayAttack.py	/^TLV_CLASS_MASK= {   $/;"	v
+TLV_CLASS_MASK	ChAP.py	/^TLV_CLASS_MASK= {   $/;"	v
+TLV_CLASS_MASK	ChAPlib.py	/^TLV_CLASS_MASK= {   $/;"	v
+TLV_CLASS_MASK	ChAPlibVISA.py	/^TLV_CLASS_MASK= {   $/;"	v
+TLV_DATA_MASK	ChAP-PrePlayAttack.py	/^TLV_DATA_MASK=  0x20$/;"	v
+TLV_DATA_MASK	ChAP.py	/^TLV_DATA_MASK=  0x20$/;"	v
+TLV_DATA_MASK	ChAPlib.py	/^TLV_DATA_MASK=  0x20$/;"	v
+TLV_DATA_MASK	ChAPlibVISA.py	/^TLV_DATA_MASK=  0x20$/;"	v
+TLV_DATA_TYPE	ChAP-PrePlayAttack.py	/^TLV_DATA_TYPE= ['Primitive data object','Constructed data object']$/;"	v
+TLV_DATA_TYPE	ChAP.py	/^TLV_DATA_TYPE= ['Primitive data object','Constructed data object']$/;"	v
+TLV_DATA_TYPE	ChAPlib.py	/^TLV_DATA_TYPE= ['Primitive data object','Constructed data object']$/;"	v
+TLV_DATA_TYPE	ChAPlibVISA.py	/^TLV_DATA_TYPE= ['Primitive data object','Constructed data object']$/;"	v
+TLV_LENGTH_MASK	ChAP-PrePlayAttack.py	/^TLV_LENGTH_MASK= 0x80$/;"	v
+TLV_LENGTH_MASK	ChAP.py	/^TLV_LENGTH_MASK= 0x80$/;"	v
+TLV_LENGTH_MASK	ChAPlib.py	/^TLV_LENGTH_MASK= 0x80$/;"	v
+TLV_LENGTH_MASK	ChAPlibVISA.py	/^TLV_LENGTH_MASK= 0x80$/;"	v
+TLV_TAG_MASK	ChAP-PrePlayAttack.py	/^TLV_TAG_MASK= 0x80$/;"	v
+TLV_TAG_MASK	ChAP.py	/^TLV_TAG_MASK= 0x80$/;"	v
+TLV_TAG_MASK	ChAPlib.py	/^TLV_TAG_MASK= 0x80$/;"	v
+TLV_TAG_MASK	ChAPlibVISA.py	/^TLV_TAG_MASK= 0x80$/;"	v
+TLV_TAG_NUMBER_MASK	ChAP-PrePlayAttack.py	/^TLV_TAG_NUMBER_MASK= 0x1f$/;"	v
+TLV_TAG_NUMBER_MASK	ChAP.py	/^TLV_TAG_NUMBER_MASK= 0x1f$/;"	v
+TLV_TAG_NUMBER_MASK	ChAPlib.py	/^TLV_TAG_NUMBER_MASK= 0x1f$/;"	v
+TLV_TAG_NUMBER_MASK	ChAPlibVISA.py	/^TLV_TAG_NUMBER_MASK= 0x1f$/;"	v
+TRANSITID	rfidiot/RFIDIOt.py	/^	def TRANSITID(self,data):$/;"	m	class:rfidiot
+TRANSITIDEncode	rfidiot/RFIDIOt.py	/^	def TRANSITIDEncode(self,data):$/;"	m	class:rfidiot
+TRANSITIDPrint	rfidiot/RFIDIOt.py	/^	def TRANSITIDPrint(self,data):$/;"	m	class:rfidiot
+TRANSITLRC	rfidiot/RFIDIOt.py	/^	def TRANSITLRC(self,data):$/;"	m	class:rfidiot
+TRANS_VAL	ChAP-PrePlayAttack.py	/^TRANS_VAL= {$/;"	v
+TRANS_VAL	ChAP.py	/^TRANS_VAL= {$/;"	v
+TRANS_VAL	ChAPlib.py	/^TRANS_VAL= {$/;"	v
+TRANS_VALS	ChAP-paywave.py	/^TRANS_VALS= {$/;"	v
+ToBinary	rfidiot/RFIDIOt.py	/^	def ToBinary(self,string):$/;"	m	class:rfidiot
+ToBinaryString	rfidiot/RFIDIOt.py	/^	def ToBinaryString(self,data):$/;"	m	class:rfidiot
+ToHex	rfidiot/RFIDIOt.py	/^	def ToHex(self,data):$/;"	m	class:rfidiot
+UNBLOCK_PIN	ChAP-PrePlayAttack.py	/^UNBLOCK_PIN= [0x84,0x24,0x00,0x00,0x00]$/;"	v
+UNBLOCK_PIN	ChAP.py	/^UNBLOCK_PIN= [0x84,0x24,0x00,0x00,0x00]$/;"	v
+UNBLOCK_PIN	ChAPlib.py	/^UNBLOCK_PIN= [0x84,0x24,0x00,0x00,0x00]$/;"	v
+UNBLOCK_PIN	ChAPlibVISA.py	/^UNBLOCK_PIN= [0x84,0x24,0x00,0x00,0x00]$/;"	v
+UNSETBAC	mrpkey.py	/^	UNSETBAC= True$/;"	v
+UNSETBAC	mrpkey.py	/^UNSETBAC=False$/;"	v
+Unique64Bit	rfidiot/RFIDIOt.py	/^	def Unique64Bit(self,data):$/;"	m	class:rfidiot
+UniqueToEM	rfidiot/RFIDIOt.py	/^	def UniqueToEM(self,data):$/;"	m	class:rfidiot
+VALUE	ChAP-PrePlayAttack.py	/^VALUE= 2$/;"	v
+VALUE	ChAP.py	/^VALUE= 2$/;"	v
+VALUE	ChAPlib.py	/^VALUE= 2$/;"	v
+VALUE	ChAPlibVISA.py	/^VALUE= 2$/;"	v
+VERIFY	ChAP-PrePlayAttack.py	/^VERIFY= [0x00,0x20,0x00,0x80]$/;"	v
+VERIFY	ChAP.py	/^VERIFY= [0x00,0x20,0x00,0x80]$/;"	v
+VERIFY	ChAPlib.py	/^VERIFY= [0x00,0x20,0x00,0x80]$/;"	v
+VERIFY	ChAPlibVISA.py	/^VERIFY= [0x00,0x20,0x00,0x80]$/;"	v
+VERSION	rfidiot/RFIDIOt.py	/^	VERSION= '1.0i'$/;"	v	class:rfidiot
+VERSION	rfidiot/pyandroid.py	/^	VERSION = "0.1"$/;"	v	class:Android
+Verbose	ChAP-PrePlayAttack.py	/^            Verbose= True$/;"	v
+Verbose	ChAP-PrePlayAttack.py	/^Verbose= False$/;"	v
+Verbose	ChAP-cardemulation.py	/^            Verbose= True$/;"	v
+Verbose	ChAP-test.py	/^            Verbose= True$/;"	v
+Verbose	ChAP.py	/^            Verbose= True$/;"	v
+Verbose	ChAP.py	/^Verbose= False$/;"	v
+Verbose	ChAPlib.py	/^Verbose= False$/;"	v
+Verbose	ChAPlibVISA.py	/^Verbose= False$/;"	v
+Verbose	nfcid.py	/^Verbose= True$/;"	v
+WRITE	jcopmifare.py	/^WRITE= '01'$/;"	v
+__del__	rfidiot/pyandroid.py	/^	def __del__(self):$/;"	m	class:Android	file:
+__del__	rfidiot/pynfc.py	/^	def __del__(self):$/;"	m	class:NFC	file:
+__init__	rfidiot/RFIDIOt.py	/^	def __init__(self,readernum,reader,port,baud,to,debug,noinit,nfcreader):$/;"	m	class:rfidiot
+__init__	rfidiot/pyandroid.py	/^	def __init__(self):$/;"	m	class:Android
+__init__	rfidiot/pynfc.py	/^	def __init__(self, nfcreader):$/;"	m	class:NFC
+__init__	rfidiot/pynfc.py	/^	def __init__(self, ti):$/;"	m	class:ISO14443A
+__init__	rfidiot/pynfc.py	/^	def __init__(self, ti):$/;"	m	class:ISO14443B
+__str__	rfidiot/pynfc.py	/^	def __str__(self):$/;"	m	class:ISO14443A	file:
+__str__	rfidiot/pynfc.py	/^	def __str__(self):$/;"	m	class:ISO14443B	file:
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),$/;"	v	class:NFC_ISO14443A_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtDIV', ctypes.c_ubyte * 4),$/;"	v	class:NFC_ISO14443BI_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),$/;"	v	class:NFC_DEP_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtPupi', ctypes.c_ubyte * 4),$/;"	v	class:NFC_ISO14443B_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtUID', ctypes.c_ubyte * 4),$/;"	v	class:NFC_ISO14443B2CT_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('abtUID', ctypes.c_ubyte * 8)]$/;"	v	class:NFC_ISO14443B2SR_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('btSensRes', ctypes.c_ubyte * 2),$/;"	v	class:NFC_JEWEL_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('connstring', ctypes.c_ubyte * NFC_CONNSTRING_LENGTH)]$/;"	v	class:NFC_CONNSTRING
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('nai', NFC_ISO14443A_INFO),$/;"	v	class:NFC_TARGET_INFO
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('nmt', ctypes.c_uint),$/;"	v	class:NFC_MODULATION
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('nti', NFC_TARGET_INFO),$/;"	v	class:NFC_TARGET
+_fields_	rfidiot/pynfc.py	/^	_fields_ = [('szLen', ctypes.c_size_t),$/;"	v	class:NFC_FELICA_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_CONNSTRING
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_DEP_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_FELICA_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_ISO14443A_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_ISO14443B2CT_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_ISO14443B2SR_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_ISO14443BI_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_ISO14443B_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_JEWEL_INFO
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_MODULATION
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_TARGET
+_pack_	rfidiot/pynfc.py	/^	_pack_ = 1$/;"	v	class:NFC_TARGET_INFO
+_wrapper	mrpkey.py	/^	def _wrapper(*wargs):$/;"	f	function:do_command
+acs_get_firmware_revision	rfidiot/RFIDIOt.py	/^	def acs_get_firmware_revision(self):$/;"	m	class:rfidiot
+acs_get_sam_id	rfidiot/RFIDIOt.py	/^	def acs_get_sam_id(self):$/;"	m	class:rfidiot
+acs_get_sam_serial	rfidiot/RFIDIOt.py	/^	def acs_get_sam_serial(self):$/;"	m	class:rfidiot
+acs_mifare_login	rfidiot/RFIDIOt.py	/^	def acs_mifare_login(self,block,key,keytype):$/;"	m	class:rfidiot
+acs_power_off	rfidiot/RFIDIOt.py	/^	def acs_power_off(self):$/;"	m	class:rfidiot
+acs_power_on	rfidiot/RFIDIOt.py	/^	def acs_power_on(self):$/;"	m	class:rfidiot
+acs_rats	rfidiot/RFIDIOt.py	/^	def acs_rats(self,control):$/;"	m	class:rfidiot
+acs_read_block	rfidiot/RFIDIOt.py	/^	def acs_read_block(self,block):$/;"	m	class:rfidiot
+acs_select_tag	rfidiot/RFIDIOt.py	/^	def acs_select_tag(self):$/;"	m	class:rfidiot
+acs_send_apdu	rfidiot/RFIDIOt.py	/^	def acs_send_apdu(self,apdu):$/;"	m	class:rfidiot
+acs_send_direct_apdu	rfidiot/RFIDIOt.py	/^	def acs_send_direct_apdu(self,apdu):$/;"	m	class:rfidiot
+acs_send_reader_apdu	rfidiot/RFIDIOt.py	/^	def acs_send_reader_apdu(self,apdu):$/;"	m	class:rfidiot
+acs_set_retry	rfidiot/RFIDIOt.py	/^	def acs_set_retry(self,time):$/;"	m	class:rfidiot
+acs_transmit_apdu	rfidiot/RFIDIOt.py	/^	def acs_transmit_apdu(self,apdu):$/;"	m	class:rfidiot
+address	eeprom.py	/^address= 0$/;"	v
+aid	ChAP.py	/^                                aid= response[i + 2:i + 2 + aidlen]$/;"	v
+aid	ChAP.py	/^                        aid= ''$/;"	v
+aid	rfidiot-cli.py	/^			aid= aids.pop()$/;"	v
+aidlen	ChAP.py	/^                                aidlen= response[i + 1]$/;"	v
+aidlist	ChAP-PrePlayAttack.py	/^aidlist= KNOWN_AIDS$/;"	v
+aidlist	ChAP.py	/^aidlist= KNOWN_AIDS$/;"	v
+aidlist	nfcid.py	/^aidlist= 	[$/;"	v
+aids	rfidiot-cli.py	/^			aids= [arg]$/;"	v
+aids	rfidiot-cli.py	/^			aids= card.AIDS.keys()$/;"	v
+apdu	ChAP-PrePlayAttack.py	/^    apdu = SELECT + [len(DF_PSE)] + DF_PSE$/;"	v
+apdu	ChAP-cardemulation.py	/^    apdu = SELECT + [len(cardPSE)] + cardPSE $/;"	v
+apdu	ChAP-paypass.py	/^    apdu = SELECT + [len(DF_PSE)] + DF_PSE + [0x00]$/;"	v
+apdu	ChAP-paywave.py	/^    apdu = SELECT + [len(DF_PSE)] + DF_PSE + [0x00]$/;"	v
+apdu	ChAP-test.py	/^        apdu = SELECT + [len(DF_PSE)] + DF_PSE + [0x00]$/;"	v
+apdu	ChAP-test.py	/^        apdu = [0xAA,0xBB,0x00,0x00,0x00]$/;"	v
+apdu	ChAP.py	/^                        apdu= READ_RECORD + [p1] + [p2,le]$/;"	v
+apdu	ChAP.py	/^                    apdu= READ_RECORD + [p1] + [p2,le]$/;"	v
+apdu	ChAP.py	/^    apdu = SELECT + [len(DF_PSE)] + DF_PSE$/;"	v
+apdu	nfcid.py	/^			apdu = apdu + '00'$/;"	v
+apdu	nfcid.py	/^		apdu = '00A4040007' + aidlist[current][1]$/;"	v
+apdu	send_apdu.py	/^	apdu = raw_input("enter the apdu to send now, send \\'close\\' to finish :")$/;"	v
+application_life_cycle_states	jcoptool.py	/^application_life_cycle_states= 	{$/;"	v
+arg	rfidiot-cli.py	/^					arg= arg[1:]$/;"	v
+arg	rfidiot-cli.py	/^		arg= args.pop().upper()$/;"	v
+arg0	mrpkey.py	/^arg0= args[0].upper()$/;"	v
+args	bruteforce.py	/^args= rfidiot.args$/;"	v
+args	cardselect.py	/^args= rfidiot.args$/;"	v
+args	demotag.py	/^args= rfidiot.args$/;"	v
+args	fdxbnum.py	/^args= rfidiot.args$/;"	v
+args	hitag2brute.py	/^args= rfidiot.args$/;"	v
+args	hitag2reset.py	/^args= rfidiot.args$/;"	v
+args	jcopmifare.py	/^args= rfidiot.args$/;"	v
+args	jcopsetatrhist.py	/^args= rfidiot.args$/;"	v
+args	jcoptool.py	/^args= rfidiot.args$/;"	v
+args	mrpkey.py	/^args= rfidiot.args$/;"	v
+args	multiselect.py	/^args= rfidiot.args$/;"	v
+args	pn532emulate.py	/^args= rfidiot.args$/;"	v
+args	pn532mitm.py	/^args= rfidiot.args$/;"	v
+args	q5reset.py	/^args= rfidiot.args$/;"	v
+args	readlfx.py	/^args= rfidiot.args$/;"	v
+args	readmifaresimple.py	/^args= rfidiot.args$/;"	v
+args	rfidiot-cli.py	/^args= rfidiot.args$/;"	v
+args	rfidiot/__init__.py	/^		args= []$/;"	v
+args	transit.py	/^args= rfidiot.args$/;"	v
+args	unique.py	/^args= rfidiot.args$/;"	v
+args	writelfx.py	/^args= rfidiot.args$/;"	v
+args	writemifare1k.py	/^args= rfidiot.args$/;"	v
+asn1datalength	mrpkey.py	/^def asn1datalength(data):$/;"	f
+asn1fieldlength	mrpkey.py	/^def asn1fieldlength(data):$/;"	f
+atcval	ChAP.py	/^                    atcval= (atc[0] << 8) + atc[1]$/;"	v
+authenticate	rfidiot/RFIDIOt.py	/^	def authenticate(self,sector,keytype, keynum):$/;"	m	class:rfidiot
+author	setup.py	/^        author = 'Adam Laurie',$/;"	v
+author_email	setup.py	/^        author_email = 'adam@algroup.co.uk',$/;"	v
+bacfile	mrpkey.py	/^	bacfile= open(tempfiles+NOBAC_FILE,'wb+')$/;"	v
+baudrate	pn532emulate.py	/^baudrate= mode & 0x70$/;"	v
+baudrate	pn532mitm.py	/^baudrate= mode & 0x70$/;"	v
+bcc0	readmifareultra.py	/^	bcc0=card.data[6:8]$/;"	v
+bcc1	readmifareultra.py	/^	bcc1=card.data[0:2]$/;"	v
+binary	hidprox.py	/^	binary= binary[7:]$/;"	v
+binary	hidprox.py	/^	binary= binary[8:]$/;"	v
+binary	hidprox.py	/^	binary= binary[:-1]$/;"	v
+binary	hidprox.py	/^	binary= card.ToBinaryString(card.pcsc_atr[6:].decode('hex'))$/;"	v
+binary	rfidiot/RFIDIOt.py	/^	binary= ''$/;"	v	class:rfidiot
+binascii	rfidiot/pyandroid.py	/^import binascii$/;"	i
+binascii	rfidiot/pynfc.py	/^import binascii$/;"	i
+blank_key	rfidiot-cli.py	/^			blank_key= args.pop()$/;"	v
+block	loginall.py	/^block = 0$/;"	v
+block	readmifaresimple.py	/^block= startblock$/;"	v
+block	rfidiot-cli.py	/^						block= Mifare_KeyA + block[12:20] + Mifare_KeyB$/;"	v
+block	rfidiot-cli.py	/^						block= Mifare_KeyA + block[12:]$/;"	v
+block	rfidiot-cli.py	/^					block= '00' * 16$/;"	v
+block	rfidiot-cli.py	/^					block= Mifare_KeyA + block[12:]$/;"	v
+block	rfidiot-cli.py	/^					block= Mifare_KeyA + perms + Mifare_KeyB$/;"	v
+block	rfidiot-cli.py	/^				block= data[p:p + 16].encode('hex')$/;"	v
+blockdata	readmifaresimple.py	/^					blockdata= RESET_TRAILER[:12] + CloneData[outblock][12:20] + key$/;"	v
+blockdata	readmifaresimple.py	/^					blockdata= key + CloneData[outblock][12:20] + otherkey$/;"	v
+blockdata	readmifaresimple.py	/^				blockdata= CloneData[outblock]$/;"	v
+blockdata	readmifaresimple.py	/^				blockdata= RESET_DATA$/;"	v
+blockdata	readmifaresimple.py	/^				blockdata= RESET_TRAILER $/;"	v
+blocks	readmifareultra.py	/^blocks=16$/;"	v
+blockslocked	readmifare1k.py	/^blockslocked= 0$/;"	v
+blockslocked	readmifaresimple.py	/^blockslocked= 0$/;"	v
+blocksread	readmifare1k.py	/^blocksread= 0$/;"	v
+blocksread	readmifaresimple.py	/^blocksread= 0$/;"	v
+brnum	mrpkey.py	/^brnum= 0$/;"	v
+bruteforce	mrpkey.py	/^		bruteforce= True$/;"	v
+bruteforce	mrpkey.py	/^bruteforce= False$/;"	v
+bruteforce_aids	ChAP-PrePlayAttack.py	/^def bruteforce_aids(aid):$/;"	f
+bruteforce_aids	ChAP.py	/^def bruteforce_aids(aid):$/;"	f
+bruteforce_aids	ChAPlib.py	/^def bruteforce_aids(aid):$/;"	f
+bruteforce_aids	ChAPlibVISA.py	/^def bruteforce_aids(aid):$/;"	f
+bruteforce_files	ChAP-PrePlayAttack.py	/^def bruteforce_files():$/;"	f
+bruteforce_files	ChAP.py	/^def bruteforce_files():$/;"	f
+bruteforce_files	ChAPlib.py	/^def bruteforce_files(cardservice):$/;"	f
+bruteforce_files	ChAPlibVISA.py	/^def bruteforce_files(cardservice):$/;"	f
+bruteforce_primitives	ChAP-PrePlayAttack.py	/^def bruteforce_primitives():$/;"	f
+bruteforce_primitives	ChAP.py	/^def bruteforce_primitives():$/;"	f
+bruteforce_primitives	ChAPlib.py	/^def bruteforce_primitives():$/;"	f
+bruteforce_primitives	ChAPlibVISA.py	/^def bruteforce_primitives():$/;"	f
+bruteforceno	mrpkey.py	/^		bruteforceno= True$/;"	v
+bruteforceno	mrpkey.py	/^bruteforceno= False$/;"	v
+bruteforcereset	mrpkey.py	/^        bruteforcereset = True$/;"	v
+bruteforcereset	mrpkey.py	/^bruteforcereset= False$/;"	v
+bruteno	mrpkey.py	/^def bruteno(init):$/;"	f
+buffer	copytag.py	/^buffer= []$/;"	v
+c	rfidiot/pyandroid.py	/^	c = None$/;"	v	class:Android
+c	rfidiot/pynfc.py	/^	c = n.readISO14443A()$/;"	v	class:NFC
+calculate_check_digit	mrpkey.py	/^def calculate_check_digit(data):$/;"	f
+canvas	mrpkey.py	/^	canvas= Canvas(frame, height= imagedata.height(), width= imagedata.width())$/;"	v
+canvasimage	mrpkey.py	/^	canvasimage= canvas.create_image(0,0,image=imagedata, anchor=NW)$/;"	v
+card	bruteforce.py	/^        card= rfidiot.card$/;"	v
+card	cardselect.py	/^        card= rfidiot.card$/;"	v
+card	copytag.py	/^        card= rfidiot.card$/;"	v
+card	demotag.py	/^        card= rfidiot.card$/;"	v
+card	eeprom.py	/^        card= rfidiot.card$/;"	v
+card	fdxbnum.py	/^	card= rfidiot.card$/;"	v
+card	formatmifare1kvalue.py	/^        card= rfidiot.card$/;"	v
+card	froschtest.py	/^        card= rfidiot.card$/;"	v
+card	hidprox.py	/^        card= rfidiot.card$/;"	v
+card	hitag2brute.py	/^        card= rfidiot.card$/;"	v
+card	hitag2reset.py	/^        card= rfidiot.card$/;"	v
+card	isotype.py	/^        card= rfidiot.card$/;"	v
+card	jcopmifare.py	/^        card= rfidiot.card$/;"	v
+card	jcopsetatrhist.py	/^        card= rfidiot.card$/;"	v
+card	jcoptool.py	/^        card= rfidiot.card$/;"	v
+card	lfxtype.py	/^        card= rfidiot.card$/;"	v
+card	loginall.py	/^        card= rfidiot.card$/;"	v
+card	multiselect.py	/^        card= rfidiot.card$/;"	v
+card	pn532emulate.py	/^        card= rfidiot.card$/;"	v
+card	pn532mitm.py	/^        card= rfidiot.card$/;"	v
+card	q5reset.py	/^	card= rfidiot.card$/;"	v
+card	readlfx.py	/^        card= rfidiot.card$/;"	v
+card	readmifare1k.py	/^        card= rfidiot.card$/;"	v
+card	readmifaresimple.py	/^	card= rfidiot.card$/;"	v
+card	readmifareultra.py	/^        card= rfidiot.card$/;"	v
+card	readtag.py	/^        card= rfidiot.card$/;"	v
+card	rfidiot-cli.py	/^        card= rfidiot.card$/;"	v
+card	rfidiot/__init__.py	/^			card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,rfidiotglobals.Debug,noinit,nfcreader)$/;"	v
+card	rfidiot/__init__.py	/^	card= RFIDIOt.rfidiot(readernum,readertype,line,speed,timeout,rfidiotglobals.Debug,noinit,nfcreader)$/;"	v
+card	send_apdu.py	/^        card= rfidiot.card$/;"	v
+card	transit.py	/^	card= rfidiot.card$/;"	v
+card	unique.py	/^	card= rfidiot.card$/;"	v
+card	writelfx.py	/^        card= rfidiot.card$/;"	v
+card	writemifare1k.py	/^        card= rfidiot.card$/;"	v
+cardPSE	ChAP-cardemulation.py	/^    cardPSE = [0xF2, 0x22,0x22, 0x22, 0x22]$/;"	v
+card_cryptogram_source	jcoptool.py	/^		card_cryptogram_source= host_challenge + card_sc_sequence_counter + card_challenge$/;"	v
+card_life_cycle_states	jcoptool.py	/^card_life_cycle_states=	{$/;"	v
+card_status	jcoptool.py	/^card_status=	{$/;"	v
+cardrequest	ChAP-PrePlayAttack.py	/^    cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardrequest	ChAP-cardemulation.py	/^    cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardrequest	ChAP-paypass.py	/^    cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardrequest	ChAP-paywave.py	/^    cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardrequest	ChAP-test.py	/^        cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardrequest	ChAP.py	/^    cardrequest = CardRequest( timeout=10, cardType=cardtype )$/;"	v
+cardservice	ChAP-PrePlayAttack.py	/^    cardservice = cardrequest.waitforcard()$/;"	v
+cardservice	ChAP-cardemulation.py	/^    cardservice = cardrequest.waitforcard()$/;"	v
+cardservice	ChAP-paypass.py	/^    cardservice = cardrequest.waitforcard()$/;"	v
+cardservice	ChAP-paywave.py	/^    cardservice = cardrequest.waitforcard()$/;"	v
+cardservice	ChAP-test.py	/^        cardservice = cardrequest.waitforcard()$/;"	v
+cardservice	ChAP.py	/^    cardservice = cardrequest.waitforcard()$/;"	v
+cardtype	ChAP-PrePlayAttack.py	/^    cardtype = AnyCardType()$/;"	v
+cardtype	ChAP-cardemulation.py	/^    cardtype = AnyCardType()$/;"	v
+cardtype	ChAP-paypass.py	/^    cardtype = AnyCardType()$/;"	v
+cardtype	ChAP-paywave.py	/^    cardtype = AnyCardType()$/;"	v
+cardtype	ChAP-test.py	/^        cardtype = AnyCardType()$/;"	v
+cardtype	ChAP.py	/^    cardtype = AnyCardType()$/;"	v
+cardtype	mrpkey.py	/^                cardtype='A'$/;"	v
+cardtype	mrpkey.py	/^                cardtype='B'$/;"	v
+cc_data	nfcid.py	/^	cc_data = False$/;"	v
+changestyle	mrpkey.py	/^def changestyle(style,face,features):$/;"	f
+check_cc	mrpkey.py	/^def check_cc(key,rapdu):$/;"	f
+check_cryptogram	jcoptool.py	/^		check_cryptogram= string.upper(card.ToHex(card.DES3MAC(card.ToBinary(card_cryptogram_source), enc_s_key, '')))$/;"	v
+check_return	ChAP-PrePlayAttack.py	/^def check_return(sw1,sw2):$/;"	f
+check_return	ChAP.py	/^def check_return(sw1,sw2):$/;"	f
+check_return	ChAPlib.py	/^def check_return(sw1,sw2):$/;"	f
+check_return	ChAPlibVISA.py	/^def check_return(sw1,sw2):$/;"	f
+check_security_domain	jcoptool.py	/^def check_security_domain(data):$/;"	f
+cla	rfidiot-cli.py	/^		cla= args.pop().upper()$/;"	v
+clearDGs	mrpkey.py	/^				clearDGs=[chr(0x61), chr(0x75), chr(0x67), chr(0x6b), chr(0x6c), chr(0x6d), chr(0x63)]$/;"	v
+clone	unique.py	/^	clone= False$/;"	v
+clone	unique.py	/^	clone= True$/;"	v
+cmac_s_key	jcoptool.py	/^		cmac_s_key= e_enc.encrypt(card.ToBinary(derivation_data))$/;"	v
+cmd_data	mrpkey.py	/^		cmd_data= Eifd + Mifd$/;"	v
+cn	hidprox.py	/^	cn= card.pcsc_atr[10:18]$/;"	v
+cn	hidprox.py	/^	cn= card.pcsc_atr[11:16]$/;"	v
+cn	hidprox.py	/^	cn= card.pcsc_atr[12:18]$/;"	v
+cn	hidprox.py	/^	cn= card.pcsc_atr[6:14]$/;"	v
+cn	hidprox.py	/^	cn= card.pcsc_atr[6:18]$/;"	v
+cn	hidprox.py	/^	cn= int(binary,2)$/;"	v
+cn	hidprox.py	/^	cn= int(binary[8:],2)$/;"	v
+command	jcoptool.py	/^command= args[0]$/;"	v
+command	rfidiot-cli.py	/^	command= args.pop().upper()$/;"	v
+commands	mrpkey.py	/^import commands$/;"	i
+commands	sod.py	/^import commands$/;"	i
+compute_cryptographic_checksum	ChAPlib.py	/^def compute_cryptographic_checksum(un,cardservice):$/;"	f
+compute_cryptographic_checksum	ChAPlibVISA.py	/^def compute_cryptographic_checksum(un,cardservice):$/;"	f
+configMifare	rfidiot/pynfc.py	/^	def configMifare(self):$/;"	m	class:NFC
+configbin	readlfx.py	/^		configbin= card.ToBinaryString(card.binary)$/;"	v
+configbin	writelfx.py	/^		configbin= card.ToBinaryString(card.binary)$/;"	v
+configfile	rfidiot/__init__.py	/^			configfile= open(path + '\/RFIDIOtconfig.opts')$/;"	v
+configure	rfidiot/pyandroid.py	/^	def configure(self):$/;"	m	class:Android
+configure	rfidiot/pynfc.py	/^	def configure(self, nfcreader):$/;"	m	class:NFC
+connect_to	pn532mitm.py	/^def connect_to(host,port,type):$/;"	f
+connection	pn532mitm.py	/^	connection= connect_to(host, port, remote_type)$/;"	v
+cont	rfidiot/pyandroid.py	/^	cont = True$/;"	v	class:Android
+cont	rfidiot/pynfc.py	/^	cont = True$/;"	v	class:NFC
+cont	send_apdu.py	/^		cont = False$/;"	v
+cont	send_apdu.py	/^cont = True$/;"	v
+copy	readmifaresimple.py	/^		copy= True$/;"	v
+copy	readmifaresimple.py	/^copy= False$/;"	v
+crc	rfidiot/RFIDIOt.py	/^	def crc(self, crc, data, mask=MASK_CRC16):$/;"	m	class:rfidiot
+crc16	rfidiot/RFIDIOt.py	/^	def crc16(self,data):$/;"	m	class:rfidiot
+crcccitt	rfidiot/RFIDIOt.py	/^	def crcccitt(self,data):$/;"	m	class:rfidiot
+ctypes	rfidiot/pynfc.py	/^import ctypes$/;"	i
+ctypes	rfidiot/pynfc.py	/^import ctypes.util$/;"	i
+current	ChAP.py	/^        current= 0$/;"	v
+current	nfcid.py	/^	current = 0$/;"	v
+current	rfidiot-cli.py	/^		current= card.uid$/;"	v
+d0	readlfx.py	/^		d0= chr(int(tdbin[9:13] + tdbin[14:18],2))$/;"	v
+d0	writelfx.py	/^		d0= chr(int(tdbin[9:13] + tdbin[14:18],2))$/;"	v
+d1	readlfx.py	/^		d1= chr(int(tdbin[19:23] + tdbin[24:28],2))$/;"	v
+d1	writelfx.py	/^		d1= chr(int(tdbin[19:23] + tdbin[24:28],2))$/;"	v
+d2	readlfx.py	/^		d2= chr(int(tdbin[29:33] + tdbin[34:38],2))$/;"	v
+d2	writelfx.py	/^		d2= chr(int(tdbin[29:33] + tdbin[34:38],2))$/;"	v
+d3	readlfx.py	/^		d3= chr(int(tdbin[39:43] + tdbin[44:48],2))$/;"	v
+d3	writelfx.py	/^		d3= chr(int(tdbin[39:43] + tdbin[44:48],2))$/;"	v
+d4	readlfx.py	/^		d4= chr(int(tdbin[49:53] + tdbin[54:58],2))$/;"	v
+d4	writelfx.py	/^		d4= chr(int(tdbin[49:53] + tdbin[54:58],2))$/;"	v
+data	formatmifare1kvalue.py	/^				data= '00000000'$/;"	v
+data	mrpkey.py	/^			data= passfile.read()$/;"	v
+data	mrpkey.py	/^			data= raw_efcom$/;"	v
+data	mrpkey.py	/^		data= passfile.read()$/;"	v
+data	mrpkey.py	/^	data= passfile.read()$/;"	v
+data	pn532mitm.py	/^				data= recv_data(connection)$/;"	v
+data	pn532mitm.py	/^			data= card.data$/;"	v
+data	pn532mitm.py	/^			data= emulator.data$/;"	v
+data	pn532mitm.py	/^		data= card.data$/;"	v
+data	pn532mitm.py	/^		data= recv_data(connection)$/;"	v
+data	pn532mitm.py	/^	data= emulator.data$/;"	v
+data	pn532mitm.py	/^	data= recv_data(connection)$/;"	v
+data	rfidiot-cli.py	/^			data= ''$/;"	v
+data	rfidiot-cli.py	/^			data= infile.read()$/;"	v
+data	rfidiot-cli.py	/^		data= args.pop().upper()$/;"	v
+data	rfidiot/RFIDIOt.py	/^	data= ''$/;"	v	class:rfidiot
+data	sod.py	/^data= sod.read()$/;"	v
+data	writemifare1k.py	/^					data = '%032x' % random.getrandbits(128)$/;"	v
+data	writemifare1k.py	/^					data= args[0]$/;"	v
+datetime	nfcid.py	/^import datetime$/;"	i
+db1	unique.py	/^db1= '%08x' % int(out[:32],2)$/;"	v
+db2	unique.py	/^db2= '%08x' % int(out[32:64],2)$/;"	v
+decode_afl	ChAP-PrePlayAttack.py	/^def decode_afl(data):$/;"	f
+decode_afl	ChAP.py	/^def decode_afl(data):$/;"	f
+decode_afl	ChAPlib.py	/^def decode_afl(data):$/;"	f
+decode_afl	ChAPlibVISA.py	/^def decode_afl(data):$/;"	f
+decode_aip	ChAP-PrePlayAttack.py	/^def decode_aip(data):$/;"	f
+decode_aip	ChAP.py	/^def decode_aip(data):$/;"	f
+decode_aip	ChAPlib.py	/^def decode_aip(data):$/;"	f
+decode_aip	ChAPlibVISA.py	/^def decode_aip(data):$/;"	f
+decode_ber_tlv_field	ChAP-PrePlayAttack.py	/^def decode_ber_tlv_field(data):$/;"	f
+decode_ber_tlv_field	ChAP.py	/^def decode_ber_tlv_field(data):$/;"	f
+decode_ber_tlv_field	ChAPlib.py	/^def decode_ber_tlv_field(data):$/;"	f
+decode_ber_tlv_field	ChAPlibVISA.py	/^def decode_ber_tlv_field(data):$/;"	f
+decode_ber_tlv_item	ChAP-PrePlayAttack.py	/^def decode_ber_tlv_item(data):$/;"	f
+decode_ber_tlv_item	ChAP.py	/^def decode_ber_tlv_item(data):$/;"	f
+decode_ber_tlv_item	ChAPlib.py	/^def decode_ber_tlv_item(data):$/;"	f
+decode_ber_tlv_item	ChAPlibVISA.py	/^def decode_ber_tlv_item(data):$/;"	f
+decode_ef_com	mrpkey.py	/^def decode_ef_com(data):$/;"	f
+decode_ef_dg1	mrpkey.py	/^def decode_ef_dg1(data):$/;"	f
+decode_ef_dg2	mrpkey.py	/^def decode_ef_dg2(data):$/;"	f
+decode_ef_dg7	mrpkey.py	/^def decode_ef_dg7(data):$/;"	f
+decode_file	ChAP-PrePlayAttack.py	/^def decode_file(sfi,start,end):$/;"	f
+decode_file	ChAP.py	/^def decode_file(sfi,start,end):$/;"	f
+decode_file	ChAPlib.py	/^def decode_file(sfi,start,end, cardservice):$/;"	f
+decode_file	ChAPlibVISA.py	/^def decode_file(sfi,start,end, cardservice):$/;"	f
+decode_gp_registry_data	jcoptool.py	/^def decode_gp_registry_data(data, padding, filter):$/;"	f
+decode_jcop_identify	jcoptool.py	/^def decode_jcop_identify(data, padding):$/;"	f
+decode_jcop_lifecycle	jcoptool.py	/^def decode_jcop_lifecycle(data, padding):$/;"	f
+decode_privileges	jcoptool.py	/^def decode_privileges(data):$/;"	f
+decode_processing_options	ChAP-PrePlayAttack.py	/^def decode_processing_options(data):$/;"	f
+decode_processing_options	ChAP.py	/^def decode_processing_options(data):$/;"	f
+decode_processing_options	ChAPlib.py	/^def decode_processing_options(data,cardservice):$/;"	f
+decode_processing_options	ChAPlibVISA.py	/^def decode_processing_options(data,cardservice):$/;"	f
+decode_pse	ChAP-PrePlayAttack.py	/^def decode_pse(data):$/;"	f
+decode_pse	ChAP.py	/^def decode_pse(data):$/;"	f
+decode_pse	ChAPlib.py	/^def decode_pse(data):$/;"	f
+decode_pse	ChAPlibVISA.py	/^def decode_pse(data):$/;"	f
+decoder	jcoptool.py	/^from pyasn1.codec.ber import decoder$/;"	i
+deconfigure	rfidiot/pyandroid.py	/^	def deconfigure(self):$/;"	m	class:Android
+deconfigure	rfidiot/pynfc.py	/^	def deconfigure(self):$/;"	m	class:NFC
+decresp	mrpkey.py	/^		decresp= passport.ToHex(tdes.decrypt(passport.ToBinary(resp)))$/;"	v
+demotag	rfidiot/RFIDIOt.py	/^	def demotag(self,command,data):$/;"	m	class:rfidiot
+derivation_data	jcoptool.py	/^		derivation_data= '0101' + card_sc_sequence_counter + session_pad$/;"	v
+derivation_data	jcoptool.py	/^		derivation_data= '0182' + card_sc_sequence_counter + session_pad$/;"	v
+des3	mifarekeys.py	/^des3= DES3.new(deskeyABA,DES.MODE_CBC,'\\0\\0\\0\\0\\0\\0\\0\\0')$/;"	v
+description	setup.py	/^        description = "RFID IO tools",$/;"	v
+deskeyABA	mifarekeys.py	/^deskeyABA= ''$/;"	v
+dg2_features	mrpkey.py	/^		dg2_features= decode_ef_dg2(data)$/;"	v
+do_command	mrpkey.py	/^def do_command(func, *args, **kw):$/;"	f
+drawfeatures	mrpkey.py	/^def drawfeatures(face,features):$/;"	f
+e_enc	jcoptool.py	/^		e_enc= DES3.new(card.ToBinary(enc_key),DES3.MODE_CBC,card.DES_IV)$/;"	v
+e_enc	jcoptool.py	/^		e_enc= DES3.new(card.ToBinary(mac_key),DES3.MODE_CBC,card.DES_IV)$/;"	v
+efcom	mrpkey.py	/^	efcom= open(tempfiles+TAG_FILE[EF_COM],'wb+')$/;"	v
+eflist	mrpkey.py	/^		eflist= decode_ef_com(raw_efcom)$/;"	v
+eflist	mrpkey.py	/^	eflist= decode_ef_com(data)$/;"	v
+em_remote	pn532mitm.py	/^	em_remote= False$/;"	v
+em_remote	pn532mitm.py	/^	em_remote= True$/;"	v
+emulator	pn532mitm.py	/^		emulator= rfidiot.RFIDIOt.rfidiot(readernum,card.readertype,'','','','','','')$/;"	v
+emulator	pn532mitm.py	/^	emulator= card$/;"	v
+enc_key	jcoptool.py	/^		enc_key= args[1]$/;"	v
+enc_key	jcoptool.py	/^		enc_key= args[2]$/;"	v
+enc_key	jcoptool.py	/^		enc_key= card.GP_ENC_KEY$/;"	v
+enc_s_key	jcoptool.py	/^		enc_s_key= e_enc.encrypt(card.ToBinary(derivation_data))$/;"	v
+end	rfidiot-cli.py	/^			end= 0x3F$/;"	v
+end	rfidiot-cli.py	/^			end= int(args.pop(),16)$/;"	v
+end	rfidiot-cli.py	/^			end= start + len(data) \/ 16 - 1$/;"	v
+endblock	readmifaresimple.py	/^	endblock= END_BLOCK$/;"	v
+endblock	readmifaresimple.py	/^	endblock= int(args[1])$/;"	v
+error_exit	jcopmifare.py	/^def error_exit(message,error):$/;"	f
+error_exit	jcopsetatrhist.py	/^def error_exit(message,error):$/;"	f
+errorcode	pn532emulate.py	/^errorcode= int(card.data[4:6],16)$/;"	v
+errorcode	pn532mitm.py	/^				errorcode= recv_data(connection)$/;"	v
+errorcode	pn532mitm.py	/^			errorcode= card.errorcode$/;"	v
+errorcode	pn532mitm.py	/^		errorcode= int(data[4:6],16)$/;"	v
+errorcode	rfidiot/RFIDIOt.py	/^	errorcode= ''$/;"	v	class:rfidiot
+executable_life_cycle_states	jcoptool.py	/^executable_life_cycle_states= 	{$/;"	v
+exitstatus	mrpkey.py	/^			exitstatus= os.system("openssl pkcs7 -in %sEF_SOD.TMP -out %sEF_SOD.PEM -inform DER" % (tempfiles,tempfiles))$/;"	v
+exitstatus	mrpkey.py	/^			exitstatus= os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.PEM" % tempfiles)$/;"	v
+exitstatus	mrpkey.py	/^		exitstatus= os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)$/;"	v
+extraopts	rfidiot/__init__.py	/^			extraopts= string.split(configfile.read())$/;"	v
+extraopts	rfidiot/__init__.py	/^		extraopts= [] $/;"	v
+extraopts	rfidiot/__init__.py	/^		extraopts= string.split(os.environ[OptsEnv])$/;"	v
+extraopts	rfidiot/__init__.py	/^extraopts= []$/;"	v
+fc	hidprox.py	/^	fc= 'n\/a'$/;"	v
+fc	hidprox.py	/^	fc= card.pcsc_atr[6:10]$/;"	v
+fc	hidprox.py	/^	fc= card.pcsc_atr[7:10]$/;"	v
+fc	hidprox.py	/^	fc= card.pcsc_atr[7:12]$/;"	v
+fc	hidprox.py	/^	fc= int(binary[:8],2)$/;"	v
+featurebutton	mrpkey.py	/^	featurebutton= Checkbutton(frame, text="Show Features", command=do_command(drawfeatures,canvas,dg2_features))$/;"	v
+featurestyle	mrpkey.py	/^	featurestyle= Radiobutton(frame, text="Arrow",command=do_command(changestyle,"Arrow",canvas,dg2_features))$/;"	v
+featurestyle2	mrpkey.py	/^	featurestyle2= Radiobutton(frame, text="Cross",command=do_command(changestyle,"Cross",canvas,dg2_features))$/;"	v
+featurestyle3	mrpkey.py	/^	featurestyle3= Radiobutton(frame, text="Circle ",command=do_command(changestyle,"Circle",canvas,dg2_features))$/;"	v
+featurestyle4	mrpkey.py	/^	featurestyle4= Radiobutton(frame, text="Target",command=do_command(changestyle,"Target",canvas,dg2_features))$/;"	v
+felica	pn532emulate.py	/^felica= [args[4]]$/;"	v
+felica	pn532mitm.py	/^felica= ['01fea2a3a4a5a6a7c0c1c2c3c4c5c6c7ffff']$/;"	v
+filename	rfidiot-cli.py	/^			filename= args.pop()$/;"	v
+filename	rfidiot-cli.py	/^		filename= args.pop()$/;"	v
+filespath	mrpkey.py	/^		filespath=tempfiles$/;"	v
+filespath	mrpkey.py	/^	filespath= args[0]$/;"	v
+filespath	mrpkey.py	/^filespath= ''$/;"	v
+finished	bruteforce.py	/^			finished = 1$/;"	v
+finished	bruteforce.py	/^finished = 0$/;"	v
+font	mrpkey.py	/^	font= 'fixed 22'$/;"	v
+fonta	mrpkey.py	/^	fonta= 'fixed 22'$/;"	v
+frame	mrpkey.py	/^	frame = Frame(root, colormap="new", visual='truecolor').grid()$/;"	v
+framesize	rfidiot/RFIDIOt.py	/^	framesize= ''$/;"	v	class:rfidiot
+framing	pn532emulate.py	/^framing= mode & 0x03$/;"	v
+framing	pn532mitm.py	/^framing= mode & 0x03$/;"	v
+frosch	rfidiot/RFIDIOt.py	/^	def frosch(self,command,data):$/;"	m	class:rfidiot
+frosch_bcc	rfidiot/RFIDIOt.py	/^	def frosch_bcc(self,data,seed):$/;"	m	class:rfidiot
+frosch_bcc_in	rfidiot/RFIDIOt.py	/^	def frosch_bcc_in(self,data,seed):$/;"	m	class:rfidiot
+frosch_bcc_out	rfidiot/RFIDIOt.py	/^	def frosch_bcc_out(self,data,seed):$/;"	m	class:rfidiot
+frosch_key_init_mode	rfidiot/RFIDIOt.py	/^	def frosch_key_init_mode(self,passwd):$/;"	m	class:rfidiot
+frosch_read_ee_data	rfidiot/RFIDIOt.py	/^	def frosch_read_ee_data(self,item):$/;"	m	class:rfidiot
+full_uid	pn532mitm.py	/^		full_uid= recv_data(connection)$/;"	v
+full_uid	pn532mitm.py	/^	full_uid= card.uid$/;"	v
+fuse_state	jcoptool.py	/^fuse_state=	{$/;"	v
+generate_ac	ChAP-PrePlayAttack.py	/^def generate_ac(type):$/;"	f
+generate_ac	ChAP.py	/^def generate_ac(type):$/;"	f
+generate_ac	ChAPlib.py	/^def generate_ac(type):$/;"	f
+generate_ac	ChAPlibVISA.py	/^def generate_ac(type):$/;"	f
+get_UNSize	ChAP-PrePlayAttack.py	/^def get_UNSize():$/;"	f
+get_bmap	ChAP.py	/^def get_bmap():$/;"	f
+get_bmap	ChAPlib.py	/^def get_bmap():$/;"	f
+get_bmap	ChAPlibVISA.py	/^def get_bmap():$/;"	f
+get_challenge	ChAP-PrePlayAttack.py	/^def get_challenge(bytes):$/;"	f
+get_challenge	ChAP.py	/^def get_challenge(bytes):$/;"	f
+get_challenge	ChAPlib.py	/^def get_challenge(bytes):$/;"	f
+get_challenge	ChAPlibVISA.py	/^def get_challenge(bytes):$/;"	f
+get_primitive	ChAP-PrePlayAttack.py	/^def get_primitive(tag):$/;"	f
+get_primitive	ChAP.py	/^def get_primitive(tag):$/;"	f
+get_primitive	ChAPlib.py	/^def get_primitive(tag):$/;"	f
+get_primitive	ChAPlibVISA.py	/^def get_primitive(tag):$/;"	f
+get_processing_options	ChAP-PrePlayAttack.py	/^def get_processing_options(pdollist):$/;"	f
+get_processing_options	ChAP.py	/^def get_processing_options():$/;"	f
+get_processing_options	ChAPlib.py	/^def get_processing_options(pdollist, cardservice):$/;"	f
+get_processing_options	ChAPlibVISA.py	/^def get_processing_options(pdollist,transvalues, cardservice):$/;"	f
+get_tag	ChAP-PrePlayAttack.py	/^def get_tag(data,req):$/;"	f
+get_tag	ChAP.py	/^def get_tag(data,req):$/;"	f
+get_tag	ChAPlib.py	/^def get_tag(data,req):$/;"	f
+get_tag	ChAPlibVISA.py	/^def get_tag(data,req):$/;"	f
+get_version	rfidiot/RFIDIOt.py	/^	from pynfc import get_version$/;"	i
+getopt	ChAP-PrePlayAttack.py	/^import getopt$/;"	i
+getopt	ChAP-cardemulation.py	/^import getopt$/;"	i
+getopt	ChAP-paypass.py	/^import getopt$/;"	i
+getopt	ChAP-paywave.py	/^import getopt$/;"	i
+getopt	ChAP-test.py	/^import getopt$/;"	i
+getopt	ChAP.py	/^import getopt$/;"	i
+getopt	ChAPlib.py	/^import getopt$/;"	i
+getopt	ChAPlibVISA.py	/^import getopt$/;"	i
+getopt	rfidiot/__init__.py	/^import getopt$/;"	i
+goodkey	readmifaresimple.py	/^				goodkey= y$/;"	v
+goodkeytype	readmifaresimple.py	/^				goodkeytype= x$/;"	v
+gp_external_authenticate	rfidiot/RFIDIOt.py	/^	def gp_external_authenticate(self,host_cryptogram,mac_key):$/;"	m	class:rfidiot
+gp_generate_session_key_01	rfidiot/RFIDIOt.py	/^	def gp_generate_session_key_01(self,hostchallenge,cardchallenge):$/;"	m	class:rfidiot
+gp_get_data	rfidiot/RFIDIOt.py	/^	def gp_get_data(self,object):$/;"	m	class:rfidiot
+gp_get_status	rfidiot/RFIDIOt.py	/^	def gp_get_status(self,subset,control,aid):$/;"	m	class:rfidiot
+gp_initialize_update	rfidiot/RFIDIOt.py	/^	def gp_initialize_update(self,challenge):$/;"	m	class:rfidiot
+gp_initialize_update_response_scp02	rfidiot/RFIDIOt.py	/^	def gp_initialize_update_response_scp02(self,data):$/;"	m	class:rfidiot
+gt	pn532emulate.py	/^	gt= ['']$/;"	v
+gt	pn532emulate.py	/^	gt= [args[6]]$/;"	v
+gt	pn532mitm.py	/^	gt= ['']$/;"	v
+gt	pn532mitm.py	/^	gt= [args[6]]$/;"	v
+h2control	fdxbnum.py	/^	h2control= card.HITAG2_PUBLIC_B + card.HITAG2_TRANSPORT_TAG$/;"	v
+h2login	rfidiot/RFIDIOt.py	/^	def h2login(self,password):$/;"	m	class:rfidiot
+h2publicselect	rfidiot/RFIDIOt.py	/^	def h2publicselect(self):$/;"	m	class:rfidiot
+help	bruteforce.py	/^help= rfidiot.help$/;"	v
+help	fdxbnum.py	/^help= rfidiot.help$/;"	v
+help	hitag2reset.py	/^help= rfidiot.help$/;"	v
+help	mrpkey.py	/^def help():$/;"	f
+help	pn532emulate.py	/^help= rfidiot.help$/;"	v
+help	pn532mitm.py	/^help= rfidiot.help$/;"	v
+help	q5reset.py	/^help= rfidiot.help$/;"	v
+help	readlfx.py	/^help= rfidiot.help$/;"	v
+help	readmifaresimple.py	/^help= rfidiot.help$/;"	v
+help	readmifareultra.py	/^help= rfidiot.help$/;"	v
+help	rfidiot-cli.py	/^help= rfidiot.help$/;"	v
+help	rfidiot/__init__.py	/^			help= True$/;"	v
+help	rfidiot/__init__.py	/^help= False$/;"	v
+help	transit.py	/^help= rfidiot.help$/;"	v
+help	unique.py	/^help= rfidiot.help$/;"	v
+help	writelfx.py	/^help= rfidiot.help$/;"	v
+help	writemifare1k.py	/^help= rfidiot.help$/;"	v
+hexprint	ChAP-PrePlayAttack.py	/^def hexprint(data):$/;"	f
+hexprint	ChAP.py	/^def hexprint(data):$/;"	f
+hexprint	ChAPlib.py	/^def hexprint(data):$/;"	f
+hexprint	ChAPlibVISA.py	/^def hexprint(data):$/;"	f
+host	pn532mitm.py	/^	host= remote[:string.find(remote,':')]$/;"	v
+host_challenge	jcoptool.py	/^	host_challenge= card.GetRandom(8)$/;"	v
+host_cryptogram	jcoptool.py	/^		host_cryptogram= card.DES3MAC(card.ToBinary(host_cryptogram_source), enc_s_key, '')$/;"	v
+host_cryptogram_source	jcoptool.py	/^		host_cryptogram_source= card_sc_sequence_counter + card_challenge + host_challenge$/;"	v
+hsselect	rfidiot/RFIDIOt.py	/^	def hsselect(self,speed,cardtype='A'):$/;"	m	class:rfidiot
+i	ChAP.py	/^                        i= 0$/;"	v
+i	mrpkey.py	/^		i= 2$/;"	v
+id	fdxbnum.py	/^		id= args[0]$/;"	v
+id	fdxbnum.py	/^		id= card.FDXBIDEncode(args[0],args[1],args[2])$/;"	v
+id	rfidiot/RFIDIOt.py	/^	def id(self):$/;"	m	class:rfidiot
+id	unique.py	/^	id= args[1]$/;"	v
+id	unique.py	/^	id= card.uid$/;"	v
+idbin	unique.py	/^	idbin= card.UniqueToEM(card.HexReverse(id))$/;"	v
+idbin	unique.py	/^        idbin= card.ToBinaryString(card.ToBinary(id))$/;"	v
+idbin	unique.py	/^    idbin= card.UniqueToEM(card.HexReverse(id))$/;"	v
+imagedata	mrpkey.py	/^	imagedata = ImageTk.PhotoImage(file=tempfiles + 'EF_DG2.' + Filetype)$/;"	v
+infile	rfidiot-cli.py	/^			infile= open(filename,"rb")$/;"	v
+infile	rfidiot-cli.py	/^		infile= open(filename,"rb")$/;"	v
+info	rfidiot/RFIDIOt.py	/^	def info(self,caller):$/;"	m	class:rfidiot
+initLog	rfidiot/pyandroid.py	/^	def initLog(self, level=logging.DEBUG):$/;"	m	class:Android
+initLog	rfidiot/pynfc.py	/^	def initLog(self, level=logging.DEBUG):$/;"	m	class:NFC
+initiator	pn532mitm.py	/^initiator= data[6:]$/;"	v
+initlibnfc	rfidiot/pynfc.py	/^	def initlibnfc(self):$/;"	m	class:NFC
+ins	rfidiot-cli.py	/^		ins= args.pop().upper()$/;"	v
+install	java/src/jcop_set_atr_hist/JCOPSetATRHist.java	/^	public static void install(byte[] bArray, short bOffset, byte bLength) $/;"	m	class:JCOPSetATRHist
+internal	readmifareultra.py	/^	internal=card.data[2:4]$/;"	v
+isbinary	ChAP-PrePlayAttack.py	/^def isbinary(data):$/;"	f
+isbinary	ChAP.py	/^def isbinary(data):$/;"	f
+isbinary	ChAPlib.py	/^def isbinary(data):$/;"	f
+isbinary	ChAPlibVISA.py	/^def isbinary(data):$/;"	f
+iso_7816_external_authenticate	rfidiot/RFIDIOt.py	/^	def iso_7816_external_authenticate(self,response,key):$/;"	m	class:rfidiot
+iso_7816_fail	rfidiot/RFIDIOt.py	/^	def iso_7816_fail(self,code):$/;"	m	class:rfidiot
+iso_7816_get_challenge	rfidiot/RFIDIOt.py	/^	def iso_7816_get_challenge(self,length):$/;"	m	class:rfidiot
+iso_7816_read_binary	rfidiot/RFIDIOt.py	/^	def iso_7816_read_binary(self,bytes,offset):$/;"	m	class:rfidiot
+iso_7816_select_file	rfidiot/RFIDIOt.py	/^	def iso_7816_select_file(self,file,control,options):$/;"	m	class:rfidiot
+isofile	rfidiot-cli.py	/^			isofile= args.pop().encode('hex')$/;"	v
+isofile	rfidiot-cli.py	/^			isofile= args.pop().upper()$/;"	v
+item	jcoptool.py	/^		item= card.data[pointer:pointer+2]$/;"	v
+item	jcoptool.py	/^	item= card.data[pointer:pointer+2]$/;"	v
+iterations	mrpkey.py	/^		iterations= 1$/;"	v
+iterations	mrpkey.py	/^		iterations= bruteno(passport.MRPnumber)$/;"	v
+jcop_set_atr_hist	java/src/jcop_set_atr_hist/ATRGlobal.java	/^package jcop_set_atr_hist;$/;"	p
+jcop_set_atr_hist	java/src/jcop_set_atr_hist/JCOPSetATRHist.java	/^package jcop_set_atr_hist;$/;"	p
+jcop_set_atr_hist	jcopsetatrhist.py	/^def jcop_set_atr_hist(bytes):$/;"	f
+jmrtd_create_file	mrpkey.py	/^def jmrtd_create_file(file,length):$/;"	f
+jmrtd_lock	mrpkey.py	/^def jmrtd_lock():$/;"	f
+jmrtd_personalise	mrpkey.py	/^def jmrtd_personalise(documentnumber,dob,expiry):$/;"	f
+jmrtd_select_file	mrpkey.py	/^def jmrtd_select_file(file):$/;"	f
+jmrtd_update_binary	mrpkey.py	/^def jmrtd_update_binary(offset,data):$/;"	f
+jmrtd_write_file	mrpkey.py	/^def jmrtd_write_file(file,data):$/;"	f
+key	bruteforce.py	/^		key = '%012x' % random.getrandbits(48)$/;"	v
+key	bruteforce.py	/^		key= args[0]$/;"	v
+key	mrpkey.py	/^		key= key[0:9] + 'XXXX' + key[9:15] + 'XX' + key[15:21] + 'XXXXXXXXXXXXXXXXX'$/;"	v
+key	mrpkey.py	/^	key=arg0$/;"	v
+key	readlfx.py	/^		key= card.HITAG2_TRANSPORT_RWD$/;"	v
+key	readlfx.py	/^	key= ''$/;"	v
+key	readlfx.py	/^	key= args[1]$/;"	v
+key	readmifaresimple.py	/^		key= ''$/;"	v
+key	readmifaresimple.py	/^	key= DEFAULT_KEY$/;"	v
+key	readmifaresimple.py	/^	key= string.upper(args[2])$/;"	v
+key	writelfx.py	/^		key= card.HITAG2_TRANSPORT_RWD$/;"	v
+key	writelfx.py	/^	key= ''$/;"	v
+key	writelfx.py	/^	key= args[1]$/;"	v
+keytype	readmifaresimple.py	/^		keytype= key$/;"	v
+keytype	readmifaresimple.py	/^	keytype= DEFAULT_KEYTYPE$/;"	v
+keytype	readmifaresimple.py	/^	keytype= string.upper(args[3])$/;"	v
+keytype	rfidiot-cli.py	/^			keytype= args.pop().upper()$/;"	v
+kicc	mrpkey.py	/^	kicc= decresp[32:64] $/;"	v
+kmrz	mrpkey.py	/^		kmrz= passport.MRPnumber + passport.MRPnumbercd + passport.MRPdob + passport.MRPdobcd + passport.MRPexpiry + passport.MRPexpirycd$/;"	v
+kseed	mrpkey.py	/^		kseed= kseedhash.digest()[:16]$/;"	v
+kseed	mrpkey.py	/^	kseed= passport.ToBinary(kseedhex)$/;"	v
+kseedhash	mrpkey.py	/^		kseedhash= SHA.new(kmrz)$/;"	v
+kseedhex	mrpkey.py	/^	kseedhex= "%032x" % xor(int(Kifd,16),int(kicc,16))$/;"	v
+latcval	ChAP.py	/^                    latcval= (latc[0] << 8) + latc[1]$/;"	v
+lbits	readmifareultra.py	/^lbits=lbits1 + lbits0$/;"	v
+lbits0	readmifareultra.py	/^lbits0=card.ToBinaryString(card.ToBinary(lock0))$/;"	v
+lbits1	readmifareultra.py	/^lbits1=card.ToBinaryString(card.ToBinary(lock1))$/;"	v
+lc	rfidiot-cli.py	/^		lc= args.pop().upper()$/;"	v
+le	ChAP.py	/^                        le= sw2$/;"	v
+le	ChAP.py	/^                    le= 0x00$/;"	v
+le	rfidiot-cli.py	/^		le= args.pop().upper()$/;"	v
+lengt	pn532emulate.py	/^	lengt= ['%02x' % (len(args[6]) \/ 2)]$/;"	v
+lengt	pn532emulate.py	/^	lengt= ['00']$/;"	v
+lengt	pn532mitm.py	/^	lengt= ['%02x' % (len(args[6]) \/ 2)]$/;"	v
+lengt	pn532mitm.py	/^	lengt= ['00']$/;"	v
+length	jcoptool.py	/^			length= int(card.data[pointer:pointer + 2],16)$/;"	v
+length	jcoptool.py	/^	length= int(item,16)$/;"	v
+length	mrpkey.py	/^			length= ord(raw_efcom[i])$/;"	v
+lentk	pn532emulate.py	/^	lentk= ['%02x' % (len(args[7]) \/ 2)]$/;"	v
+lentk	pn532emulate.py	/^	lentk= ['00']$/;"	v
+lentk	pn532mitm.py	/^	lentk= ['%02x' % (len(args[7]) \/ 2)]$/;"	v
+lentk	pn532mitm.py	/^	lentk= ['00']$/;"	v
+libnfc_listreaders	rfidiot/RFIDIOt.py	/^	def libnfc_listreaders(self):$/;"	m	class:rfidiot
+libnfc_mifare_login	rfidiot/RFIDIOt.py	/^	def libnfc_mifare_login(self,block,key,keytype):$/;"	m	class:rfidiot
+libnfc_mifare_read_block	rfidiot/RFIDIOt.py	/^	def libnfc_mifare_read_block(self, block):$/;"	m	class:rfidiot
+line	rfidiot-cli.py	/^			line= infile.readline()$/;"	v
+line	rfidiot-cli.py	/^			line= line.strip()$/;"	v
+line	rfidiot/__init__.py	/^			line= a$/;"	v
+line	rfidiot/__init__.py	/^line= "\/dev\/ttyUSB0"$/;"	v
+listreaders	rfidiot/pynfc.py	/^	def listreaders(self, target):$/;"	m	class:NFC
+lock0	readmifareultra.py	/^	lock0=card.data[4:6]$/;"	v
+lock1	readmifareultra.py	/^	lock1=card.data[6:8]$/;"	v
+locked	readmifare1k.py	/^			locked= False$/;"	v
+locked	readmifare1k.py	/^	locked= True$/;"	v
+locked	readmifaresimple.py	/^		locked= False$/;"	v
+locked	readmifaresimple.py	/^		locked= True$/;"	v
+locked	readmifaresimple.py	/^	locked= True$/;"	v
+lockedblocks	readmifare1k.py	/^lockedblocks= []$/;"	v
+lockedblocks	readmifaresimple.py	/^lockedblocks= []$/;"	v
+logfile	pn532mitm.py	/^		logfile= open(args[1],'r')$/;"	v
+logfile	pn532mitm.py	/^		logfile= open(args[1],'w')$/;"	v
+loggedin	readmifaresimple.py	/^				loggedin= True$/;"	v
+loggedin	readmifaresimple.py	/^	loggedin= False$/;"	v
+logging	pn532mitm.py	/^		logging= True$/;"	v
+logging	pn532mitm.py	/^logging= False$/;"	v
+logging	rfidiot/pyandroid.py	/^import logging$/;"	i
+logging	rfidiot/pynfc.py	/^import logging$/;"	i
+login	rfidiot/RFIDIOt.py	/^	def login(self,sector,keytype,key):$/;"	m	class:rfidiot
+login_iclass	rfidiot/RFIDIOt.py	/^	def login_iclass(self,page,keynum):$/;"	m	class:rfidiot
+loginblock	readmifaresimple.py	/^		loginblock= block \/ BLOCKS_PER_SECT$/;"	v
+loginblock	readmifaresimple.py	/^		loginblock= block$/;"	v
+logins	hitag2reset.py	/^	logins= 0$/;"	v
+mac_key	jcoptool.py	/^			mac_key= args[2]$/;"	v
+mac_key	jcoptool.py	/^			mac_key= args[3]$/;"	v
+mac_key	jcoptool.py	/^		mac_key= card.GP_MAC_KEY$/;"	v
+manchester	unique.py	/^manchester= card.BinaryToManchester(out)$/;"	v
+manufacturers	jcoptool.py	/^manufacturers= 	{$/;"	v
+map	mrpkey.py	/^map= []$/;"	v
+message	rfidiot-cli.py	/^		message= args.pop()$/;"	v
+mfcommand	rfidiot-cli.py	/^		mfcommand= args.pop().upper()$/;"	v
+mifarePWD	mifarekeys.py	/^mifarePWD= des3.encrypt('\\0\\0\\0\\0\\0\\0\\0\\0')$/;"	v
+mifarePWDout	mifarekeys.py	/^mifarePWDout= ''$/;"	v
+mifare_random	jcopmifare.py	/^def mifare_random(key):$/;"	f
+mifare_read	jcopmifare.py	/^def mifare_read(key,sector):$/;"	f
+mifare_write	jcopmifare.py	/^def mifare_write(key,sector,sectordata):$/;"	f
+mode	pn532emulate.py	/^mode= [args[0]]$/;"	v
+mode	pn532emulate.py	/^mode= int(card.data[4:6],16)$/;"	v
+mode	pn532mitm.py	/^mode= ['00']$/;"	v
+mode	pn532mitm.py	/^mode= int(data[4:6],16)$/;"	v
+mode	rfidiot-cli.py	/^		mode= args.pop().upper()$/;"	v
+mrz	mrpkey.py	/^		mrz= decode_ef_dg1(data)$/;"	v
+mrzspaces	mrpkey.py	/^def mrzspaces(data, fill):$/;"	f
+myver	mrpkey.py	/^myver= 'mrpkey v0.1u'$/;"	v
+n	nfcid.py	/^n = pyandroid.Android()$/;"	v
+n	rfidiot/pyandroid.py	/^	n = Android()$/;"	v	class:Android
+n	rfidiot/pynfc.py	/^	n = NFC()$/;"	v	class:NFC
+new_total_length	mrpkey.py	/^				new_total_length= total_length-(length-newlength)$/;"	v
+new_total_length	mrpkey.py	/^		new_total_length= ord(raw_efcom[1])$/;"	v
+newindex	mrpkey.py	/^				newindex=''.join(filter(lambda x: x in clearDGs, list(oldindex)))$/;"	v
+newkeyA	mifarekeys.py	/^newkeyA= ''$/;"	v
+newkeyAbyte6	mifarekeys.py	/^newkeyAbyte6= 0x00$/;"	v
+newkeyB	mifarekeys.py	/^newkeyB= '00'$/;"	v
+newkeyBbyte1	mifarekeys.py	/^newkeyBbyte1= 0x00$/;"	v
+newlength	mrpkey.py	/^				newlength=len(newindex)$/;"	v
+nfcid	pn532emulate.py	/^nfcid=  [args[5]]$/;"	v
+nfcid	pn532mitm.py	/^nfcid=  ['aa998877665544332211']$/;"	v
+nfcreader	rfidiot/__init__.py	/^			nfcreader= int(a)$/;"	v
+nfcreader	rfidiot/__init__.py	/^nfcreader= None$/;"	v
+nogui	rfidiot/__init__.py	/^			nogui= True$/;"	v
+nogui	rfidiot/__init__.py	/^nogui= False$/;"	v
+noinit	rfidiot/__init__.py	/^			noinit= True$/;"	v
+noinit	rfidiot/__init__.py	/^noinit= False$/;"	v
+num	mrpkey.py	/^num= []$/;"	v
+observer	ChAP-PrePlayAttack.py	/^        observer=ConsoleCardConnectionObserver()$/;"	v
+observer	ChAP-cardemulation.py	/^        observer=ConsoleCardConnectionObserver()$/;"	v
+observer	ChAP-paypass.py	/^        observer=ConsoleCardConnectionObserver()$/;"	v
+observer	ChAP-paywave.py	/^        observer=ConsoleCardConnectionObserver()$/;"	v
+observer	ChAP-test.py	/^            observer=ConsoleCardConnectionObserver()$/;"	v
+observer	ChAP.py	/^        observer=ConsoleCardConnectionObserver()$/;"	v
+octal	hidprox.py	/^	octal= '%o' % int(card.pcsc_atr[6:14])$/;"	v
+octal	hidprox.py	/^	octal= '%o' % int(card.pcsc_atr[6:18])$/;"	v
+octal	hidprox.py	/^	octal= '%o' % int(card.pcsc_atr[6:],16)$/;"	v
+octal	hidprox.py	/^	octal= '%o' % int(card.pcsc_atr[7:16])$/;"	v
+octal	hidprox.py	/^	octal= '%o' % int(card.pcsc_atr[7:18])$/;"	v
+offset	fdxbnum.py	/^			offset= 0$/;"	v
+offset	fdxbnum.py	/^			offset= 3$/;"	v
+oldindex	mrpkey.py	/^				oldindex=raw_efcom[i:i+length]$/;"	v
+operator	pn532mitm.py	/^import operator$/;"	i
+opmode	rfidiot/RFIDIOt.py	/^	def opmode(self):$/;"	m	class:rfidiot
+os	bruteforce.py	/^import os$/;"	i
+os	cardselect.py	/^import os$/;"	i
+os	copytag.py	/^import os$/;"	i
+os	demotag.py	/^import os$/;"	i
+os	eeprom.py	/^import os$/;"	i
+os	fdxbnum.py	/^import os$/;"	i
+os	formatmifare1kvalue.py	/^import os$/;"	i
+os	froschtest.py	/^import os$/;"	i
+os	hidprox.py	/^import os$/;"	i
+os	hitag2brute.py	/^import os$/;"	i
+os	hitag2reset.py	/^import os$/;"	i
+os	isotype.py	/^import os$/;"	i
+os	jcopmifare.py	/^import os$/;"	i
+os	jcopsetatrhist.py	/^import os$/;"	i
+os	jcoptool.py	/^import os$/;"	i
+os	lfxtype.py	/^import os$/;"	i
+os	mrpkey.py	/^import os$/;"	i
+os	multiselect.py	/^import os$/;"	i
+os	nfcid.py	/^import os$/;"	i
+os	pn532emulate.py	/^import os$/;"	i
+os	pn532mitm.py	/^import os$/;"	i
+os	q5reset.py	/^import os$/;"	i
+os	readlfx.py	/^import os$/;"	i
+os	readmifare1k.py	/^import os$/;"	i
+os	readmifaresimple.py	/^import os$/;"	i
+os	readmifareultra.py	/^import os$/;"	i
+os	readtag.py	/^import os$/;"	i
+os	rfidiot/RFIDIOt.py	/^import os$/;"	i
+os	rfidiot/__init__.py	/^import os$/;"	i
+os	send_apdu.py	/^import os$/;"	i
+os	sod.py	/^import os$/;"	i
+os	transit.py	/^import os$/;"	i
+os	unique.py	/^import os$/;"	i
+os	writelfx.py	/^import os$/;"	i
+os	writemifare1k.py	/^import os$/;"	i
+otherkey	readmifaresimple.py	/^		otherkey= args[5]$/;"	v
+otp0	readmifareultra.py	/^	otp0=card.data[0:2]$/;"	v
+otp1	readmifareultra.py	/^	otp1=card.data[2:4]$/;"	v
+otp2	readmifareultra.py	/^	otp2=card.data[4:6]$/;"	v
+otp3	readmifareultra.py	/^	otp3=card.data[6:8]$/;"	v
+out	fdxbnum.py	/^	out= card.FDXBID128Bit(id)$/;"	v
+out	q5reset.py	/^				out= card.Unique64Bit(card.HexToQ5(args[1] + '00'))$/;"	v
+out	sod.py	/^	out= open("\/tmp\/SOD","w")$/;"	v
+out	transit.py	/^		out= args[0]$/;"	v
+out	transit.py	/^		out= card.TRANSITIDEncode(args[0])$/;"	v
+out	unique.py	/^out= card.Unique64Bit(idbin)$/;"	v
+outbin	fdxbnum.py	/^	outbin= ''$/;"	v
+outbin	transit.py	/^	outbin= ''$/;"	v
+outblock	readmifaresimple.py	/^outblock= 0$/;"	v
+outfile	mrpkey.py	/^		outfile= open(tempfiles+"EF_SOD.TMP",'wb+')$/;"	v
+outfile	mrpkey.py	/^	outfile= open(tempfiles+TAG_FILE[tag],'wb+')$/;"	v
+outfile	rfidiot-cli.py	/^			outfile= open(filename, "wb")$/;"	v
+outhex	fdxbnum.py	/^	outhex= ['','','','','']$/;"	v
+outhex	transit.py	/^	outhex= ['','','','','']$/;"	v
+p	rfidiot-cli.py	/^			p= 0$/;"	v
+p1	ChAP.py	/^                    p1= x$/;"	v
+p1	rfidiot-cli.py	/^		p1= args.pop().upper()$/;"	v
+p2	ChAP.py	/^                    p2= (y << 3) + 4$/;"	v
+p2	rfidiot-cli.py	/^		p2= args.pop().upper()$/;"	v
+packages	setup.py	/^	packages= packages,$/;"	v
+packages	setup.py	/^packages= ['rfidiot']$/;"	v
+passfile	mrpkey.py	/^				passfile= open(filespath+TAG_FILE[tag],'rb')$/;"	v
+passfile	mrpkey.py	/^			passfile= open(filespath+TAG_FILE[tag],'rb')$/;"	v
+passfile	mrpkey.py	/^		passfile= open(filespath + 'EF_COM.BIN','rb')$/;"	v
+passport	mrpkey.py	/^        passport= rfidiot.card$/;"	v
+pcsc_atr	rfidiot/RFIDIOt.py	/^	pcsc_atr= None$/;"	v	class:rfidiot
+pcsc_listreaders	rfidiot/RFIDIOt.py	/^	def pcsc_listreaders(self):$/;"	m	class:rfidiot
+pcsc_send_apdu	rfidiot/RFIDIOt.py	/^	def pcsc_send_apdu(self,apdu):$/;"	m	class:rfidiot
+pdollist	ChAP-PrePlayAttack.py	/^        pdollist = list() $/;"	v
+pdollist	ChAP-paypass.py	/^        pdollist = list() $/;"	v
+pdollist	ChAP-paywave.py	/^        pdollist = list() $/;"	v
+perms	rfidiot-cli.py	/^			perms= 'FF078069'$/;"	v
+plock	readmifareultra.py	/^	plock = lbits[y:y+1] + plock$/;"	v
+plock	readmifareultra.py	/^plock=''$/;"	v
+pn532_print_firmware	rfidiot/pn532.py	/^def pn532_print_firmware(data):$/;"	f
+pn532_print_status	rfidiot/pn532.py	/^def pn532_print_status(data):$/;"	f
+pointer	jcoptool.py	/^	pointer= 0$/;"	v
+port	pn532mitm.py	/^	port= int(remote[string.find(remote,':') + 1:])$/;"	v
+powerOff	rfidiot/pynfc.py	/^	def powerOff(self):$/;"	m	class:NFC
+powerOn	rfidiot/pynfc.py	/^	def powerOn(self):$/;"	m	class:NFC
+precoded	fdxbnum.py	/^			precoded= True$/;"	v
+precoded	fdxbnum.py	/^precoded= False$/;"	v
+precoded	transit.py	/^			precoded= True$/;"	v
+precoded	transit.py	/^precoded= False$/;"	v
+printhelp	ChAP-PrePlayAttack.py	/^def printhelp():$/;"	f
+printhelp	ChAP-paypass.py	/^def printhelp():$/;"	f
+printhelp	ChAP.py	/^def printhelp():$/;"	f
+printoptions	rfidiot/__init__.py	/^def printoptions():$/;"	f
+printpaywavehelp	ChAP-paywave.py	/^def printpaywavehelp():$/;"	f
+privilege_byte_1	jcoptool.py	/^privilege_byte_1=	{$/;"	v
+process	java/src/jcop_set_atr_hist/JCOPSetATRHist.java	/^	public void process(APDU apdu) $/;"	m	class:JCOPSetATRHist
+prox	hidprox.py	/^	prox= card.pcsc_atr[:6]$/;"	v
+psd	ChAP.py	/^                psd= range(31)$/;"	v
+psyco	rfidiot/RFIDIOt.py	/^	import psyco$/;"	i
+ptc	ChAP.py	/^                    ptc= int(pins[0])$/;"	v
+pwd	hitag2brute.py	/^		pwd= pwd + 1$/;"	v
+pwd	hitag2brute.py	/^	pwd= int(args[0],16)$/;"	v
+pwd	hitag2brute.py	/^pwd= 0x00$/;"	v
+pyandroid	nfcid.py	/^import pyandroid$/;"	i
+pyandroid	rfidiot/RFIDIOt.py	/^import pyandroid$/;"	i
+pynfc	rfidiot/RFIDIOt.py	/^import pynfc$/;"	i
+q5control	fdxbnum.py	/^	q5control= '6000F0E8'$/;"	v
+q5control	transit.py	/^	q5control= '6000F004'$/;"	v
+quiet	pn532mitm.py	/^		quiet= True$/;"	v
+quiet	pn532mitm.py	/^	quiet= False$/;"	v
+quitbutton	mrpkey.py	/^	quitbutton= Button(frame, text="Quit", command=root.quit)$/;"	v
+quote	rfidiot-cli.py	/^					quote= ''$/;"	v
+quoted	rfidiot-cli.py	/^						quoted= False$/;"	v
+quoted	rfidiot-cli.py	/^					quoted= True$/;"	v
+quoted	rfidiot-cli.py	/^			quoted= False$/;"	v
+r	nfcid.py	/^			r = n.sendAPDU(apdu)$/;"	v
+r	nfcid.py	/^		r = n.sendAPDU(apdu)$/;"	v
+r	send_apdu.py	/^		r = card.pcsc_send_apdu(apdu)$/;"	v
+random	bruteforce.py	/^import random$/;"	i
+random	pn532mitm.py	/^import random$/;"	i
+random	rfidiot/RFIDIOt.py	/^import random$/;"	i
+random	writemifare1k.py	/^import random$/;"	i
+rapdu	mrpkey.py	/^		rapdu= '990290008E08FA855A5D4C50A8ED9000'$/;"	v
+raw_efcom	mrpkey.py	/^		raw_efcom= raw_efcom[0]+chr(new_total_length)+tmp$/;"	v
+raw_efcom	mrpkey.py	/^	raw_efcom= data$/;"	v
+rd_remote	pn532mitm.py	/^	rd_remote= False$/;"	v
+rd_remote	pn532mitm.py	/^	rd_remote= True$/;"	v
+readEEPROM	rfidiot/RFIDIOt.py	/^	def readEEPROM(self,byte):$/;"	m	class:rfidiot
+readMIFAREblock	rfidiot/RFIDIOt.py	/^	def readMIFAREblock(self,block):$/;"	m	class:rfidiot
+read_file	mrpkey.py	/^def read_file(file):$/;"	f
+read_record	ChAP-PrePlayAttack.py	/^def read_record(sfi,record):$/;"	f
+read_record	ChAP.py	/^def read_record(sfi,record):$/;"	f
+read_record	ChAPlib.py	/^def read_record(sfi,record,cardservice):$/;"	f
+read_record	ChAPlibVISA.py	/^def read_record(sfi,record,cardservice):$/;"	f
+readblock	rfidiot/RFIDIOt.py	/^	def readblock(self,block):$/;"	m	class:rfidiot
+readernum	pn532mitm.py	/^		readernum= int(args[0])$/;"	v
+readernum	rfidiot/__init__.py	/^			readernum= 0$/;"	v
+readernum	rfidiot/__init__.py	/^			readernum= a$/;"	v
+readernum	rfidiot/__init__.py	/^readernum= 0$/;"	v
+readersubtype	rfidiot/RFIDIOt.py	/^	readersubtype= None$/;"	v	class:rfidiot
+readertype	rfidiot/RFIDIOt.py	/^	readertype= None$/;"	v	class:rfidiot
+readertype	rfidiot/__init__.py	/^				readertype= eval('RFIDIOt.rfidiot.'+a)$/;"	v
+readertype	rfidiot/__init__.py	/^				readertype= eval(a)$/;"	v
+readertype	rfidiot/__init__.py	/^			readertype= RFIDIOt.rfidiot.READER_LIBNFC$/;"	v
+readertype	rfidiot/__init__.py	/^			readertype= RFIDIOt.rfidiot.READER_PCSC$/;"	v
+readertype	rfidiot/__init__.py	/^readertype= RFIDIOt.rfidiot.READER_PCSC$/;"	v
+readline	rfidiot/pyandroid.py	/^import readline$/;"	i
+readline	rfidiot/pynfc.py	/^import readline$/;"	i
+readvalueblock	rfidiot/RFIDIOt.py	/^	def readvalueblock(self,block):$/;"	m	class:rfidiot
+recifd	mrpkey.py	/^		recifd= decresp[16:32]$/;"	v
+recv_data	pn532mitm.py	/^def recv_data(host):$/;"	f
+registry_tags	jcoptool.py	/^registry_tags= 	{$/;"	v
+remote	pn532mitm.py	/^	remote= args[0][7:]$/;"	v
+remote	pn532mitm.py	/^	remote= args[0][9:]$/;"	v
+remote	pn532mitm.py	/^remote= ''$/;"	v
+remote_type	pn532mitm.py	/^	remote_type= 'EMULATOR'$/;"	v
+remote_type	pn532mitm.py	/^	remote_type= 'READER'$/;"	v
+remote_type	pn532mitm.py	/^remote_type= ''$/;"	v
+reset	readmifaresimple.py	/^		reset= True$/;"	v
+reset	readmifaresimple.py	/^reset= False$/;"	v
+reset	rfidiot/RFIDIOt.py	/^        def reset(self):$/;"	f	function:rfidiot.info
+reset	rfidiot/pyandroid.py	/^	def reset(self):$/;"	m	class:Android
+resp	mrpkey.py	/^		resp= respdata[:64]$/;"	v
+respdata	mrpkey.py	/^					respdata= ''$/;"	v
+respdata	mrpkey.py	/^				respdata= passport.data$/;"	v
+respdata	mrpkey.py	/^			respdata= TEST_respdata$/;"	v
+respmac	mrpkey.py	/^		respmac= respdata[64:80]$/;"	v
+rfidiot	bruteforce.py	/^import rfidiot$/;"	i
+rfidiot	cardselect.py	/^import rfidiot$/;"	i
+rfidiot	copytag.py	/^import rfidiot$/;"	i
+rfidiot	demotag.py	/^import rfidiot$/;"	i
+rfidiot	eeprom.py	/^import rfidiot$/;"	i
+rfidiot	fdxbnum.py	/^import rfidiot$/;"	i
+rfidiot	formatmifare1kvalue.py	/^import rfidiot$/;"	i
+rfidiot	froschtest.py	/^import rfidiot$/;"	i
+rfidiot	hidprox.py	/^import rfidiot$/;"	i
+rfidiot	hitag2brute.py	/^import rfidiot$/;"	i
+rfidiot	hitag2reset.py	/^import rfidiot$/;"	i
+rfidiot	isotype.py	/^import rfidiot$/;"	i
+rfidiot	jcopmifare.py	/^import rfidiot$/;"	i
+rfidiot	jcopsetatrhist.py	/^import rfidiot$/;"	i
+rfidiot	jcoptool.py	/^import rfidiot$/;"	i
+rfidiot	lfxtype.py	/^import rfidiot$/;"	i
+rfidiot	loginall.py	/^import rfidiot$/;"	i
+rfidiot	mrpkey.py	/^import rfidiot$/;"	i
+rfidiot	multiselect.py	/^import rfidiot$/;"	i
+rfidiot	pn532emulate.py	/^import rfidiot$/;"	i
+rfidiot	pn532mitm.py	/^import rfidiot$/;"	i
+rfidiot	q5reset.py	/^import rfidiot$/;"	i
+rfidiot	readlfx.py	/^import rfidiot$/;"	i
+rfidiot	readmifare1k.py	/^import rfidiot$/;"	i
+rfidiot	readmifaresimple.py	/^import rfidiot$/;"	i
+rfidiot	readmifareultra.py	/^import rfidiot$/;"	i
+rfidiot	readtag.py	/^import rfidiot$/;"	i
+rfidiot	rfidiot-cli.py	/^import rfidiot$/;"	i
+rfidiot	rfidiot/RFIDIOt.py	/^class rfidiot:$/;"	c
+rfidiot	send_apdu.py	/^import rfidiot$/;"	i
+rfidiot	transit.py	/^import rfidiot$/;"	i
+rfidiot	unique.py	/^import rfidiot$/;"	i
+rfidiot	writelfx.py	/^import rfidiot$/;"	i
+rfidiot	writemifare1k.py	/^import rfidiot$/;"	i
+rfidiotglobals	rfidiot/__init__.py	/^import rfidiotglobals$/;"	i
+rfidiotglobals	rfidiot/pyandroid.py	/^import rfidiotglobals$/;"	i
+rfidiotglobals	rfidiot/pynfc.py	/^import rfidiotglobals$/;"	i
+rnd_icc	mrpkey.py	/^				rnd_icc= passport.data$/;"	v
+rnd_icc	mrpkey.py	/^			rnd_icc= TEST_rnd_icc$/;"	v
+rnd_ifd	mrpkey.py	/^			rnd_ifd= TEST_rnd_ifd$/;"	v
+rnd_ifd	mrpkey.py	/^			rnd_ifd= passport.GetRandom(8)$/;"	v
+root	mrpkey.py	/^	root = Tk()$/;"	v
+row	mrpkey.py	/^	row= 3$/;"	v
+s	rfidiot/pyandroid.py	/^	s = None$/;"	v	class:Android
+s_enc	jcoptool.py	/^		s_enc= DES3.new(enc_s_key,DES3.MODE_CBC,card.DES_IV)$/;"	v
+script	rfidiot-cli.py	/^		script= []$/;"	v
+scripts	setup.py	/^        scripts = scripts$/;"	v
+scripts	setup.py	/^scripts = ['cardselect.py', 'ChAP.py', 'copytag.py', 'demotag.py', $/;"	v
+sector	formatmifare1kvalue.py	/^sector = 1$/;"	v
+sector	readlfx.py	/^sector = 0$/;"	v
+sector	readmifare1k.py	/^sector = 1$/;"	v
+sector	rfidiot-cli.py	/^			sector= int(args.pop(),16)$/;"	v
+sector	rfidiot-cli.py	/^			sector= start$/;"	v
+sector	writelfx.py	/^sector = 0$/;"	v
+sector	writemifare1k.py	/^sector = 1$/;"	v
+secure_channel_protocol	jcoptool.py	/^	secure_channel_protocol= card_key_info[2:4]$/;"	v
+secure_read_binary	mrpkey.py	/^def secure_read_binary(keymac,bytes,offset):$/;"	f
+secure_read_file	mrpkey.py	/^def secure_read_file(keyenc,keymac,file):$/;"	f
+secure_select_file	mrpkey.py	/^def secure_select_file(keyenc, keymac,file):$/;"	f
+security_domain_life_cycle_states	jcoptool.py	/^security_domain_life_cycle_states= 	{$/;"	v
+sel_res	pn532emulate.py	/^sel_res= [args[3]]$/;"	v
+sel_res	pn532mitm.py	/^		sel_res= [recv_data(connection)]$/;"	v
+sel_res	pn532mitm.py	/^	sel_res= [card.sel_res]$/;"	v
+sel_res	rfidiot/RFIDIOt.py	/^	sel_res= ''$/;"	v	class:rfidiot
+select	rfidiot/RFIDIOt.py	/^	def select(self, cardtype='A'):$/;"	m	class:rfidiot
+select	rfidiot/pyandroid.py	/^	def select(self):$/;"	m	class:Android
+selectISO14443A	rfidiot/pynfc.py	/^	def selectISO14443A(self):$/;"	m	class:NFC
+selectISO14443B	rfidiot/pynfc.py	/^	def selectISO14443B(self):$/;"	m	class:NFC
+select_aid	ChAP-PrePlayAttack.py	/^def select_aid(aid):$/;"	f
+select_aid	ChAP.py	/^def select_aid(aid):$/;"	f
+select_aid	ChAPlib.py	/^def select_aid(aid, cardservice):$/;"	f
+select_aid	ChAPlibVISA.py	/^def select_aid(aid, cardservice):$/;"	f
+select_atrhist_app	jcopsetatrhist.py	/^def select_atrhist_app():$/;"	f
+select_mifare_app	jcopmifare.py	/^def select_mifare_app():$/;"	f
+sendAPDU	rfidiot/pyandroid.py	/^	def sendAPDU(self, apdu):$/;"	m	class:Android
+sendAPDU	rfidiot/pynfc.py	/^	def sendAPDU(self, apdu):$/;"	m	class:NFC
+sendResults	rfidiot/pyandroid.py	/^        def sendResults(self, result):$/;"	f	function:Android.sendAPDU
+send_apdu	ChAP-PrePlayAttack.py	/^def send_apdu(apdu):$/;"	f
+send_apdu	ChAP.py	/^def send_apdu(apdu):$/;"	f
+send_apdu	ChAPlib.py	/^def send_apdu(apdu, cardservice):$/;"	f
+send_apdu	ChAPlibVISA.py	/^def send_apdu(apdu, cardservice):$/;"	f
+send_apdu	rfidiot/RFIDIOt.py	/^	def send_apdu(self,option,pcb,cid,nad,cla,ins,p1,p2,lc,data,le):$/;"	m	class:rfidiot
+send_data	pn532mitm.py	/^def send_data(host, data):$/;"	f
+sens_res	pn532emulate.py	/^sens_res= [args[1]]$/;"	v
+sens_res	pn532mitm.py	/^		sens_res= [recv_data(connection)]$/;"	v
+sens_res	pn532mitm.py	/^	sens_res= [card.sens_res]$/;"	v
+sens_res	rfidiot/RFIDIOt.py	/^	sens_res= ''$/;"	v	class:rfidiot
+serial	rfidiot/RFIDIOt.py	/^					import serial$/;"	i
+session_pad	jcoptool.py	/^		session_pad= '000000000000000000000000'$/;"	v
+settagtype	rfidiot/RFIDIOt.py	/^	def settagtype(self,type):$/;"	m	class:rfidiot
+setup	setup.py	/^from distutils.core import setup, Extension$/;"	i
+shutdown	rfidiot/RFIDIOt.py	/^	def shutdown(self):$/;"	m	class:rfidiot
+signal	rfidiot/RFIDIOt.py	/^import signal$/;"	i
+smartcard	rfidiot/RFIDIOt.py	/^	import smartcard, smartcard.CardRequest$/;"	i
+sn0	readmifareultra.py	/^	sn0=card.data[0:2]$/;"	v
+sn1	readmifareultra.py	/^	sn1=card.data[2:4]$/;"	v
+sn2	readmifareultra.py	/^	sn2=card.data[4:6]$/;"	v
+sn3	readmifareultra.py	/^	sn3=card.data[0:2]$/;"	v
+sn4	readmifareultra.py	/^	sn4=card.data[2:4]$/;"	v
+sn5	readmifareultra.py	/^	sn5=card.data[4:6]$/;"	v
+sn6	readmifareultra.py	/^	sn6=card.data[6:8]$/;"	v
+socket	pn532mitm.py	/^import socket$/;"	i
+socket	rfidiot/RFIDIOt.py	/^import socket$/;"	i
+socket	rfidiot/pyandroid.py	/^import socket$/;"	i
+sod	sod.py	/^	sod= open("\/tmp\/EF_SOD.BIN","r")$/;"	v
+sod	sod.py	/^	sod= open(sys.argv[1],"r")$/;"	v
+speed	rfidiot-cli.py	/^		speed= '%02X' % int(args.pop())$/;"	v
+speed	rfidiot/RFIDIOt.py	/^	speed= ''$/;"	v	class:rfidiot
+speed	rfidiot/__init__.py	/^			speed= int(a)$/;"	v
+speed	rfidiot/__init__.py	/^speed= 9600$/;"	v
+start	rfidiot-cli.py	/^			start= 0$/;"	v
+start	rfidiot-cli.py	/^			start= 1$/;"	v
+start	rfidiot-cli.py	/^			start= int(args.pop(),16)$/;"	v
+startblock	readmifaresimple.py	/^	startblock= 0$/;"	v
+startblock	readmifaresimple.py	/^	startblock= int(args[0])$/;"	v
+started	pn532mitm.py	/^				started= True$/;"	v
+started	pn532mitm.py	/^started= False$/;"	v
+station	rfidiot/RFIDIOt.py	/^	def station(self):$/;"	m	class:rfidiot
+status	pn532emulate.py	/^status= card.acs_send_apdu(PN532_APDU['TG_GET_DATA'])$/;"	v
+status	pn532emulate.py	/^status= card.acs_send_apdu(PN532_APDU['TG_INIT_AS_TARGET']+mode+sens_res+uid+sel_res+felica+nfcid+lengt+gt+lentk+tk)$/;"	v
+status	pn532emulate.py	/^status= card.acs_send_apdu(PN532_APDU['TG_SET_DATA']+[card.ISO_OK])$/;"	v
+status	pn532mitm.py	/^			status= card.acs_send_direct_apdu(data[6:])$/;"	v
+status	pn532mitm.py	/^			status= emulator.acs_send_apdu(PN532_APDU['TG_GET_DATA'])$/;"	v
+status	pn532mitm.py	/^			status= emulator.acs_send_apdu(PN532_APDU['TG_SET_DATA']+[data]+[errorcode])$/;"	v
+status	pn532mitm.py	/^	status= emulator.acs_send_apdu(PN532_APDU['TG_INIT_AS_TARGET']+mode+sens_res+uid+sel_res+felica+nfcid+lengt+gt+lentk+tk)$/;"	v
+string	copytag.py	/^import string$/;"	i
+string	fdxbnum.py	/^import string$/;"	i
+string	formatmifare1kvalue.py	/^import string$/;"	i
+string	hidprox.py	/^import string$/;"	i
+string	hitag2reset.py	/^import string$/;"	i
+string	isotype.py	/^import string$/;"	i
+string	jcopsetatrhist.py	/^import string$/;"	i
+string	jcoptool.py	/^import string$/;"	i
+string	mrpkey.py	/^import string$/;"	i
+string	multiselect.py	/^import string$/;"	i
+string	pn532mitm.py	/^import string$/;"	i
+string	q5reset.py	/^import string$/;"	i
+string	readmifaresimple.py	/^import string$/;"	i
+string	rfidiot/RFIDIOt.py	/^import string$/;"	i
+string	rfidiot/__init__.py	/^import string$/;"	i
+string	rfidiot/pynfc.py	/^import string$/;"	i
+string	transit.py	/^import string$/;"	i
+string	unique.py	/^import string$/;"	i
+string	writemifare1k.py	/^import string$/;"	i
+struct	ChAPlib.py	/^import struct$/;"	i
+struct	ChAPlibVISA.py	/^import struct$/;"	i
+sys	ChAP-PrePlayAttack.py	/^import sys$/;"	i
+sys	ChAP-cardemulation.py	/^import sys$/;"	i
+sys	ChAP-paypass.py	/^import sys$/;"	i
+sys	ChAP-paywave.py	/^import sys$/;"	i
+sys	ChAP-test.py	/^import sys$/;"	i
+sys	ChAP.py	/^import sys$/;"	i
+sys	ChAPlib.py	/^import sys$/;"	i
+sys	ChAPlibVISA.py	/^import sys$/;"	i
+sys	bruteforce.py	/^import sys$/;"	i
+sys	cardselect.py	/^import sys$/;"	i
+sys	copytag.py	/^import sys$/;"	i
+sys	demotag.py	/^import sys$/;"	i
+sys	eeprom.py	/^import sys$/;"	i
+sys	fdxbnum.py	/^import sys$/;"	i
+sys	formatmifare1kvalue.py	/^import sys$/;"	i
+sys	froschtest.py	/^import sys$/;"	i
+sys	hidprox.py	/^import sys$/;"	i
+sys	hitag2brute.py	/^import sys$/;"	i
+sys	hitag2reset.py	/^import sys$/;"	i
+sys	isotype.py	/^import sys$/;"	i
+sys	jcopmifare.py	/^import sys$/;"	i
+sys	jcopsetatrhist.py	/^import sys$/;"	i
+sys	jcoptool.py	/^import sys$/;"	i
+sys	lfxtype.py	/^import sys$/;"	i
+sys	mifarekeys.py	/^import sys$/;"	i
+sys	mrpkey.py	/^import sys$/;"	i
+sys	multiselect.py	/^import sys$/;"	i
+sys	nfcid.py	/^import sys$/;"	i
+sys	pn532emulate.py	/^import sys$/;"	i
+sys	pn532mitm.py	/^import sys$/;"	i
+sys	q5reset.py	/^import sys$/;"	i
+sys	readlfx.py	/^import sys$/;"	i
+sys	readmifare1k.py	/^import sys$/;"	i
+sys	readmifaresimple.py	/^import sys$/;"	i
+sys	readmifareultra.py	/^import sys$/;"	i
+sys	readtag.py	/^import sys$/;"	i
+sys	rfidiot-cli.py	/^import sys$/;"	i
+sys	rfidiot/RFIDIOt.py	/^import sys$/;"	i
+sys	rfidiot/__init__.py	/^import sys$/;"	i
+sys	send_apdu.py	/^import sys$/;"	i
+sys	sod.py	/^import sys$/;"	i
+sys	transit.py	/^import sys$/;"	i
+sys	unique.py	/^import sys$/;"	i
+sys	writelfx.py	/^import sys$/;"	i
+sys	writemifare1k.py	/^import sys$/;"	i
+tag	ChAP-PrePlayAttack.py	/^            tag = pdol[tagstart:taglen]  $/;"	v
+tag	ChAP-paypass.py	/^            tag = pdol[tagstart:taglen]  $/;"	v
+tag	ChAP-paywave.py	/^            tag = pdol[tagstart:taglen]  $/;"	v
+tag	mrpkey.py	/^			tag= raw_efcom[i]$/;"	v
+taglen	ChAP-PrePlayAttack.py	/^            taglen = x $/;"	v
+taglen	ChAP-paypass.py	/^            taglen = x $/;"	v
+taglen	ChAP-paywave.py	/^            taglen = x $/;"	v
+tags	ChAP-PrePlayAttack.py	/^            tags = ''.join(tags)$/;"	v
+tags	ChAP-PrePlayAttack.py	/^            tags = ["{0:02X}".format(item) for item in tag]$/;"	v
+tags	ChAP-PrePlayAttack.py	/^            tags = int(tags,16) $/;"	v
+tags	ChAP-paypass.py	/^            tags = ''.join(tags)$/;"	v
+tags	ChAP-paypass.py	/^            tags = ["{0:02X}".format(item) for item in tag]$/;"	v
+tags	ChAP-paypass.py	/^            tags = int(tags,16) $/;"	v
+tags	ChAP-paywave.py	/^            tags = ''.join(tags)$/;"	v
+tags	ChAP-paywave.py	/^            tags = ["{0:02X}".format(item) for item in tag]$/;"	v
+tags	ChAP-paywave.py	/^            tags = int(tags,16) $/;"	v
+tags	jcoptool.py	/^tags=	{$/;"	v
+tags	pn532mitm.py	/^tags= pn532_print_status(data)$/;"	v
+tagstart	ChAP-PrePlayAttack.py	/^            tagstart = x $/;"	v
+tagstart	ChAP-paypass.py	/^            tagstart = x $/;"	v
+tagstart	ChAP-paywave.py	/^            tagstart = x $/;"	v
+tagtype	rfidiot/RFIDIOt.py	/^	tagtype= ''$/;"	v	class:rfidiot
+targets	jcoptool.py	/^targets= 	{$/;"	v
+targettype	copytag.py	/^	targettype= card.tagtype	$/;"	v
+td1	readlfx.py	/^		td1= card.binary$/;"	v
+td1	writelfx.py	/^		td1= card.binary$/;"	v
+td2	readlfx.py	/^		td2= card.binary$/;"	v
+td2	writelfx.py	/^		td2= card.binary$/;"	v
+tdbin	readlfx.py	/^		tdbin= card.ToBinaryString(td1 + td2)$/;"	v
+tdbin	writelfx.py	/^		tdbin= card.ToBinaryString(td1 + td2)$/;"	v
+tdes	mrpkey.py	/^		tdes= DES3.new(Kenc,DES.MODE_CBC,passport.DES_IV)$/;"	v
+tempfiles	mrpkey.py	/^tempfiles= '\/tmp\/'$/;"	v
+templates	jcoptool.py	/^templates=	{$/;"	v
+textprint	ChAP-PrePlayAttack.py	/^def textprint(data):$/;"	f
+textprint	ChAP.py	/^def textprint(data):$/;"	f
+textprint	ChAPlib.py	/^def textprint(data):$/;"	f
+textprint	ChAPlibVISA.py	/^def textprint(data):$/;"	f
+time	hitag2brute.py	/^import time$/;"	i
+time	multiselect.py	/^import time$/;"	i
+time	pn532mitm.py	/^import time$/;"	i
+time	readmifaresimple.py	/^import time$/;"	i
+time	rfidiot-cli.py	/^import time$/;"	i
+time	rfidiot/RFIDIOt.py	/^import time$/;"	i
+time	rfidiot/pyandroid.py	/^import time$/;"	i
+time	rfidiot/pynfc.py	/^import time$/;"	i
+time	unique.py	/^import time$/;"	i
+timeout	rfidiot/__init__.py	/^			timeout= int(a)$/;"	v
+timeout	rfidiot/__init__.py	/^timeout= 1$/;"	v
+tk	pn532emulate.py	/^	tk= ['']$/;"	v
+tk	pn532emulate.py	/^	tk= [args[7]]$/;"	v
+tk	pn532mitm.py	/^	tk= ['']$/;"	v
+tk	pn532mitm.py	/^	tk= [args[7]]$/;"	v
+tmp	mrpkey.py	/^		tmp= ''$/;"	v
+total_length	mrpkey.py	/^		total_length= ord(raw_efcom[1])$/;"	v
+tries	bruteforce.py	/^tries = 0$/;"	v
+trykey	readmifaresimple.py	/^		trykey= KEYS + [key]$/;"	v
+trykey	readmifaresimple.py	/^	trykey= KEYS$/;"	v
+trykey	readmifaresimple.py	/^	trykey= [key] + KEYS$/;"	v
+trykeytype	readmifaresimple.py	/^		trykeytype= ['AA','BB']$/;"	v
+trykeytype	readmifaresimple.py	/^	trykeytype= KEYTYPES$/;"	v
+trykeytype	readmifaresimple.py	/^	trykeytype= [keytype] + KEYTYPES$/;"	v
+type	hidprox.py	/^	type= card.HID_PROX_TYPES[prox]$/;"	v
+type	unique.py	/^	type= 'UNIQUE'$/;"	v
+type	unique.py	/^        type= 'UNIQUE'$/;"	v
+type	unique.py	/^    type= 'EM4x02'$/;"	v
+typed	isotype.py	/^			typed= True$/;"	v
+typed	isotype.py	/^		typed= True$/;"	v
+typed	isotype.py	/^typed= 0$/;"	v
+uid	nfcid.py	/^			uid = uid[:-1]$/;"	v
+uid	nfcid.py	/^	uid = n.select()$/;"	v
+uid	pn532emulate.py	/^uid= [args[2]]$/;"	v
+uid	pn532mitm.py	/^uid= [full_uid[2:]]$/;"	v
+uid	rfidiot/RFIDIOt.py	/^	uid= ''$/;"	v	class:rfidiot
+uid	rfidiot/pyandroid.py	/^	uid = n.select()$/;"	v	class:Android
+update_pin_try_counter	ChAP-PrePlayAttack.py	/^def update_pin_try_counter(tries):$/;"	f
+update_pin_try_counter	ChAP.py	/^def update_pin_try_counter(tries):$/;"	f
+update_pin_try_counter	ChAPlib.py	/^def update_pin_try_counter(tries):$/;"	f
+update_pin_try_counter	ChAPlibVISA.py	/^def update_pin_try_counter(tries):$/;"	f
+util	rfidiot/pynfc.py	/^import ctypes.util$/;"	i
+verify	rfidiot/RFIDIOt.py	/^	def verify(self,keytype,key):$/;"	m	class:rfidiot
+verify_pin	ChAP-PrePlayAttack.py	/^def verify_pin(pin):$/;"	f
+verify_pin	ChAP.py	/^def verify_pin(pin):$/;"	f
+verify_pin	ChAPlib.py	/^def verify_pin(pin):$/;"	f
+verify_pin	ChAPlibVISA.py	/^def verify_pin(pin):$/;"	f
+version	rfidiot/RFIDIOt.py	/^	def version(self):$/;"	m	class:rfidiot
+version	setup.py	/^        version     = '1.0',$/;"	v
+vonjeek_setBAC	mrpkey.py	/^def vonjeek_setBAC():$/;"	f
+vonjeek_unsetBAC	mrpkey.py	/^def vonjeek_unsetBAC():$/;"	f
+waitfortag	rfidiot/RFIDIOt.py	/^	def waitfortag(self,message):$/;"	m	class:rfidiot
+writeEEPROM	rfidiot/RFIDIOt.py	/^	def writeEEPROM(self,byte,value):$/;"	m	class:rfidiot
+writeblock	rfidiot/RFIDIOt.py	/^	def writeblock(self,block,data):$/;"	m	class:rfidiot
+writetag	fdxbnum.py	/^		writetag= False$/;"	v
+writetag	fdxbnum.py	/^		writetag= True$/;"	v
+writetag	transit.py	/^		writetag= False$/;"	v
+writetag	transit.py	/^		writetag= True$/;"	v
+writevalueblock	rfidiot/RFIDIOt.py	/^	def writevalueblock(self,block,data):$/;"	m	class:rfidiot
+x	ChAP-PrePlayAttack.py	/^        x = 0$/;"	v
+x	ChAP-paypass.py	/^        x = 0$/;"	v
+x	ChAP-paywave.py	/^        x = 0$/;"	v
+x	fdxbnum.py	/^				x= raw_input('  Incompatible TAG! Hit <RETURN> to retry...')$/;"	v
+x	fdxbnum.py	/^               			x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Proceed (y\/n)? '))$/;"	v
+x	formatmifare1kvalue.py	/^	x= string.upper(raw_input('\\n*** Warning! This will overwrite all data blocks! Proceed (y\/n)? '))$/;"	v
+x	hitag2reset.py	/^               	x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Place card and proceed (y\/n)? '))$/;"	v
+x	jcoptool.py	/^	x= string.upper(raw_input('      Attempt to authenticate (y\/n)? '))$/;"	v
+x	pn532mitm.py	/^		x= string.upper(raw_input('  *** Warning! File already exists! Overwrite (y\/n)? '))$/;"	v
+x	q5reset.py	/^               	x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Place defective card and proceed (y\/n)? '))$/;"	v
+x	readmifaresimple.py	/^	x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Proceed (y\/n) or <ENTER> to select new TAG? '))$/;"	v
+x	rfidiot-cli.py	/^		x= raw_input(message).upper()$/;"	v
+x	sod.py	/^x= 0$/;"	v
+x	transit.py	/^				x= raw_input('  Incompatible TAG! Hit <RETURN> to retry...')$/;"	v
+x	transit.py	/^               			x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Proceed (y\/n)? '))$/;"	v
+x	unique.py	/^      		x= string.upper(raw_input('  *** Warning! This will overwrite TAG! Proceed (y\/n)? '))$/;"	v
+x	writemifare1k.py	/^	x= string.upper(raw_input('\\n*** Warning! This will overwrite all data blocks! Proceed (y\/n)? '))$/;"	v
+y	readmifareultra.py	/^y=0$/;"	v

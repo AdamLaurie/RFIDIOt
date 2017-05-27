@@ -7,6 +7,7 @@ by Michael Roland and Josef Langer of the NFC Research Lab Hagenberg
 paper at:
 http://0b4af6cdc2f0c5998459-c0245c5c937c5dedcca3f1764ecc9b2f.r43.cf2.rackcdn.com/12055-woot13-roland.pdf
 
+altered to suit VISA protocols
 code based off ChAP.py from Adam Laurie:
 Copyright 2008 RFIDIOt
 Author: Adam Laurie, mailto:adam@algroup.co.uk
@@ -36,11 +37,12 @@ from smartcard.CardRequest import CardRequest
 from smartcard.CardConnection import CardConnection
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.Exceptions import CardRequestTimeoutException
+from smartcard.Exceptions import CardConnectionException 
 
 import getopt
 import sys
 from operator import *
-
+import struct
 # local imports
 from rfidiot.iso3166 import ISO3166CountryCodes
 
@@ -83,7 +85,7 @@ KNOWN_AIDS=     [
             ]
 
 # Master Data File for PSE
-DF_PSE = [0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]
+DF_PSE = [0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]
 
 # define the apdus used in this script
 AAC= 0
@@ -92,13 +94,13 @@ ARQC= 0x80
 GENERATE_AC= [0x80,0xae]
 GET_CHALLENGE= [0x00,0x84,0x00]
 GET_DATA = [0x80, 0xca]
-GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00,0x02,0x83,0x00,0x00]
+GET_PROCESSING_OPTIONS = [0x80,0xa8,0x00,0x00]
 GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00 ]
 READ_RECORD = [0x00, 0xb2]
 SELECT = [0x00, 0xA4, 0x04, 0x00]
 UNBLOCK_PIN= [0x84,0x24,0x00,0x00,0x00]
 VERIFY= [0x00,0x20,0x00,0x80]
-
+COMPUTE_CRYPTOGRAPHIC_CHECKSUM = [0x80, 0x2A, 0x8E, 0x80];
 #BRUTE_AID= [0xa0,0x00,0x00,0x00]
 BRUTE_AID= []
 
@@ -134,6 +136,7 @@ TAGS=   {
     0x8d:['Card Risk Management Data Object List 2 (CDOL2)',BINARY,TEMPLATE],
     0x8e:['Cardholder Verification Method (CVM) List',BINARY,ITEM],
     0x8f:['Certification Authority Public Key Index',BINARY,ITEM],
+    0x90:['Issuer Public Key Certificate',BINARY,ITEM],
     0x93:['Signed Static Application Data',BINARY,ITEM],
     0x94:['Application File Locator',BINARY,ITEM],
     0x95:['Terminal Verification Results',BINARY,VALUE],
@@ -161,6 +164,7 @@ TAGS=   {
     0x9f0d:['Issuer Action Code - Default',BINARY,ITEM],
     0x9f0e:['Issuer Action Code - Denial',BINARY,ITEM],
     0x9f0f:['Issuer Action Code - Online',BINARY,ITEM],
+    0x9f10:['Issuer Application Data',BINARY,ITEM],
     0x9f11:['Issuer Code Table Index',BINARY,ITEM],
     0x9f12:['Application Preferred Name',TEXT,ITEM],
     0x9f1a:['Terminal Country Code',BINARY,VALUE],
@@ -169,13 +173,18 @@ TAGS=   {
     0x9f26:['Application Cryptogram',BINARY,ITEM],
     0x9f32:['Issuer Public Key Exponent',BINARY,ITEM],
     0x9f36:['Application Transaction Counter',BINARY,ITEM],
-    0x9f37:['Unpredictable Number',BINARY,VALUE],
+    0x9f37:['Unpredictable Number',BINARY,ITEM],
     0x9f38:['Processing Options Data Object List (PDOL)',BINARY,TEMPLATE],
     0x9f42:['Application Currency Code',NUMERIC,ITEM],
     0x9f44:['Application Currency Exponent',NUMERIC,ITEM],
+    0x9f46:['ICC Public Key Certificate', BINARY, ITEM], 
     0x9f4a:['Static Data Authentication Tag List',BINARY,ITEM],
     0x9f4d:['Log Entry',BINARY,ITEM],
-    0x9f66:['Card Production Life Cycle',BINARY,ITEM],
+    0x9f63:['Track 1 Bit Map for UN and ATC (PUNATCTRACK1)', BINARY, VALUE], 
+    0x9f64:['Track 1 Nr of ATC Digits (NATCTRACK1)', BINARY, VALUE],
+    0x9f65:['Track 2 Bit Map for CVC3 (PCVC3TRACK2)', BINARY, VALUE],
+    0x9f66:['Terminal Transaction Qualifiers (TTQ)', BINARY, ITEM], 
+    0x9f6c:['Card Transaction Qualifiers (CTQ)', BINARY, ITEM], 
     0xbf0c:['File Control Information (FCI) Issuer Discretionary Data',BER_TLV,TEMPLATE],
     }
 
@@ -206,7 +215,7 @@ TLV_LENGTH_MASK= 0x80
 
 
 # define AIP mask
-AIP_MASK= {
+AIP_B1_MASK= {
       0x01:'CDA Supported (Combined Dynamic Data Authentication / Application Cryptogram Generation)',
       0x02:'RFU',
       0x04:'Issuer authentication is supported',
@@ -217,18 +226,21 @@ AIP_MASK= {
       0x80:'RFU'
       }
 
+AIP_B2_MASK= {
+      0x01:'RFU',
+      0x02:'RFU',
+      0x04:'RFU',
+      0x08:'RFU',
+      0x10:'RFU',
+      0x20:'RFU',
+      0x40:'RFU',
+      0x80:'Contactless MSD supported'
+      }
+
+
 # define dummy transaction values (see TAGS for tag names)
 # for generate_ac
-TRANS_VAL= {
-       0x9f02:[0x00,0x00,0x00,0x00,0x00,0x01],
-       0x9f03:[0x00,0x00,0x00,0x00,0x00,0x00],
-       0x9f1a:[0x08,0x26],
-       0x95:[0x00,0x00,0x00,0x00,0x00],
-       0x5f2a:[0x08,0x26],
-       0x9a:[0x08,0x04,0x01],
-       0x9c:[0x01],
-       0x9f37:[0xba,0xdf,0x00,0x0d]
-       }
+
     
 # define SW1 return values
 SW1_RESPONSE_BYTES= 0x61
@@ -255,29 +267,8 @@ LAST_ATC= [0x9f,0x13]
 LOG_FORMAT= [0x9f, 0x4f]
 
 # define TAGs after BER-TVL decoding
-BER_TLV_AIP= 0x02
+BER_TLV_AIP= 0x82
 BER_TLV_AFL= 0x14 
-
-def printhelp():
-    print '\nChAP.py - Chip And PIN in Python'
-    print 'Ver 0.1c\n'
-    print 'usage:\n\n ChAP.py [options] [PIN]'
-    print
-    print 'If the optional numeric PIN argument is given, the PIN will be verified (note that this' 
-    print 'updates the PIN Try Counter and may result in the card being PIN blocked).'
-    print '\nOptions:\n'
-    print '\t-a\t\tBruteforce AIDs'
-    print '\t-A\t\tPrint list of known AIDs'
-    print '\t-d\t\tDebug - Show PC/SC APDU data'
-    print '\t-e\t\tBruteforce EMV AIDs'
-    print '\t-f\t\tBruteforce files'
-    print '\t-h\t\tPrint detailed help message'
-    print '\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)'
-    print '\t-p\t\tBruteforce primitives'
-    print '\t-r\t\tRaw output - do not interpret EMV data'
-    print '\t-t\t\tUse T1 protocol (default is T0)'
-    print '\t-v\t\tVerbose on'
-    print
 
 def hexprint(data):
     index= 0
@@ -347,7 +338,7 @@ def decode_pse(data):
 
     while index < len(data):
         try:
-            tag= data[index]
+            tag = data[index]
             TAGS[tag]
             taglen= 1
         except:
@@ -364,9 +355,18 @@ def decode_pse(data):
             itemlength= 1
             offset= 0
         else:
-            itemlength= data[index + taglen]
-            offset= 1
-        print '(%d bytes):' % itemlength,
+            if(data[index+taglen] & 0x80 == 0): 
+                itemlength = data[index + taglen]
+                offset= 1
+                print '(%d bytes):' % itemlength,
+            else:
+                valuebytelen = data[index+taglen] & 0x7F
+                itemlength = 0 
+                for i in range(1,valuebytelen+1):
+                    currentval = data[index+taglen+i]
+                    itemlength = (itemlength << 8) + currentval   
+                offset = 2  
+                print '(%d bytes):' % itemlength,
         # store CDOLs for later use
         if tag == CDOL1:
             Cdol1= data[index + taglen:index + taglen + itemlength + 1]
@@ -439,35 +439,44 @@ def get_primitive(tag):
     # get primitive data object - return status, length, data
     le= 0x00
     apdu = GET_DATA + tag + [le]
-    response, sw1, sw2 = send_apdu(apdu)
-    if response[0:2] == tag:
-        length= response[2]
-        return True, length, response[3:]
-    else:
-        return False, 0, ''
+    try:
+        response, sw1, sw2 = send_apdu(apdu)
+        if response[0:2] == tag:
+            length= response[2]
+            return True, length, response[3:]
+        else:
+            return False, 0, ''
+    except CardConnectionException:
+        pass
 
 def check_return(sw1,sw2):
     if [sw1,sw2] == SW12_OK:
         return True
     return False
 
-def send_apdu(apdu):
+def send_apdu(apdu, cardservice):
     # send apdu and get additional data if required 
-    response, sw1, sw2 = cardservice.connection.transmit( apdu, Protocol )
-    if sw1 == SW1_WRONG_LENGTH:
-        # command used wrong length. retry with correct length.
-        apdu= apdu[:len(apdu) - 1] + [sw2]
-        return send_apdu(apdu)
-    if sw1 == SW1_RESPONSE_BYTES:
-        # response bytes available.
-        apdu = GET_RESPONSE + [sw2]
+    try: 
         response, sw1, sw2 = cardservice.connection.transmit( apdu, Protocol )
+        if sw1 == SW1_WRONG_LENGTH:
+            # command used wrong length. retry with correct length.
+            apdu= apdu[:len(apdu) - 1] + [sw2]
+            return send_apdu(apdu)
+        if sw1 == SW1_RESPONSE_BYTES:
+            # response bytes available.
+            apdu = GET_RESPONSE + [sw2]
+            response, sw1, sw2 = cardservice.connection.transmit( apdu, Protocol )
+    except CardConnectionException:
+        response = 0x00
+        sw1 = 0x00
+        sw2 = 0x00
+        pass
     return response, sw1, sw2
 
-def select_aid(aid):
+def select_aid(aid, cardservice):
     # select an AID and return True/False plus additional data
     apdu = SELECT + [len(aid)] + aid + [0x00]
-    response, sw1, sw2= send_apdu(apdu)
+    response, sw1, sw2= send_apdu(apdu, cardservice)
     if check_return(sw1,sw2):
         if Verbose:
             decode_pse(response)
@@ -499,40 +508,91 @@ def bruteforce_aids(aid):
                     else:
                         print 'SW1 SW2: %02x %02x' % (sw1,sw2)
 
-def read_record(sfi,record):
+def read_record(sfi,record,cardservice):
     # read a specific record from a file
     p1= record
     p2= (sfi << 3) + 4
     le= 0x00
     apdu= READ_RECORD + [p1,p2,le]
-    response, sw1, sw2= send_apdu(apdu)
+    response, sw1, sw2= send_apdu(apdu,cardservice)
     if check_return(sw1,sw2):
         return True, response
     else:
         return False, ''
 
-def bruteforce_files():
+def compute_cryptographic_checksum(un,cardservice):
+    # read a specific record from a file
+    unstring = "{:0>8d}".format(un) 
+    unlist = list(unstring.decode("hex"))
+    print unlist 
+    unlist = map(ord, unlist)
+    apdu= COMPUTE_CRYPTOGRAPHIC_CHECKSUM + [len(unlist)] + unlist + [0x00]
+    response, sw1, sw2= send_apdu(apdu,cardservice)
+    if check_return(sw1,sw2):
+        return True, response
+    else:
+        return False, ''
+
+def bruteforce_files(cardservice):
     # now try and brute force records
     print '  Checking for files:'
-    for y in range(1,31):
-        for x in range(1,256):
-            ret, response= read_record(y,x)
+    #for y in range(1,31):
+    for y in range(1,5):
+        #for x in range(1,256):
+        for x in range(1,5):
+            ret, response= read_record(y,x,cardservice)
             if ret:
                 print "  Record %02x, File %02x: length %d" % (x,y,len(response))
                 if Verbose:
                     hexprint(response)
                     textprint(response)
-                decode_pse(response)
+                #decode_pse(response)
 
-def get_processing_options():
-    apdu= GET_PROCESSING_OPTIONS
-    response, sw1, sw2= send_apdu(apdu)
+#get proceccing
+def get_processing_options(pdollist,transvalues, cardservice):
+    """send a formatted pdol command
+    get_processing_options(pdollist, transvalues, cardservice)
+    keywords: 
+    pdollist - list of pdol values needed
+    transvalues - values to lookup
+    cardservice - driver to use
+    """ 
+    #generate pdol data
+    if(len(pdollist) == 0):
+        apdu = GET_PROCESSING_OPTIONS + [0x02, 0x83, 0x00, 0x00]
+    else: 
+        pdoldata = list() 
+        pdoldata.append(0x83)
+        pdoldata.append(0x00) 
+        for x in pdollist:
+            pdoldata.extend(transvalues[x])
+        pdoldata[1] = len(pdoldata)-2 
+        apdu =  GET_PROCESSING_OPTIONS + [len(pdoldata)] + pdoldata 
+    response, sw1, sw2= send_apdu(apdu, cardservice)
     if check_return(sw1,sw2):
         return True, response
     else:
         return False, "%02x%02x" % (sw1,sw2)
 
-def decode_processing_options(data):
+def decode_DOL(data):
+    """decode and print requested DOL elements"""
+    i = 0 
+    while i < len(data):
+        tag = data[i] 
+        i += 1
+        if (data[0] & TLV_TAG_NUMBER_MASK) == TLV_TAG_NUMBER_MASK:
+            tag = tag << 8 
+            while (data[i] & TLV_TAG_MASK) == TLV_TAG_MASK:
+                tag = tag << 8 
+                # another tag byte follows
+                tag = tag + data[i] 
+                i += 1
+            tag = tag + data[i] 
+            i += 1
+        print hex(tag) + ":" + TAGS[tag][0] 
+        i += 1 # skip over length 
+
+def decode_processing_options(data,cardservice):
     # extract and decode AIP (Application Interchange Profile)
     # and AFL (Application File Locator)
     if data[0] == 0x80:
@@ -545,24 +605,26 @@ def decode_processing_options(data):
             sfi, start, end, offline= decode_afl(data[x:x+4])
             print '    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records' % (sfi,start,end,offline)
             x += 4
-            decode_file(sfi,start,end)
+            decode_file(sfi,start,end, cardservice)
     if data[0] == 0x77:
         # data is in response format 2 (BER-TLV)
         x= 2
+        decode_pse(data[x:]) 
         while x < len(data):
-            tag, fieldlen, value= decode_ber_tlv_item(data[x:])
+            tag, fieldlen, value = decode_ber_tlv_item(data[x:])
+            print 'Tag %04X: ' % tag,   
             print '-- Value: ', hexprint(value)
             if tag == BER_TLV_AIP:
                 decode_aip(value)
             if tag == BER_TLV_AFL:
                 sfi, start, end, offline= decode_afl(value)
                 print '    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records' % (sfi,start,end,offline)
-                decode_file(sfi,start,end)
+                decode_file(sfi,start,end, cardservice)
             x += fieldlen
 
-def decode_file(sfi,start,end):
+def decode_file(sfi,start,end, cardservice):
     for y in range(start,end + 1):
-        ret, response= read_record(sfi,y)
+        ret, response= read_record(sfi,y, cardservice)
         if ret:
             if OutputFiles:
                 file= open('%s-FILE%02XRECORD%02X.HEX' % (CurrentAID,sfi,y),'w')
@@ -578,12 +640,16 @@ def decode_file(sfi,start,end):
 
 def decode_aip(data):
     # byte 1 of AIP is bit masked, byte 2 is RFU
-    for x in AIP_MASK.keys():
-        if data[0] & x:
-            print '    ' + AIP_MASK[x]
+    for x in AIP_B1_MASK.keys():
+        if (data[0] & x) == x:
+            print '    ' + AIP_B1_MASK[x]
+    for x in AIP_B2_MASK.keys():
+        if (data[1] & x) == x:
+            print '    ' + AIP_B2_MASK[x]
+
 
 def decode_afl(data):
-    print '-- deccode_afl data: ', hexprint(data)
+    print '-- decode_afl data: ', hexprint(data)
     sfi= int(data[0] >> 3)
     start= int(data[1])
     end= int(data[2])
@@ -593,22 +659,23 @@ def decode_afl(data):
 def decode_ber_tlv_field(data):
     x= 0
     while x < len(data):
-        tag, fieldlen, value= decode_ber_tlv_item(data[x:])
+        tag, fieldlen, value = decode_ber_tlv_item(data[x:])
         print 'Tag %04X: ' % tag,
         hexprint(value)
         x += fieldlen
 
 def decode_ber_tlv_item(data):
     # return tag, total length of data processed and value for BER-TLV object
-    tag= data[0] & TLV_TAG_NUMBER_MASK
-    i= 1
-    if tag == TLV_TAG_NUMBER_MASK:
-        tag= ''
-        while data[i] & TLV_TAG_MASK:
+    tag = data[0] 
+    i = 1
+    if (data[0] & TLV_TAG_NUMBER_MASK) == TLV_TAG_NUMBER_MASK:
+        tag = tag << 8 
+        while (data[i] & TLV_TAG_MASK) == TLV_TAG_MASK:
+            tag = tag << 8 
             # another tag byte follows
-            tag.append(xor(data[i],TLV_TAG_MASK))
+            tag = tag + data[i] 
             i += 1
-        tag.append(data[i])
+        tag = tag + data[i] 
         i += 1
     if data[i] & TLV_LENGTH_MASK:
         # this byte tells us the number of subsequent bytes that describe the length
@@ -711,198 +778,26 @@ def generate_ac(type):
         return True
     else:
         hexprint([sw1,sw2])
-    
 
-# main loop
-aidlist= KNOWN_AIDS
+def decodeCTQ(ctqdata):
+    """Decode the Card Transaction Qualifiers data"""
+    print "CTQ Qualifiers:" 
+    if (ctqdata[0] & 0x80) == 0x80:
+        print "Online PIN Required"
+    if (ctqdata[0] & 0x40) == 0x40:
+        print "Signature Required"
+    if (ctqdata[0] & 0x20) == 0x20:
+        print "Go Online if Offline Data Authentication Fails and Reader is online capable."
+    if (ctqdata[0] & 0x10) == 0x10:
+        print "Switch Interface if Offline Data Authentication fails and Reader supports VIS."
+    if (ctqdata[0] & 0x08) == 0x08:
+        print "Go Online if Application Expired."
+    if (ctqdata[0] & 0x04) == 0x04:
+        print "Switch Interface for CashTransactions."
+    if (ctqdata[0] & 0x02) == 0x02:
+        print "Switch Interface for Cashback Transactions"
+    if (ctqdata[1] & 0x80) == 0x80:
+        print "Consumer Device CVMPerformed.Note: Bit 8 is not used by cards compliant with VISA specification, and is commonly set to False."
+    if (ctqdata[1] & 0x40) == 0x40:
+        print "Card supports Issuer Update Processing at the POS"
 
-try:
-    # 'args' will be set to remaining arguments (if any)
-    opts, args  = getopt.getopt(sys.argv[1:],'aAdefoprtv')
-    for o, a in opts:
-        if o == '-a':
-            BruteforceAID= True
-        if o == '-A':
-            print
-            for x in range(len(aidlist)):
-                print '% 20s: ' % aidlist[x][0],
-                hexprint(aidlist[x][1:])
-            print
-            sys.exit(False) 
-        if o == '-d':
-            Debug= True
-        if o == '-e':
-            BruteforceAID= True
-            BruteforceEMV= True
-        if o == '-f':
-            BruteforceFiles= True
-        if o == '-o':
-            OutputFiles= True
-        if o == '-p':
-            BruteforcePrimitives= True
-        if o == '-r':
-            RawOutput= True
-        if o == '-t':
-            Protocol= CardConnection.T1_protocol
-        if o == '-v':
-            Verbose= True
-
-except getopt.GetoptError:
-    # -h will cause an exception as it doesn't exist!
-    printhelp()
-    sys.exit(True)
-
-PIN= ''
-if args:
-    if not args[0].isdigit():
-        print 'Invalid PIN', args[0]
-        sys.exit(True)
-    else:
-        PIN= args[0]
-
-try:
-    # request any card type
-    cardtype = AnyCardType()
-    # request card insertion
-    print 'insert a card within 10s'
-    cardrequest = CardRequest( timeout=10, cardType=cardtype )
-    cardservice = cardrequest.waitforcard()
-
-    # attach the console tracer
-    if Debug:
-        observer=ConsoleCardConnectionObserver()
-        cardservice.connection.addObserver( observer )
-
-    # connect to the card
-    cardservice.connection.connect(Protocol)
-
-    #get_challenge(0)
-
-    # try to select PSE
-    apdu = SELECT + [len(DF_PSE)] + DF_PSE
-    response, sw1, sw2 = send_apdu( apdu )
-
-    if check_return(sw1,sw2):
-        # there is a PSE
-        print 'PSE found!'
-        decode_pse(response)
-        if BruteforcePrimitives:
-            # brute force primitives
-            print 'Brute forcing primitives'
-            bruteforce_primitives()
-        if BruteforceFiles:
-            print 'Brute forcing files'
-            bruteforce_files()
-        status, length, psd= get_tag(response,SFI)
-        if not status:
-            print 'No PSD found!'
-        else:
-            print '  Checking for records:',
-            if BruteforcePrimitives:
-                psd= range(31)
-                print '(bruteforce all files)'
-            else:
-                print
-            for x in range(256):
-                for y in psd:
-                    p1= x
-                    p2= (y << 3) + 4
-                    le= 0x00
-                    apdu= READ_RECORD + [p1] + [p2,le]
-                    response, sw1, sw2 = cardservice.connection.transmit( apdu )
-                    if sw1 == 0x6c:
-                        print "  Record %02x, File %02x: length %d" % (x,y,sw2)
-                        le= sw2
-                        apdu= READ_RECORD + [p1] + [p2,le]
-                        response, sw1, sw2 = cardservice.connection.transmit( apdu )
-                        print "  ",
-                        aid= ''
-                        if Verbose:
-                            hexprint(response)
-                            textprint(response)
-                        i= 0
-                        while i < len(response):
-                            # extract the AID
-                            if response[i] == 0x4f and aid == '':
-                                aidlen= response[i + 1]
-                                aid= response[i + 2:i + 2 + aidlen]
-                            i += 1
-                        print '   AID found:',
-                        hexprint(aid)
-                        aidlist.append(['PSD Entry']+aid)
-    if BruteforceAID:
-        bruteforce_aids(BRUTE_AID)
-    if aidlist:
-        # now try dumping the AID records
-        current= 0
-        while current < len(aidlist):
-            if Verbose:
-                print 'Trying AID: %s -' % aidlist[current][0],
-                hexprint(aidlist[current][1:])
-            selected, response, sw1, sw2= select_aid(aidlist[current][1:])
-            if selected:
-                CurrentAID= ''
-                for n in range(len(aidlist[current][1:])):
-                    CurrentAID += '%02X' % aidlist[current][1:][n]
-                if Verbose:
-                    print '  Selected: ',
-                    hexprint(response)
-                    textprint(response)
-                else:
-                    print '  Found AID: %s -' % aidlist[current][0],
-                    hexprint(aidlist[current][1:])
-                decode_pse(response)
-                if BruteforcePrimitives:
-                    # brute force primitives
-                    print 'Brute forcing primitives'
-                    bruteforce_primitives()
-                if BruteforceFiles:
-                    print 'Brute forcing files'
-                    bruteforce_files()
-                ret, response= get_processing_options()
-                if ret:
-                    print '  Processing Options:',
-                    decode_pse(response)                        
-                    decode_processing_options(response)
-                else:
-                    print '  Could not get processing options:', response, ERRORS[response]
-                ret, length, pins= get_primitive(PIN_TRY_COUNTER)
-                if ret:
-                    ptc= int(pins[0])
-                    print '  PIN tries left:', ptc
-                    #if ptc == 0:
-                    #   print 'unblocking PIN'
-                    #   update_pin_try_counter(3)
-                    #   ret, sw1, sw2= send_apdu(UNBLOCK_PIN)
-                    #   hexprint([sw1,sw2])
-                if PIN:
-                    if verify_pin(PIN):
-                        sys.exit(False)
-                    else:
-                        sys.exit(True)
-                ret, length, atc= get_primitive(ATC)
-                if ret:
-                    atcval= (atc[0] << 8) + atc[1]
-                    print '  Application Transaction Counter:', atcval
-                ret, length, latc= get_primitive(LAST_ATC)
-                if ret:
-                    latcval= (latc[0] << 8) + latc[1]
-                    print '  Last ATC:', latcval
-                ret, length, logf= get_primitive(LOG_FORMAT)
-                if ret:
-                    print 'Log Format: ',
-                    hexprint(logf)
-                current += 1
-            else:
-                if Verbose:
-                    print '  Not found: %02x %02x' % (sw1,sw2)
-                current += 1
-    else:
-        print 'no PSE: %02x %02x' % (sw1,sw2)
-
-except CardRequestTimeoutException:
-    print 'time-out: no card inserted during last 10s'
-
-if 'win32'==sys.platform:
-    print 'press Enter to continue'
-    sys.stdin.read(1)
