@@ -236,9 +236,11 @@ class ISO14443A(object):
 			self.atr = "".join(["%02X" % x for x in ti.abtAts[:ti.uiAtsLen]])
 		else:
 			self.atr = ""
+		self.atqa = "".join(["%02X" % x for x in ti.abtAtqa])
+		self.sak = "%02X" % ti.btSak
 	
 	def __str__(self):
-		rv = "ISO14443A(uid='%s', atr='%s')" % (self.uid, self.atr)
+		rv = "ISO14443A(uid='%s', atr='%s', atqa='%s', sak='%s')" % (self.uid, self.atr, self.atqa, self.sak)
 		return rv
 
 class ISO14443B(object):
@@ -259,6 +261,8 @@ class JEWEL(object):
 		self.btId = "".join(["%02X" % x for x in ti.btId[:4]])
 		self.uid = self.btId
 		self.atr = ""        # idem
+		self.atqa = self.btSensRes
+		self.sak = ""
 	
 	def __str__(self):
 		rv = "JEWEL(btSensRes='%s', btId='%s')" % (self.btSensRes, self.btId)
@@ -490,6 +494,8 @@ if __name__ == "__main__":
 	c = n.readISO14443A()
 	print 'UID: ' + c.uid
 	print 'ATR: ' + c.atr
+	print 'ATQA: ' + c.atqa
+	print 'SAK: ' + c.sak
 
 	cont = True
 	while cont:
