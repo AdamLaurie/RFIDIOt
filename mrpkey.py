@@ -47,23 +47,6 @@ from Tkinter import *
 import PIL.Image as Image
 import PIL.ImageTk as ImageTk
 
-# Machine Readable Document types
-DOC_UNDEF= {
-	   '?':'Undefined',
-	   }
-
-DOC_ID= {
-	'I<':'ID Card',
-	'IR':'ID Card',
-	}
-
-DOC_PASS=  {
-	   'P<':'Passport',
-	   'PM':'Passport',
-	   'PA':'Passport',
-	   'PV':'Passport',
-	   }
-
 DOCUMENT_TYPE= {}
 
 # TEST data
@@ -658,16 +641,30 @@ def decode_ef_dg1(data):
 		pointer += 1
 	print '  Decoded Data: ' + out
 	DocumentType= out[0:2]
-	if DOC_ID.has_key(DocumentType):
-		print '    Document type: %s' % DOC_ID[DocumentType]
-		DOCUMENT_TYPE= DOC_ID
+	if DocumentType == 'IP':
+		print '    Document type: Passport Card'
+		DOCUMENT_TYPE= 'Passport Card'
+		Fields= MRZ_FIELD_DISPLAY_ID
+		FieldNames= MRZ_FIELD_NAMES_ID
+		FieldLengths= MRZ_FIELD_LENGTHS_ID
+		FieldKeys= MRZ_FIELD_KEYS_ID
+	elif DocumentType[0] == 'I':
+		print '    Document type: ID Card'
+		DOCUMENT_TYPE= 'ID Card'
+		Fields= MRZ_FIELD_DISPLAY_ID
+		FieldNames= MRZ_FIELD_NAMES_ID
+		FieldLengths= MRZ_FIELD_LENGTHS_ID
+		FieldKeys= MRZ_FIELD_KEYS_ID
+	elif DocumentType == 'AC':
+		print '    Document type: Aircrew card, which we do not know how to decode. Attempting ID card settings.'
+		DOCUMENT_TYPE= 'Aircrew Card'
 		Fields= MRZ_FIELD_DISPLAY_ID
 		FieldNames= MRZ_FIELD_NAMES_ID
 		FieldLengths= MRZ_FIELD_LENGTHS_ID
 		FieldKeys= MRZ_FIELD_KEYS_ID
 	else:
-		print '    Document type: %s' % DOC_PASS[DocumentType]
-		DOCUMENT_TYPE= DOC_PASS
+		print '    Document type: Passport'
+		DOCUMENT_TYPE= 'Passport'
 		Fields= MRZ_FIELD_DISPLAY
 		FieldNames= MRZ_FIELD_NAMES
 		FieldLengths= MRZ_FIELD_LENGTHS
@@ -1018,6 +1015,7 @@ def help():
 	print
 	print '\tSpecify the Lower MRZ as a quoted string or the word TEST to use sample data.'
 	print '\tLower MRZ can be full line or shortened to the essentials: chars 1-9;14-19;22-27'
+	print '\tFor Passport Cards, all three lines are required or use card number, DOB and expiry (NNNNNNNNNNYYMMDDYYMMDD)'
 	print '\tSpecify the word PLAIN if the passport doesn\'t have BAC (shorthand for dummy MRZ)'
 	print '\tSpecify the word CHECK to check if the device is a passport.'
 	print '\tSpecify a PATH to use files that were previously read from a passport.'
@@ -1039,7 +1037,7 @@ if len(args) == 0 or Help:
 
 arg0= args[0].upper()
 
-if not(len(arg0) == 44 or len(arg0) == 21 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(args[0],os.F_OK)) or len(args) > 2:
+if not(len(arg0) == 44 or len(arg0) == 21 or len(arg0) == 90 or arg0 == 'TEST' or arg0 == 'CHECK' or arg0 == 'PLAIN' or arg0 == 'SETBAC' or arg0 == 'UNSETBAC' or os.access(args[0],os.F_OK)) or len(args) > 2:
 	help()
 
 if len(args) == 2:
@@ -1109,7 +1107,11 @@ if not TEST and not FILES and MRZ:
 	# expands short MRZ version if needed
 	if len(key) == 21:
 		key= key[0:9] + 'XXXX' + key[9:15] + 'XX' + key[15:21] + 'XXXXXXXXXXXXXXXXX'
+	elif len(key) == 90:
+		# Handles full MRZ needed for Passport cards
+		key = key[5:15] + 'XXX' + key[30:45] + 'XXXXXXXXXXXXXXXX'
 	passport.MRPmrzl(key)
+
 
 if not FILES and not TEST:
 	# set communication speed
@@ -1529,8 +1531,8 @@ Style= 'Arrow'
 if not Nogui:
 	root = Tk()
 
-	font= 'fixed 22'
-	fonta= 'fixed 22'
+	font= 'courier 22'
+	fonta= 'courier 22'
 
 	frame = Frame(root, colormap="new", visual='truecolor').grid()
 	root.title('%s (RFIDIOt v%s)' % (myver,passport.VERSION))
@@ -1566,7 +1568,7 @@ if not Nogui:
 	quitbutton= Button(frame, text="Quit", command=root.quit)
 	quitbutton.grid(row= 1, column=3, sticky= NE, rowspan= 2)
 	Label(frame, text='Type').grid(row= 1, sticky= W, column= 1)
-	Label(frame, text=DOCUMENT_TYPE[DocumentType], font= font).grid(row= 2, sticky= W, column= 1)
+	Label(frame, text=DOCUMENT_TYPE, font= font).grid(row= 2, sticky= W, column= 1)
 	row= 3
 	for item in Fields:
 		Label(frame, text=FieldNames[item]).grid(row= row, sticky= W, column= 1)
@@ -1579,10 +1581,19 @@ if not Nogui:
 		else:
 			Label(frame, text=mrzspaces(mrz[mrzoffset:mrzoffset + FieldLengths[item]],' '), font= font).grid(row= row, sticky= W, column= 1)
 		row += 1
-	Label(frame, text='  ' + mrz[:len(mrz) / 2], font= fonta, justify= 'left').grid(row= row, sticky= W, columnspan= 4)
-	row += 1
-	Label(frame, text='  ' + mrz[len(mrz) / 2:], font= fonta, justify= 'left').grid(row= row, sticky= W, columnspan= 4)
-	row += 1
+	if len(mrz) == 90:
+		# Passport cards have a three-line MRZ
+		Label(frame, text=mrz[:30], font= fonta, justify= 'center').grid(row= row, columnspan= 4)
+		row += 1
+		Label(frame, text=mrz[30:60], font= fonta, justify= 'center').grid(row= row, columnspan= 4)
+		row += 1
+		Label(frame, text=mrz[60:], font= fonta, justify= 'center').grid(row= row, columnspan= 4)
+		row += 1
+	else:
+		Label(frame, text='  ' + mrz[:len(mrz) / 2], font= fonta, justify= 'left').grid(row= row, sticky= W, columnspan= 4)
+		row += 1
+		Label(frame, text='  ' + mrz[len(mrz) / 2:], font= fonta, justify= 'left').grid(row= row, sticky= W, columnspan= 4)
+		row += 1
 	if Display_DG7:
 		im = Image.open(tempfiles + 'EF_DG7.' + Filetype)
 		width, height = im.size
