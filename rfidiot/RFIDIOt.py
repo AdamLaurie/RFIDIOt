@@ -2191,8 +2191,8 @@ class rfidiot:
 		"iso 9797-1 Algorithm 3 (Retail MAC)"
 		# DES for all blocks
 		# DES3 for last block
-	        tdesa= DES.new(key[0:8],DES.MODE_ECB,self.DES_IV)
-        	tdesb= DES.new(key[8:16],DES.MODE_ECB,self.DES_IV)
+	        tdesa= DES.new(key[0:8],DES.MODE_ECB)
+        	tdesb= DES.new(key[8:16],DES.MODE_ECB)
         	if(ssc):
                 	mac= tdesa.encrypt(self.ToBinary(ssc))
         	else:
