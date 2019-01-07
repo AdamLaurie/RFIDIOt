@@ -308,8 +308,9 @@ class NFC(object):
 		self.libnfc.nfc_device_get_name.argtypes = [ctypes.c_void_p]
 		self.libnfc.nfc_open.restype = ctypes.c_void_p
 		self.libnfc.nfc_initiator_init.argtypes = [ctypes.c_void_p]
-		self.libnfc.nfc_device_set_property_bool.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_bool];
+		self.libnfc.nfc_device_set_property_bool.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_bool]
 		self.libnfc.nfc_close.argtypes = [ctypes.c_void_p]
+		self.libnfc.nfc_perror.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 		self.libnfc.nfc_initiator_list_passive_targets.argtypes = [ctypes.c_void_p, ctypes.Structure, ctypes.c_void_p, ctypes.c_size_t]
 		self.libnfc.nfc_initiator_transceive_bytes.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint32]
 		self.libnfc.nfc_init(ctypes.byref(self.context))
@@ -479,6 +480,7 @@ class NFC(object):
 		if rfidiotglobals.Debug:
 			self.log.debug('APDU rxlen = ' + str(rxlen))
 		if rxlen < 0:
+			self.libnfc.nfc_perror(self.device, "nfc_initiator_transceive_bytes")
 			if rfidiotglobals.Debug:
 				self.log.error("Error sending/receiving APDU")
 			return False, rxlen

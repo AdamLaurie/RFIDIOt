@@ -507,7 +507,7 @@ class rfidiot:
 			    'N':'No precise diagnosis',
 			    'PC00':'No TAG present!',
 			    'PC01':'PCSC Communications Error',
-			    'PN00': 'PN531 Communications Error',
+			    'PN00': 'PN53x Communications Error',
 			    'R':'Block out of range',
 			    'X':'Authentication failed',
 			    }
@@ -1531,9 +1531,12 @@ class rfidiot:
 			if self.DEBUG:
 				print 'In send_apdu - for libnfc:', cla+ins+p1+p2+lc+data+le
 			ret, result = self.nfc.sendAPDU(cla+ins+p1+p2+lc+data+le)
+			if not ret:
+				self.errorcode = 'PN00'
+				return False
 			self.data = result[0:-4]
 			self.errorcode = result[len(result)-4:len(result)]
-			if not ret or self.errorcode != self.ISO_OK:
+			if self.errorcode != self.ISO_OK:
 				return False
 			return True
 		if self.readertype == self.READER_ANDROID:
