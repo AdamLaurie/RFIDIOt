@@ -1283,6 +1283,7 @@ if not FILES and BAC:
 		if DEBUG or TEST:
 			print 'Auth message: ' + resp
 			print 'Auth MAC: ' + respmac + ' (verified)'
+		tdes= DES3.new(Kenc,DES.MODE_CBC,passport.DES_IV)
 		decresp= passport.ToHex(tdes.decrypt(passport.ToBinary(resp)))
 		if DEBUG or TEST:
 			print 'Decrypted Auth Response: ' + decresp
