@@ -462,7 +462,7 @@ class NFC(object):
 		self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, True)
 		self.selectISO14443A()
 
-	def sendAPDU(self, apdu):
+	def sendAPDU(self, apdu, timeout=None):
 		apdu= "".join([x for x in apdu])
 		txData = []		
 		for i in range(0, len(apdu), 2):
@@ -476,7 +476,7 @@ class NFC(object):
 	
 		if rfidiotglobals.Debug:	
 			self.log.debug("Sending %d byte APDU: %s" % (len(tx),"".join(["%02x" % x for x in tx])))
-		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), -1)
+		rxlen = self.libnfc.nfc_initiator_transceive_bytes(self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)), ctypes.byref(rx), ctypes.c_size_t(len(rx)), int(timeout * 1000) if timeout is not None else -1)
 		if rfidiotglobals.Debug:
 			self.log.debug('APDU rxlen = ' + str(rxlen))
 		if rxlen < 0:
