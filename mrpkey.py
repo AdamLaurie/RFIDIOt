@@ -79,6 +79,7 @@ EF_DG15= '6f'
 EF_DG16= '70'
 EF_SOD= '77'
 EF_TAGS= '5c'
+EF_CardAccess= 'EF_CardAccess'
 
 # Data Group Names
 TAG_NAME= {EF_COM:'EF.COM Data Group Presence Map',\
@@ -95,9 +96,10 @@ TAG_NAME= {EF_COM:'EF.COM Data Group Presence Map',\
 	   EF_DG11:'EF.DG11 Additional Personal Detail(s)',\
 	   EF_DG12:'EF.DG12 Additional Document Detail(s)',\
 	   EF_DG13:'EF.DG13 Optional Detail(s)',\
-	   EF_DG14:'EF.DG14 Reserved for Future Use',\
+	   EF_DG14:'EF.DG14 EAC Chip Authentication Public Key Info',\
 	   EF_DG15:'EF.DG15 Active Authentication Public Key Info',\
 	   EF_DG16:'EF.DG16 Person(s) to Notify',\
+	   EF_CardAccess:'EF.CardAccess Supplemental Access Control',\
 	   EF_SOD:'EF.SOD Document Security Object',\
 	   EF_TAGS:'Tag List'}
 
@@ -119,6 +121,7 @@ TAG_FID=  {EF_COM:'011E',\
 	   EF_DG14:'010E',\
 	   EF_DG15:'010F',\
 	   EF_DG16:'0110',\
+	   EF_CardAccess:'011C', \
 	   EF_SOD:'011D'}
 
 # Filesystem paths
@@ -143,6 +146,7 @@ TAG_FILE= {EF_COM:'EF_COM.BIN',\
 	   EF_DG14:'EF_DG14.BIN',\
 	   EF_DG15:'EF_DG15.BIN',\
 	   EF_DG16:'EF_DG16.BIN',\
+	   EF_CardAccess:'EF_CardAccess.BIN',\
 	   EF_SOD:'EF_SOD.BIN'}
 
 # Flags filenames for local storage
@@ -1011,6 +1015,7 @@ MRZ=True
 BAC=True
 SETBAC=False
 UNSETBAC=False
+PACE= False
 
 def help():
 	print
@@ -1134,13 +1139,29 @@ if not FILES and not TEST:
 	print 'Device set to %s transfers' % passport.ISO_SPEED[passport.speed]
 	print 'Device supports %s Byte transfers' % passport.ISO_FRAMESIZE[passport.framesize]
 	print
+	print 'Checking presence of EF_CardAccess (PACE):'
+	status, data= read_file(TAG_FID[EF_CardAccess])
+	if status:
+        # TODO CardAccess parsing
+		print '  Stored in', tempfiles+TAG_FILE[EF_CardAccess]
+		outfile= open(tempfiles+TAG_FILE[EF_CardAccess],'wb+')
+		outfile.write(data)
+		outfile.flush()
+		outfile.close()
+		print "ePP supports PACE! (but we don't :p)"
+		PACE=True
+	else:
+		print "ePP doesn't support PACE"
+
 	print 'Select Passport Application (AID): ',
 	if passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
 		print 'OK'
 	else:
 		passport.iso_7816_fail(passport.errorcode)
+
 	print 'Select Master File: ',
 	if passport.iso_7816_select_file(TAG_FID[EF_COM],passport.ISO_7816_SELECT_BY_EF,'0C'):
+
 		# try forcing BAC by reading a file
 		status, data= read_file(TAG_FID[EF_DG1])
 		if not status and passport.errorcode == APDU_BAC:
@@ -1150,7 +1171,7 @@ if not FILES and not TEST:
 			print passport.errorcode
 			BAC=False
 if BAC:
-	print 'Basic Acces Control Enforced!'
+	print 'Basic Access Control Enforced!'
 
 if SETBAC:
 	vonjeek_setBAC()
