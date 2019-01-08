@@ -1434,10 +1434,12 @@ for tag in eflist:
 	print '  Stored in', tempfiles+TAG_FILE[tag]
 	# special cases
 	if tag == EF_SOD:
-		# extract DER file (should be at offset 4 - if not, use sod.py to find it in EF_SOD.BIN
-		# temporary evil hack until I have time to decode EF.SOD properly
+		# extract DER file (should be at offset 3 or 4 - if not, use sod.py to find it in EF_SOD.BIN
+		sodhex= passport.ToHex(data)
+		tag= sodhex[:2]
+		fieldlength= asn1fieldlength(sodhex[2:])
 		outfile= open(tempfiles+"EF_SOD.TMP",'wb+')
-		outfile.write(data[4:])
+		outfile.write(data[1+fieldlength/2:])
 		outfile.flush()
 		outfile.close()
 		exitstatus= os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)
@@ -1452,6 +1454,27 @@ for tag in eflist:
 		dg2_features= decode_ef_dg2(data)
 	if tag == EF_DG7:
 		decode_ef_dg7(data)
+	if tag == EF_DG14:
+		# TODO parse DG14 SecurityInfos
+		exitstatus= os.system("openssl asn1parse -i -in %sEF_DG14.BIN -inform DER" % tempfiles)
+	if tag == EF_DG15:
+		dg15hex= passport.ToHex(data)
+		tag= dg15hex[:2]
+		fieldlength= asn1fieldlength(dg15hex[2:])
+		outfile= open(tempfiles+"EF_DG15.TMP",'wb+')
+		outfile.write(data[1+fieldlength/2:])
+		outfile.flush()
+		outfile.close()
+		exitstatus= os.system("openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
+		if not exitstatus:
+			os.system("openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles,tempfiles))
+			print 'Key stored in %sEF_DG15.PEM' % tempfiles
+			continue
+		if exitstatus:
+			exitstatus= os.system("openssl ec -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
+		if not exitstatus:
+			os.system("openssl ec -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles,tempfiles))
+			print 'Key stored in %sEF_DG15.PEM' % tempfiles
 
 #initialise app if we are going to WRITE JMRTD
 if Jmrtd:
