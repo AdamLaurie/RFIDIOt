@@ -1405,6 +1405,10 @@ eflist.insert(0,EF_COM)
 # now get everything else
 for tag in eflist:
 	print 'Reading:', TAG_NAME[tag]
+	if tag in [EF_DG3, EF_DG4]:
+        # if we try and fail, we need to establish a new BAC session
+		print "skipping (requires PACE auth)"
+		continue
 	if not FILES:
 		if BAC:
 			status, data= secure_read_file(KSenc,KSmac,TAG_FID[tag])
