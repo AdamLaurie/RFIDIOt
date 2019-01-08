@@ -26,7 +26,7 @@ I know nothing about RFID tags, and even less about python. As such, I felt a
 complete idiot when I started. :)
 
 q: How can I contribute?
-a: Send me patches, info, new tools, coffee, money, drugs and/or loose women.
+a: Send me patches, info, new tools, coffee, money, drugs and/or a Miles Davis song :) 
 
 q: What hardware is supported?
 a: So far this works with the ACG serial readers. I use the CF Card model, 
