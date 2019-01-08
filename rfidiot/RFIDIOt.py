@@ -81,6 +81,7 @@ class rfidiot:
 		self.DEBUG= debug
 		self.NoInit= noinit
 		self.NFCReader= nfcreader
+		self.timeout= to
 		if not self.NoInit:
 			if self.readertype == self.READER_PCSC:
 				try:
@@ -507,7 +508,7 @@ class rfidiot:
 			    'N':'No precise diagnosis',
 			    'PC00':'No TAG present!',
 			    'PC01':'PCSC Communications Error',
-			    'PN00': 'PN531 Communications Error',
+			    'PN00': 'PN53x Communications Error',
 			    'R':'Block out of range',
 			    'X':'Authentication failed',
 			    }
@@ -1372,7 +1373,7 @@ class rfidiot:
 		   keytype= '%02x' % pynfc.MC_AUTH_A
 		loginblock= '%02x' % block
 		#if self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
-		ret, self.errorcode= self.nfc.sendAPDU([keytype]+[loginblock]+[key]+[self.uid])
+		ret, self.errorcode= self.nfc.sendAPDU([keytype]+[loginblock]+[key]+[self.uid], self.timeout)
 		if not ret:
 			self.errorcode= self.ISO_SECURE
 			return False
@@ -1383,7 +1384,7 @@ class rfidiot:
 		apdu += '%02X' % pynfc.MC_READ # mifare read
 		hexblock= '%02x' % block
 		apdu.append(hexblock)
-		ret, dat= self.nfc.sendAPDU(apdu)
+		ret, dat= self.nfc.sendAPDU(apdu, self.timeout)
 		if not ret:
 			self.errorcode= dat
 			return False
@@ -1530,10 +1531,13 @@ class rfidiot:
 		if self.readertype == self.READER_LIBNFC:
 			if self.DEBUG:
 				print 'In send_apdu - for libnfc:', cla+ins+p1+p2+lc+data+le
-			ret, result = self.nfc.sendAPDU(cla+ins+p1+p2+lc+data+le)
+			ret, result = self.nfc.sendAPDU(cla+ins+p1+p2+lc+data+le, self.timeout)
+			if not ret:
+				self.errorcode = 'PN00'
+				return False
 			self.data = result[0:-4]
 			self.errorcode = result[len(result)-4:len(result)]
-			if not ret or self.errorcode != self.ISO_OK:
+			if self.errorcode != self.ISO_OK:
 				return False
 			return True
 		if self.readertype == self.READER_ANDROID:
@@ -1708,7 +1712,7 @@ class rfidiot:
 			apdu += '%02X' % pynfc.MC_READ # mifare read
 			hexblock= '%04x' % block
 			apdu.append(hexblock)
-			ret, self.errorcode= self.nfc.sendAPDU(apdu)
+			ret, self.errorcode= self.nfc.sendAPDU(apdu, self.timeout)
 			if not ret:
 				return False
 			self.errorcode= self.ISO_OK
