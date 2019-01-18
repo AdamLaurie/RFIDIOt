@@ -79,6 +79,7 @@ EF_DG15= '6f'
 EF_DG16= '70'
 EF_SOD= '77'
 EF_TAGS= '5c'
+EF_CardAccess= 'EF_CardAccess'
 
 # Data Group Names
 TAG_NAME= {EF_COM:'EF.COM Data Group Presence Map',\
@@ -95,9 +96,10 @@ TAG_NAME= {EF_COM:'EF.COM Data Group Presence Map',\
 	   EF_DG11:'EF.DG11 Additional Personal Detail(s)',\
 	   EF_DG12:'EF.DG12 Additional Document Detail(s)',\
 	   EF_DG13:'EF.DG13 Optional Detail(s)',\
-	   EF_DG14:'EF.DG14 Reserved for Future Use',\
+	   EF_DG14:'EF.DG14 EAC Chip Authentication Public Key Info',\
 	   EF_DG15:'EF.DG15 Active Authentication Public Key Info',\
 	   EF_DG16:'EF.DG16 Person(s) to Notify',\
+	   EF_CardAccess:'EF.CardAccess Supplemental Access Control',\
 	   EF_SOD:'EF.SOD Document Security Object',\
 	   EF_TAGS:'Tag List'}
 
@@ -119,6 +121,7 @@ TAG_FID=  {EF_COM:'011E',\
 	   EF_DG14:'010E',\
 	   EF_DG15:'010F',\
 	   EF_DG16:'0110',\
+	   EF_CardAccess:'011C', \
 	   EF_SOD:'011D'}
 
 # Filesystem paths
@@ -143,6 +146,7 @@ TAG_FILE= {EF_COM:'EF_COM.BIN',\
 	   EF_DG14:'EF_DG14.BIN',\
 	   EF_DG15:'EF_DG15.BIN',\
 	   EF_DG16:'EF_DG16.BIN',\
+	   EF_CardAccess:'EF_CardAccess.BIN',\
 	   EF_SOD:'EF_SOD.BIN'}
 
 # Flags filenames for local storage
@@ -563,6 +567,8 @@ def asn1fieldlength(data):
 		return 4
 	if int(data[:2],16) == 0x82:
 		return 6
+	if int(data[:2],16) == 0x83:
+		return 8
 
 def asn1datalength(data):
 	#return actual length represented by asn.1 field
@@ -572,6 +578,8 @@ def asn1datalength(data):
 		return  int(data[2:4],16)
 	if int(data[:2],16) == 0x82:
 		return int(data[2:6],16)
+	if int(data[:2],16) == 0x83:
+		return int(data[2:8],16)
 
 def secure_read_file(keyenc,keymac,file):
 #	MAXCHUNK= int(passport.ISO_FRAMESIZE[passport.framesize])
@@ -1007,6 +1015,7 @@ MRZ=True
 BAC=True
 SETBAC=False
 UNSETBAC=False
+PACE= False
 
 def help():
 	print
@@ -1130,13 +1139,29 @@ if not FILES and not TEST:
 	print 'Device set to %s transfers' % passport.ISO_SPEED[passport.speed]
 	print 'Device supports %s Byte transfers' % passport.ISO_FRAMESIZE[passport.framesize]
 	print
+	print 'Checking presence of EF_CardAccess (PACE):'
+	status, data= read_file(TAG_FID[EF_CardAccess])
+	if status:
+        # TODO CardAccess parsing
+		print '  Stored in', tempfiles+TAG_FILE[EF_CardAccess]
+		outfile= open(tempfiles+TAG_FILE[EF_CardAccess],'wb+')
+		outfile.write(data)
+		outfile.flush()
+		outfile.close()
+		print "ePP supports PACE! (but we don't :p)"
+		PACE=True
+	else:
+		print "ePP doesn't support PACE"
+
 	print 'Select Passport Application (AID): ',
 	if passport.iso_7816_select_file(passport.AID_MRTD,passport.ISO_7816_SELECT_BY_NAME,'0C'):
 		print 'OK'
 	else:
 		passport.iso_7816_fail(passport.errorcode)
+
 	print 'Select Master File: ',
 	if passport.iso_7816_select_file(TAG_FID[EF_COM],passport.ISO_7816_SELECT_BY_EF,'0C'):
+
 		# try forcing BAC by reading a file
 		status, data= read_file(TAG_FID[EF_DG1])
 		if not status and passport.errorcode == APDU_BAC:
@@ -1146,7 +1171,7 @@ if not FILES and not TEST:
 			print passport.errorcode
 			BAC=False
 if BAC:
-	print 'Basic Acces Control Enforced!'
+	print 'Basic Access Control Enforced!'
 
 if SETBAC:
 	vonjeek_setBAC()
@@ -1402,6 +1427,10 @@ eflist.insert(0,EF_COM)
 for tag in eflist:
 	print 'Reading:', TAG_NAME[tag]
 	if not FILES:
+		if tag in [EF_DG3, EF_DG4]:
+			# if we try and fail, we need to establish a new BAC session
+			print "skipping (requires PACE auth)"
+			continue
 		if BAC:
 			status, data= secure_read_file(KSenc,KSmac,TAG_FID[tag])
 		else:
@@ -1426,10 +1455,12 @@ for tag in eflist:
 	print '  Stored in', tempfiles+TAG_FILE[tag]
 	# special cases
 	if tag == EF_SOD:
-		# extract DER file (should be at offset 4 - if not, use sod.py to find it in EF_SOD.BIN
-		# temporary evil hack until I have time to decode EF.SOD properly
+		# extract DER file (should be at offset 3 or 4 - if not, use sod.py to find it in EF_SOD.BIN
+		sodhex= passport.ToHex(data)
+		tag= sodhex[:2]
+		fieldlength= asn1fieldlength(sodhex[2:])
 		outfile= open(tempfiles+"EF_SOD.TMP",'wb+')
-		outfile.write(data[4:])
+		outfile.write(data[1+fieldlength/2:])
 		outfile.flush()
 		outfile.close()
 		exitstatus= os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)
@@ -1444,6 +1475,27 @@ for tag in eflist:
 		dg2_features= decode_ef_dg2(data)
 	if tag == EF_DG7:
 		decode_ef_dg7(data)
+	if tag == EF_DG14:
+		# TODO parse DG14 SecurityInfos
+		exitstatus= os.system("openssl asn1parse -i -in %sEF_DG14.BIN -inform DER" % tempfiles)
+	if tag == EF_DG15:
+		dg15hex= passport.ToHex(data)
+		tag= dg15hex[:2]
+		fieldlength= asn1fieldlength(dg15hex[2:])
+		outfile= open(tempfiles+"EF_DG15.TMP",'wb+')
+		outfile.write(data[1+fieldlength/2:])
+		outfile.flush()
+		outfile.close()
+		exitstatus= os.system("openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
+		if not exitstatus:
+			os.system("openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles,tempfiles))
+			print 'Key stored in %sEF_DG15.PEM' % tempfiles
+			continue
+		if exitstatus:
+			exitstatus= os.system("openssl ec -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
+		if not exitstatus:
+			os.system("openssl ec -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles,tempfiles))
+			print 'Key stored in %sEF_DG15.PEM' % tempfiles
 
 #initialise app if we are going to WRITE JMRTD
 if Jmrtd:
@@ -1478,8 +1530,8 @@ if Jmrtd:
 			if tag=='5C'.decode('hex'):
 				# Keeping only known files in the tag index
 				oldindex=raw_efcom[i:i+length]
-				clearDGs=[chr(0x61), chr(0x75), chr(0x67), chr(0x6b), chr(0x6c), chr(0x6d), chr(0x63)]
-				newindex=''.join(filter(lambda x: x in clearDGs, list(oldindex)))
+				clearDGs=[EF_DG1, EF_DG2, EF_DG7, EF_DG11, EF_DG12, EF_DG13]
+				newindex=''.join(filter(lambda x: x.encode('hex') in clearDGs, list(oldindex)))
 				newlength=len(newindex)
 				tmp+= chr(newlength)+newindex
 				i+= newlength
