@@ -49,7 +49,7 @@ else:
 	print card.FROSCH_Errors[card.errorcode]
 
 print 'Trying Hitag2: ',
-if card.frosch(card.FR_HT2_Get_Snr_PWD,''):
+if card.frosch(card.FR_HT2_Get_Snr_PWD,'') or card.frosch(card.FR_HT2_Get_Snr_CRYPTO,''):
 	print card.data[:len(card.data) -2]
 	if not card.select():
 		print 'Select failed: ',
