@@ -48,6 +48,10 @@ else:
 while 42:
 	if card.select('A') or card.select('B'):
 		print '    Tag ID: ' + card.uid,
+		if (card.readertype == card.READER_FROSCH and card.tagtype == card.HITAG2 and card.tagmode == card.HITAG2_PASSWORD):
+			print "    Tag Type: Hitag2 (Password mode)"
+		if (card.readertype == card.READER_FROSCH and card.tagtype == card.HITAG2 and card.tagmode == card.HITAG2_CRYPTO):
+			print "    Tag Type: Hitag2 (Crypto mode)"
 		if (card.readertype == card.READER_ACG and string.find(card.readername,"LFX") == 0):
 			print "    Tag Type:" + card.LFXTags[card.tagtype]
 		else:

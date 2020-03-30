@@ -553,6 +553,8 @@ class rfidiot:
 	FR_HT1_Read_Page= chr(0x50)
 	# Hitag2 Get Serial Number (password mode)
 	FR_HT2_Get_Snr_PWD= chr(0x80) + chr(0x00)
+	# Hitag2 Get Serial Number (crypto mode)
+	FR_HT2_Get_Snr_CRYPTO= chr(0x80) + chr(0x01)
 	# Hitag2 Get Serial Number Reset (to reset for normal access when in public modes)
 	FR_HT2_Get_Snr_Reset= chr(0x80)
 	# Hitag2 Halt Selected
@@ -1008,6 +1010,14 @@ class rfidiot:
 				# select returns an extra byte on the serial number, so strip it
 				self.data= self.data[:len(self.data) - 2]
 				self.tagtype= self.HITAG2
+				self.tagmode= self.HITAG2_PASSWORD
+				self.uid= self.data
+				return True
+			if self.frosch(self.FR_HT2_Get_Snr_CRYPTO,''):
+				# select returns an extra byte on the serial number, so strip it
+				self.data= self.data[:len(self.data) - 2]
+				self.tagtype= self.HITAG2
+				self.tagmode= self.HITAG2_CRYPTO
 				self.uid= self.data
 				return True
 			if self.frosch(self.FR_HT1_Get_Snr,''):
