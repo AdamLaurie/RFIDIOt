@@ -54,12 +54,13 @@ NP_FORCE_SPEED_106		= 0x0e
 # NFC modulation type enumeration
 NMT_ISO14443A		= 0x01
 NMT_JEWEL		= 0x02
-NMT_ISO14443B		= 0x03
-NMT_ISO14443BI		= 0x04
-NMT_ISO14443B2SR	= 0x05
-NMT_ISO14443B2CT	= 0x06
-NMT_FELICA		= 0x07
-NMT_DEP			= 0x08
+NMT_BARCODE		= 0x03
+NMT_ISO14443B		= 0x04
+NMT_ISO14443BI		= 0x05
+NMT_ISO14443B2SR	= 0x06
+NMT_ISO14443B2CT	= 0x07
+NMT_FELICA		= 0x08
+NMT_DEP			= 0x09
 
 # NFC baud rate enumeration
 NBR_UNDEFINED		= 0x00
@@ -169,6 +170,11 @@ class NFC_JEWEL_INFO(ctypes.Structure):
 	_fields_ = [('btSensRes', ctypes.c_ubyte * 2),
 		    ('btId', ctypes.c_ubyte * 4)]
 
+class NFC_BARCODE_INFO(ctypes.Structure):
+	_pack_ = 1
+	_fields_ = [('szDataLen', ctypes.c_size_t),
+		    ('abtData', ctypes.c_ubyte * 32)]
+
 class NFC_DEP_INFO(ctypes.Structure):
 	_pack_ = 1
 	_fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),
@@ -190,6 +196,7 @@ class NFC_TARGET_INFO(ctypes.Union):
 		    ('nsi', NFC_ISO14443B2SR_INFO),
 		    ('nci', NFC_ISO14443B2CT_INFO),
 		    ('nji', NFC_JEWEL_INFO),
+		    ('nti', NFC_BARCODE_INFO),
 		    ('ndi', NFC_DEP_INFO)]
 
 class NFC_CONNSTRING(ctypes.Structure):
