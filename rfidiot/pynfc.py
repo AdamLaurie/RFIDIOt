@@ -276,6 +276,7 @@ class JEWEL(object):
 		return rv
 
 class NFC(object):
+        tag= (NFC_TARGET * MAX_TARGET_COUNT) ()
 	def __init__(self, nfcreader):
 		self.LIB = ctypes.util.find_library('nfc')
 		#self.LIB = "/usr/local/lib/libnfc.so"
@@ -320,6 +321,7 @@ class NFC(object):
 		self.libnfc.nfc_perror.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 		self.libnfc.nfc_initiator_list_passive_targets.argtypes = [ctypes.c_void_p, ctypes.Structure, ctypes.c_void_p, ctypes.c_size_t]
 		self.libnfc.nfc_initiator_transceive_bytes.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint32]
+                self.libnfc.nfc_initiator_target_is_present.argtypes = [ctypes.c_void_p, ctypes.Structure]
 		self.libnfc.nfc_init(ctypes.byref(self.context))
 		return self.libnfc.nfc_version()
 
@@ -412,27 +414,13 @@ class NFC(object):
 		"""Detect and initialise an ISO14443A card, returns an ISO14443A() object."""
 		if rfidiotglobals.Debug:
 			self.log.debug("Polling for ISO14443A cards")
-		#r = self.libnfc.nfc_initiator_select_tag(self.device, IM_ISO14443A_106, None, None, ctypes.byref(ti))
-		#r = self.libnfc.nfc_initiator_init(self.device)
-		#if RFIDIOtconfig.debug:
-		#	self.log.debug('card Select r: ' + str(r))
-		#if r == None or r < 0:
-		#	if RFIDIOtconfig.debug:
-		#		self.log.error("No cards found, trying again")
-		#	time.sleep(1)
-		#	result = self.readISO14443A()
-		#	return result
-		#else:
-		#	if RFIDIOtconfig.debug:
-		#		self.log.debug("Card found")
 		self.powerOff()
 		self.powerOn()
 		nm= NFC_MODULATION()
-		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
 		nm.nmt = NMT_ISO14443A
 		nm.nbr = NBR_106
-		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
-			return ISO14443A(target[0].nti.nai)
+                if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(self.tag), MAX_TARGET_COUNT):
+			return ISO14443A(self.tag[0].nti.nai)
 		return None
 
 	def selectISO14443B(self):
@@ -442,11 +430,10 @@ class NFC(object):
 		self.powerOff()
 		self.powerOn()
 		nm= NFC_MODULATION()
-		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
 		nm.nmt = NMT_ISO14443B
 		nm.nbr = NBR_106
-		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
-			return ISO14443B(target[0].nti.nbi)
+		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(self.tag), MAX_TARGET_COUNT):
+			return ISO14443B(self.tag[0].nti.nbi)
 		return None
 
 	def selectJEWEL(self):
@@ -496,6 +483,10 @@ class NFC(object):
 			if rfidiotglobals.Debug:
 				self.log.debug("Received %d byte APDU: %s" % (rxlen, rxAPDU))
 			return True, string.upper(rxAPDU)
+
+def target_is_present(self):
+	ret= self.libnfc.nfc_initiator_target_is_present(self.device, self.tag[0])
+	return ret == 0, ret
 
 if __name__ == "__main__":
 	n = NFC()

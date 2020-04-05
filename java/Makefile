@@ -27,7 +27,7 @@ JAVADOC=$(JAVA_HOME)/bin/javadoc
 # to the zipfile name, then run 'make jckit'
 #
 JCZIP=java_card_kit-2_2_1-linux-dom.zip
-JCPATH=./java_card_kit-2_2_1
+JCPATH=/usr/local/java/java_card_kit-2_2_1
 
 #
 # Global Platform API can be found here:

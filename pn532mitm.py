@@ -33,7 +33,8 @@ import operator
 
 # try to connect to remote host. if that fails, alternately listen and connect.
 def connect_to(host,port,type):
-	peer= socket.socket()
+	print 'host', host, 'port', port, 'type', type
+	peer= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	random.seed()
 	first= True
 	while 42:
@@ -41,12 +42,21 @@ def connect_to(host,port,type):
 		print '  Paging %s %s                    \r' % (host, port),
 		sys.stdout.flush()
 		time.sleep(1)
-		if peer.connect_ex((host,port)) == 0:
-			print '  Connected to %s port %d                  ' % (host,port)
-			send_data(peer,type)
-			data= recv_data(peer)
-			connection= peer
-			break
+		try:
+			if peer.connect((host,port)) == 0:
+				print '  Connected to %s port %d                  ' % (host,port)
+				send_data(peer,type)
+				data= recv_data(peer)
+				connection= peer
+				break
+		except Exception, exc:
+			# connection refused - the other end isn't up yet
+			if exc.errno == 111:
+				pass
+			else:
+				print 'Could not open local socket:                    '
+				print exc
+				os._exit(True)
 		try:
 			print '  Listening for REMOTE on port %s              \r' % port,
 			sys.stdout.flush()
@@ -63,10 +73,6 @@ def connect_to(host,port,type):
 				break
 		except socket.timeout:
 			pass
-		except Exception, exc:
-			print 'Could not open local socket:                    '
-			print exc
-			os._exit(True)
 	if data == type:
 		print '  Handshake failed - both ends are set to', type
 		time.sleep(1)

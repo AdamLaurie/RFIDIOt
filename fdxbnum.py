@@ -61,7 +61,6 @@ if not help and (len(args) >= 3 or precoded):
 		id= card.FDXBIDEncode(args[0],args[1],args[2])
 		print id
 	out= card.FDXBID128Bit(id)
-	print 'binary is',out
 	if (len(args) == 4 and args[3] == 'WRITE') or precoded:
        		while True:
 			# Q5 must be forced into Q5 mode to be sure of detection so try that first 
