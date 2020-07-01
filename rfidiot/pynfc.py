@@ -340,6 +340,7 @@ class NFC(object):
 			return
 		for i in range(nfc_num_devices):
 			if devices[i]:
+                                self.log.debug("nfc_open: %s" % ctypes.cast(devices[i].connstring,ctypes.c_char_p).value)
 				dev = self.libnfc.nfc_open(self.context, ctypes.byref(devices[i]))
 				devname= self.libnfc.nfc_device_get_name(dev)
 				print '    No: %d\t\t%s' % (i,devname)
