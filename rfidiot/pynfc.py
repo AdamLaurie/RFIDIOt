@@ -54,13 +54,15 @@ NP_FORCE_SPEED_106		= 0x0e
 # NFC modulation type enumeration
 NMT_ISO14443A		= 0x01
 NMT_JEWEL		= 0x02
-NMT_BARCODE		= 0x03
-NMT_ISO14443B		= 0x04
-NMT_ISO14443BI		= 0x05
-NMT_ISO14443B2SR	= 0x06
-NMT_ISO14443B2CT	= 0x07
-NMT_FELICA		= 0x08
-NMT_DEP			= 0x09
+NMT_ISO14443B		= 0x03
+NMT_ISO14443BI		= 0x04
+NMT_ISO14443B2SR	= 0x05
+NMT_ISO14443B2CT	= 0x06
+NMT_FELICA		= 0x07
+NMT_DEP			= 0x08
+NMT_BARCODE		= 0x09
+NMT_ISO14443BICLASS     = 0x0A
+NMT_END_ENUM            = NMT_ISO14443BICLASS # dummy for sizing - always should alias last
 
 # NFC baud rate enumeration
 NBR_UNDEFINED		= 0x00
@@ -122,6 +124,18 @@ DEVICE_NAME_LENGTH	= 256
 DEVICE_PORT_LENGTH	= 64
 NFC_CONNSTRING_LENGTH	= 1024
 
+class NFC_DEP_INFO(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),
+                    ('btDID', ctypes.c_ubyte),
+                    ('btBS', ctypes.c_ubyte),
+                    ('btBR', ctypes.c_ubyte),
+                    ('btTO', ctypes.c_ubyte),
+                    ('btPP', ctypes.c_ubyte),
+                    ('abtGB', ctypes.c_ubyte * 48),
+                    ('szGB', ctypes.c_size_t),
+                    ('ndm', ctypes.c_ubyte)]
+
 class NFC_ISO14443A_INFO(ctypes.Structure):
 	_pack_ = 1
 	_fields_ = [('abtAtqa', ctypes.c_ubyte * 2),
@@ -154,6 +168,10 @@ class NFC_ISO14443BI_INFO(ctypes.Structure):
 		    ('szAtrLen', ctypes.c_size_t),
 		    ('abtAtr', ctypes.c_ubyte * 33)]
 
+class NFC_ISO14443BICLASS_INFO(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [('abtUID', ctypes.c_ubyte * 8)]
+
 class NFC_ISO14443B2SR_INFO(ctypes.Structure):
 	_pack_ = 1
 	_fields_ = [('abtUID', ctypes.c_ubyte * 8)]
@@ -175,24 +193,13 @@ class NFC_BARCODE_INFO(ctypes.Structure):
 	_fields_ = [('szDataLen', ctypes.c_size_t),
 		    ('abtData', ctypes.c_ubyte * 32)]
 
-class NFC_DEP_INFO(ctypes.Structure):
-	_pack_ = 1
-	_fields_ = [('abtNFCID3', ctypes.c_ubyte * 10),
-		    ('btDID', ctypes.c_ubyte),
-		    ('btBS', ctypes.c_ubyte),
-		    ('btBR', ctypes.c_ubyte),
-		    ('btTO', ctypes.c_ubyte),
-		    ('btPP', ctypes.c_ubyte),
-		    ('abtGB', ctypes.c_ubyte * 48),
-		    ('szGB', ctypes.c_size_t),
-		    ('ndm', ctypes.c_ubyte)]
-
 class NFC_TARGET_INFO(ctypes.Union):
 	_pack_ = 1
 	_fields_ = [('nai', NFC_ISO14443A_INFO),
 		    ('nfi', NFC_FELICA_INFO),
 		    ('nbi', NFC_ISO14443B_INFO),
 		    ('nii', NFC_ISO14443BI_INFO),
+		    ('nic', NFC_ISO14443BICLASS_INFO),
 		    ('nsi', NFC_ISO14443B2SR_INFO),
 		    ('nci', NFC_ISO14443B2CT_INFO),
 		    ('nji', NFC_JEWEL_INFO),
@@ -258,8 +265,17 @@ class ISO14443B(object):
 		self.protocol= "".join(["%02X" % x for x in ti.abtProtocolInfo[:3]])
 		self.cid= "%02x" % ti.ui8CardIdentifier
 		self.atr = ""        # idem
+
 	def __str__(self):
 		rv = "ISO14443B(pupi='%s')" % (self.pupi)
+		return rv
+
+class ICLASS(object):
+	def __init__(self, ti):
+		self.uid = "".join(["%02X" % x for x in ti.abtUID])
+
+	def __str__(self):
+		rv = "ICLASS(uid='%s')" % (self.uid)
 		return rv
 
 class JEWEL(object):
@@ -275,15 +291,11 @@ class JEWEL(object):
 		rv = "JEWEL(btSensRes='%s', btId='%s')" % (self.btSensRes, self.btId)
 		return rv
 
+
 class NFC(object):
         tag= (NFC_TARGET * MAX_TARGET_COUNT) ()
 	def __init__(self, nfcreader):
 		self.LIB = ctypes.util.find_library('nfc')
-		#self.LIB = "/usr/local/lib/libnfc.so"
-		#self.LIB = "/usr/local/lib/libnfc_26102009.so.0.0.0"
-		#self.LIB = "./libnfc_nvd.so.0.0.0"
-		#self.LIB = "./libnfc_26102009.so.0.0.0"		
-		#self.LIB = "/data/RFID/libnfc/libnfc-svn-1.3.0/src/lib/.libs/libnfc.so"		
 		self.device = None
 		self.context = ctypes.POINTER(ctypes.c_int)()
 		self.poweredUp = False
@@ -449,6 +461,20 @@ class NFC(object):
 		nm.nbr = NBR_106
 		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
 			return JEWEL(target[0].nti.nji)
+		return None
+
+	def selectICLASS(self):
+		"""Detect and initialise an iClass card, returns an ICLASS() object."""
+		if rfidiotglobals.Debug:
+			self.log.debug("Polling for ICLASS cards")
+		self.powerOff()
+		self.powerOn()
+		nm= NFC_MODULATION()
+		target= (NFC_TARGET * MAX_TARGET_COUNT) ()
+		nm.nmt = NMT_ISO14443BICLASS
+		nm.nbr = NBR_106
+		if self.libnfc.nfc_initiator_list_passive_targets(self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT):
+			return ICLASS(target[0].nti.nic)
 		return None
 
 	# set Mifare specific parameters

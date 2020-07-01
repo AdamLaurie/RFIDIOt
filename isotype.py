@@ -89,6 +89,10 @@ if card.readertype == card.READER_LIBNFC:
 		print '    CID: ' + card.cid
 		print "       Tag is ISO 14443B"
 		typed= True
+	if card.select('ICLASS'):
+		print '     ID: ' + card.uid
+		print "       Tag is ICLASS"
+		typed= True
 	if card.select('JEWEL'):
 		print 'SENSRES: ' + card.btsensres
 		print '     ID: ' + card.btid

@@ -1097,6 +1097,17 @@ class rfidiot:
 						if self.DEBUG:
 							print 'Error selecting card'
 						return False
+				elif cardtype == 'ICLASS':
+					result = self.nfc.selectICLASS()
+					if result:
+						self.uid = result.uid
+						if self.DEBUG:
+							print 'ID: ' + self.uid
+						return True
+					else:
+						if self.DEBUG:
+							print 'Error selecting card'
+						return False
 				elif cardtype == 'JEWEL':
 					result = self.nfc.selectJEWEL()
 					if result:
