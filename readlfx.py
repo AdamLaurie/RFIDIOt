@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python an amazing project
 
 #  readlfx.py - read all sectors from a LFX reader
 # 
