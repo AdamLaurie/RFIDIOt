@@ -621,13 +621,11 @@ class NFC(object):
             self.libnfc.nfc_perror(self.device, "nfc_initiator_transceive_bytes")
             if rfidiotglobals.Debug:
                 self.log.error("Error sending/receiving APDU")
-            print("Err51")
             return False, rxlen
         else:
             rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
             if rfidiotglobals.Debug:
                 self.log.debug("Received %d byte APDU: %s" % (rxlen, rxAPDU))
-            print("Err50")
             return True, rxAPDU.upper()
 
 

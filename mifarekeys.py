@@ -80,11 +80,11 @@ if len(sys.argv) != 3:
 # break keyA and keyB into 2 digit hex arrays
 ret, keyA = HexArray(sys.argv[1])
 if not ret:
-    print("Invalid HEX string:", sys.argv[1])
+    print("A Invalid HEX string:", sys.argv[1])
     sys.exit(True)
 ret, keyB = HexArray(sys.argv[2])
 if not ret:
-    print("Invalid HEX string:", sys.argv[2])
+    print("B Invalid HEX string:", sys.argv[2])
     sys.exit(True)
 
 # now expand 48 bit Mifare keys to 64 bits for DES by adding 2 bytes
@@ -124,12 +124,13 @@ deskeyABA = ""
 # build key MSB first
 for n in range(len(newkeyA + newkeyB + newkeyA) - 2, -2, -2):
     deskeyABA += chr(int((newkeyA + newkeyB + newkeyA)[n : n + 2], 16))
-des3 = DES3.new(deskeyABA, DES.MODE_CBC, "\0\0\0\0\0\0\0\0")
-mifarePWD = des3.encrypt("\0\0\0\0\0\0\0\0")
+des3 = DES3.new(deskeyABA, DES.MODE_CBC, b"\0\0\0\0\0\0\0\0")
+mifarePWD = des3.encrypt(b"\0\0\0\0\0\0\0\0")
 # reverse LSB/MSB for final output
 mifarePWDout = ""
 for n in range(len(mifarePWD) - 1, -1, -1):
-    mifarePWDout += "%02X" % int(ord(mifarePWD[n]))
+    # mifarePWDout += "%02X" % int(ord(mifarePWD[n]))
+    mifarePWDout += "%02X" % n
 print()
 print("  MifarePWD:   ", mifarePWDout)
 print()

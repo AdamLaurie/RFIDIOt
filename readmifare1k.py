@@ -80,7 +80,9 @@ while sector < 16:
                     sys.stdout.flush()
                 else:
                     # print('Read error: %s %s' % (card.errorcode , card.ISO7816ErrorCodes.get(card.errorcode, "unknown Code"))
-                    print(f'Read error: {card.errorcode} {card.get_error_str(card.errorcode)}')
+                    print(
+                        f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}"
+                    )
                     os._exit(True)
             print()
             card.MIFAREkb(card.MIFAREdata)
@@ -113,7 +115,7 @@ while sector < 16:
         elif card.errorcode != "":
             print(
                 "Login Error: %s %s"
-                % (card.errorcode, card.get_error_str(card.errorcode)))
+                % (card.errorcode, card.get_error_str(card.errorcode))
             )
         elif type == "FF":
             print("Login failed")
