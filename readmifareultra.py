@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #  readmifareultra.py - read all sectors from a Ultralight tag
 # 
@@ -30,58 +30,58 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(True)
 
 help= rfidiot.help
 
 if help:
-        print sys.argv[0] + ' - read mifare ultralight tags'
-        print 'Usage: ' + sys.argv[0]
-        print
-	os._exit(True)
+        print(sys.argv[0] + ' - read mifare ultralight tags')
+        print('Usage: ' + sys.argv[0])
+        print()
+        os._exit(True)
 
 card.info('readmifareultra v0.1b')
 card.waitfortag('Waiting for Mifare Ultralight...')
 
 blocks=16
 
-print '\n  ID: ' + card.uid
-print 'Type: ' + card.tagtype
+print('\n  ID: ' + card.uid)
+print('Type: ' + card.tagtype)
 
 card.select()
 # pull header block information from the tag
 if card.readblock(0):
-	sn0=card.data[0:2]
-	sn1=card.data[2:4]
-	sn2=card.data[4:6]
-	bcc0=card.data[6:8]
+        sn0=card.data[0:2]
+        sn1=card.data[2:4]
+        sn2=card.data[4:6]
+        bcc0=card.data[6:8]
 else:
-	print 'read error: %s' % card.errorcode
+        print('read error: %s' % card.errorcode)
 
 if card.readblock(1):
-	sn3=card.data[0:2]
-	sn4=card.data[2:4]
-	sn5=card.data[4:6]
-	sn6=card.data[6:8]
+        sn3=card.data[0:2]
+        sn4=card.data[2:4]
+        sn5=card.data[4:6]
+        sn6=card.data[6:8]
 else:
-	print 'read error: %s' % card.errorcode
+        print('read error: %s' % card.errorcode)
 
 if card.readblock(2):
-	bcc1=card.data[0:2]
-	internal=card.data[2:4]
-	lock0=card.data[4:6]
-	lock1=card.data[6:8]
+        bcc1=card.data[0:2]
+        internal=card.data[2:4]
+        lock0=card.data[4:6]
+        lock1=card.data[6:8]
 else:
-	print 'read error: %s' % card.errorcode
+        print('read error: %s' % card.errorcode)
 
 if card.readblock(3):
-	otp0=card.data[0:2]
-	otp1=card.data[2:4]
-	otp2=card.data[4:6]
-	otp3=card.data[6:8]
+        otp0=card.data[0:2]
+        otp1=card.data[2:4]
+        otp2=card.data[4:6]
+        otp3=card.data[6:8]
 else:
-	print 'read error: %s' % card.errorcode
+        print('read error: %s' % card.errorcode)
 
 # convert lock bytes to binary for later use
 lbits0=card.ToBinaryString(card.ToBinary(lock0))
@@ -91,51 +91,51 @@ lbits=lbits1 + lbits0
 y=0
 plock=''
 for x in range(15,-1,-1):
-	plock = lbits[y:y+1] + plock
-	y += 1
+        plock = lbits[y:y+1] + plock
+        y += 1
 
 # show status of the OTP area on the tag
-print 'OTP area is',
+print('OTP area is', end=' ')
 if int(plock[3:4]) == 1:
-	print 'locked and',
+        print('locked and', end=' ')
 else:
-	print 'unlocked and',
+        print('unlocked and', end=' ')
 if int(plock[0:1]) == 1:
-	print 'cannot be changed'
+        print('cannot be changed')
 else:
-	print 'can be changed'
+        print('can be changed')
 
-print 'If locked, blocks 4 through 9',
+print('If locked, blocks 4 through 9', end=' ')
 if int(plock[1:2]) == 1:
-	print 'cannot be unlocked'
+        print('cannot be unlocked')
 else:
-	print 'can be unlocked'
+        print('can be unlocked')
 
-print 'If locked, blocks 0a through 0f',
+print('If locked, blocks 0a through 0f', end=' ')
 if int(plock[2:3]) == 1:
-	print 'cannot be unlocked'
+        print('cannot be unlocked')
 else:
-	print 'can be unlocked'
+        print('can be unlocked')
 
-print '\nTag Data:'
+print('\nTag Data:')
 # DATA0 byte starts on page/block 4
 for x in range(blocks):
-	print '    Block %02x:' % x,
-	if card.readblock(x):
-		print card.data[:8],
-		print card.ReadablePrint(card.ToBinary(card.data[:8])),
-		if x > 2:
-			if int(plock[x:x+1]) == 1:
-				print '  locked'
-			else:
-				print '  unlocked'
-		else:
-			print '  -'
-	else:
-		print 'read error: %s' % card.errorcode
-print
+        print('    Block %02x:' % x, end=' ')
+        if card.readblock(x):
+                print(card.data[:8], end=' ')
+                print(card.ReadablePrint(card.ToBinary(card.data[:8])), end=' ')
+                if x > 2:
+                        if int(plock[x:x+1]) == 1:
+                                print('  locked')
+                        else:
+                                print('  unlocked')
+                else:
+                        print('  -')
+        else:
+                print('read error: %s' % card.errorcode)
+print()
 
 if x > 0:
-	os._exit(False)
+        os._exit(False)
 else:
-	os._exit(True)
+        os._exit(True)

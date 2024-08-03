@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 
 #  sod.py - try to find X509 data in EF.SOD
@@ -20,26 +20,26 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-import commands
+import subprocess
 import sys
 import os
 
 x= 0
 if len(sys.argv) > 1:
-	sod= open(sys.argv[1],"r")
+        sod= open(sys.argv[1],"r")
 else:
-	sod= open("/tmp/EF_SOD.BIN","r")
+        sod= open("/tmp/EF_SOD.BIN","r")
 data= sod.read()
 while x < len(data):
-	out= open("/tmp/SOD","w")
-	out.write(data[x:])
-	out.flush()
-	out.close()
-	(exitstatus, outtext) = commands.getstatusoutput("openssl pkcs7 -text -print_certs -in /tmp/SOD -inform DER")
-	if not exitstatus and len(outtext) > 0:
-		print 'PKCS7 certificate found at offset %d:' % x
-		print
-		print outtext
-		os._exit(False)
-	x += 1
+        out= open("/tmp/SOD","w")
+        out.write(data[x:])
+        out.flush()
+        out.close()
+        (exitstatus, outtext) = subprocess.getstatusoutput("openssl pkcs7 -text -print_certs -in /tmp/SOD -inform DER")
+        if not exitstatus and len(outtext) > 0:
+                print('PKCS7 certificate found at offset %d:' % x)
+                print()
+                print(outtext)
+                os._exit(False)
+        x += 1
 os._exit(True)

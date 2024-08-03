@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #  demotag.py - test IAIK TUG DemoTag`
 # 
@@ -27,10 +27,10 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(False)
 
 args= rfidiot.args
 
-print 'Setting ID to: ' + args[0]
-print card.demotag(card.DT_SET_UID,card.ToBinary(args[0]))
+print('Setting ID to: ' + args[0])
+print(card.demotag(card.DT_SET_UID,card.ToBinary(args[0])))

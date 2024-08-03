@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #  readtag.py - read all sectors from a standard tag
 # 
@@ -28,26 +28,26 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(True)
 
 card.info('readtag v0.1f')
 card.select()
-print '\nID: ' + card.uid
-print '  Data:'
+print('\nID: ' + card.uid)
+print('  Data:')
 
 card.select()
 for x in range(255):
-	print '    Block %02x:' % x,
-	if card.readblock(x):
-		print card.data,
-		print card.ReadablePrint(card.ToBinary(card.data))
-	else:
-		print 'read error: %s, %s' % (card.errorcode, card.ISO7816ErrorCodes[card.errorcode])
+        print('    Block %02x:' % x, end=' ')
+        if card.readblock(x):
+                print(card.data, end=' ')
+                print(card.ReadablePrint(card.ToBinary(card.data)))
+        else:
+                # print('read error: %s, %s' % (card.errorcode, card.ISO7816ErrorCodes[card.errorcode]))
+                print('read error: %s, %s' % (card.errorcode, card.get_error_str(card.errorcode)))
 
-print '\n    Total blocks: ',
-print x
+print(f'\n    Total blocks: {x})
 if x > 0:
-	os._exit(False)
+        os._exit(False)
 else:
-	os._exit(True)
+        os._exit(True)

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 
 #  cardselect.py - select card and display ID
@@ -29,7 +29,7 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(True)
 
 args= rfidiot.args
@@ -37,18 +37,18 @@ args= rfidiot.args
 card.info('cardselect v0.1m')
 # force card type if specified
 if len(args) == 1:
-	card.settagtype(args[0])
+        card.settagtype(args[0])
 else:
-	card.settagtype(card.ALL)
+        card.settagtype(card.ALL)
 
 if card.select():
-	print '    Card ID: ' + card.uid
-	if card.readertype == card.READER_PCSC:
-		print '    ATR: ' + card.pcsc_atr
+        print('    Card ID: ' + card.uid)
+        if card.readertype == card.READER_PCSC:
+                print('    ATR: ' + card.pcsc_atr)
 else:
-	if card.errorcode:
-		print '    '+card.ISO7816ErrorCodes[card.errorcode]
-	else:
-		print '    No card present'
-		os._exit(True)
+        if card.errorcode:
+                print('    '+card.get_error_str(card.errorcode))
+        else:
+                print('    No card present')
+                os._exit(True)
 os._exit(False)

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #  froschtest.py - test frosch HTRM112 reader`
 # 
@@ -27,54 +27,54 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(True)
 
 card.info('froschtest v0.1d')
-print 
-print 'Trying Hitag1: ',
+print() 
+print('Trying Hitag1: ', end=' ')
 if card.frosch(card.FR_HT1_Get_Snr,''):
-	print card.data[:len(card.data) -2]
-	if not card.select():
-		print 'Select failed: ',
-		print card.FROSCH_Errors[card.errorcode]
-	else:
-		for x in range(0,8):
-			if card.readblock(x):
-				print '\tBlock %02d: %s' % (x,card.data)
-			else:
-				print '\tBlock %0d read failed: ' % x,
-				print card.FROSCH_Errors[card.errorcode]
+        print(card.data[:len(card.data) -2])
+        if not card.select():
+                print('Select failed: ', end=' ')
+                print(card.FROSCH_Errors[card.errorcode])
+        else:
+                for x in range(0,8):
+                        if card.readblock(x):
+                                print('\tBlock %02d: %s' % (x,card.data))
+                        else:
+                                print('\tBlock %0d read failed: ' % x, end=' ')
+                                print(card.FROSCH_Errors[card.errorcode])
 else:
-	print card.FROSCH_Errors[card.errorcode]
+        print(card.FROSCH_Errors[card.errorcode])
 
-print 'Trying Hitag2: ',
+print('Trying Hitag2: ', end=' ')
 if card.frosch(card.FR_HT2_Get_Snr_PWD,'') or card.frosch(card.FR_HT2_Get_Snr_CRYPTO,''):
-	print card.data[:len(card.data) -2]
-	if not card.select():
-		print 'Select failed: ',
-		print card.FROSCH_Errors[card.errorcode]
-	else:
-		for x in range(0,8):
-			if card.readblock(x):
-				print '\tBlock %02d: %s' % (x,card.data)
-			else:
-				print '\tBlock %0d read failed' % x,
-				print card.FROSCH_Errors[card.errorcode]
+        print(card.data[:len(card.data) -2])
+        if not card.select():
+                print('Select failed: ', end=' ')
+                print(card.FROSCH_Errors[card.errorcode])
+        else:
+                for x in range(0,8):
+                        if card.readblock(x):
+                                print('\tBlock %02d: %s' % (x,card.data))
+                        else:
+                                print('\tBlock %0d read failed' % x, end=' ')
+                                print(card.FROSCH_Errors[card.errorcode])
 else:
-	print card.FROSCH_Errors[card.errorcode]
+        print(card.FROSCH_Errors[card.errorcode])
 
-print 'Trying Hitag2 Public A (Unique / Miro): ',
+print('Trying Hitag2 Public A (Unique / Miro): ', end=' ')
 if card.frosch(card.FR_HT2_Read_Miro,''):
-	print card.data
+        print(card.data)
 else:
-	print card.FROSCH_Errors[card.errorcode]
+        print(card.FROSCH_Errors[card.errorcode])
 
-print 'Trying Hitag2 Public B (FDX-B): ',
+print('Trying Hitag2 Public B (FDX-B): ', end=' ')
 if card.frosch(card.FR_HT2_Read_PublicB,''):
-	print 'Raw: ' + card.data,
-	print 'ID: ' + card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data)))
-	card.FDXBIDPrint(card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data))))
+        print('Raw: ' + card.data, end=' ')
+        print('ID: ' + card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data))))
+        card.FDXBIDPrint(card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data))))
 else:
-	print card.FROSCH_Errors[card.errorcode]
+        print(card.FROSCH_Errors[card.errorcode])
 os._exit(False)

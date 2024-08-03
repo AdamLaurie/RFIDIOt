@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #  formatmifare1kvalue.py - format value blocks on a mifare standard tag
 # 
@@ -29,37 +29,37 @@ import os
 try:
         card= rfidiot.card
 except:
-	print "Couldn't open reader!"
+        print("Couldn't open reader!")
         os._exit(True)
 
 card.info('formatmifare1k v0.1c')
 card.select()
-print 'Card ID: ' + card.data
+print('Card ID: ' + card.data)
 while True:
-	x= string.upper(raw_input('\n*** Warning! This will overwrite all data blocks! Proceed (y/n)? '))
-	if x == 'N':
-		os._exit(False)
-	if x == 'Y':
-		break
+        x= string.upper(input('\n*** Warning! This will overwrite all data blocks! Proceed (y/n)? '))
+        if x == 'N':
+                os._exit(False)
+        if x == 'Y':
+                break
 
 sector = 1
 while sector < 0x10:
         for type in ['AA', 'BB', 'FF']:
                 card.select()
-		print ' sector %02x: Keytype: %s' % (sector, type),
+                print(' sector %02x: Keytype: %s' % (sector, type), end=' ')
                 if card.login(sector,type,''):
-			for block in range(3):
-                		print '\n  block %02x: ' % ((sector * 4) + block),
-				data= '00000000'
-                        	print 'Value: ' + data,
-				if card.writevalueblock((sector * 4) + block,data):
-					print ' OK'
-                		elif card.errorcode:
-                        		print 'error code: ' + card.errorcode
-		elif type == 'FF':
-				print 'login failed'
-               	print '\r',
+                        for block in range(3):
+                                print('\n  block %02x: ' % ((sector * 4) + block), end=' ')
+                                data= '00000000'
+                                print('Value: ' + data, end=' ')
+                                if card.writevalueblock((sector * 4) + block,data):
+                                        print(' OK')
+                                elif card.errorcode:
+                                        print('error code: ' + card.errorcode)
+                elif type == 'FF':
+                                print('login failed')
+                print('\r', end=' ')
                 sys.stdout.flush()           
         sector += 1
-	print
-print
+        print()
+print()

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 
 #  jcopsetatrhist.py - set ATR History bytes on JCOP cards
@@ -44,26 +44,26 @@ P2= '00'
 JCOP_ATR_AID= 'DC4420060607'
 
 if Help or len(args) < 2:
-	print '\nUsage:\n\n\t%s [OPTIONS] \'SET\' <HEX DATA>' % sys.argv[0]
-	print
-	print '\tHEX DATA is up to 15 BYTES of ASCII HEX.' 
-	print
-	print '\tExample:'
-	print
-	print '\t./jcopsetatrhist.py SET 0064041101013180009000'
-	print
-	os._exit(True)
+        print('\nUsage:\n\n\t%s [OPTIONS] \'SET\' <HEX DATA>' % sys.argv[0])
+        print()
+        print('\tHEX DATA is up to 15 BYTES of ASCII HEX.') 
+        print()
+        print('\tExample:')
+        print()
+        print('\t./jcopsetatrhist.py SET 0064041101013180009000')
+        print()
+        os._exit(True)
 
 def jcop_set_atr_hist(bytes):
-	cla= CLA
-	ins= 'ATR_HIST'
-	p1= P1
-	p2= P2
-	data= '%02X' % (len(bytes) / 2) + bytes
-	lc= '%02X' % (len(data) / 2)
-	if card.send_apdu('','','','',cla,ins,p1,p2,lc,data,''):
-		return True, card.data
-	return False, card.errorcode
+        cla= CLA
+        ins= 'ATR_HIST'
+        p1= P1
+        p2= P2
+        data= '%02X' % (len(bytes) / 2) + bytes
+        lc= '%02X' % (len(data) / 2)
+        if card.send_apdu('','','','',cla,ins,p1,p2,lc,data,''):
+                return True, card.data
+        return False, card.errorcode
 
 def select_atrhist_app():
         "select atr_hist application (AID: DC4420060607)"
@@ -71,7 +71,7 @@ def select_atrhist_app():
         p1= '04'
         p2= '0C'
         data= JCOP_ATR_AID
-	lc= '%02X' % (len(data) / 2)
+        lc= '%02X' % (len(data) / 2)
         card.send_apdu('','','','','',ins,p1,p2,lc,data,'')
         if card.errorcode == card.ISO_OK:
                 return True
@@ -79,50 +79,50 @@ def select_atrhist_app():
                 return False
 
 def error_exit(message,error):
-	print '  %s, error number: %s' % (message,error),
-	try:
-		print card.ISO7816ErrorCodes[error]
-	except:
-		print
-	os._exit(True)
+        print('  %s, error number: %s' % (message,error), end=' ')
+        try:
+                print(card.get_error_str(card.errorcode))
+        except:
+                print()
+        os._exit(True)
 
 card.info('jcopsetatrhist v0.1c')
 
 if card.select():
-	print '    Card ID: ' + card.uid
-	if card.readertype == card.READER_PCSC:
-		print '    ATR: ' + card.pcsc_atr
+        print('    Card ID: ' + card.uid)
+        if card.readertype == card.READER_PCSC:
+                print('    ATR: ' + card.pcsc_atr)
 else:
-	print '    No card present'
-	os._exit(True)
+        print('    No card present')
+        os._exit(True)
 
 # high speed select required for ACG
 if not card.hsselect('08'):
-        print '    Could not select card for APDU processing'
+        print('    Could not select card for APDU processing')
         os._exit(True)
 
 if not select_atrhist_app():
-	print
-	print "  Can't select atrhist applet!"
-	print '  Please load jcop_set_atr_hist.cap onto JCOP card.'
-	print '  (Use command: gpshell java/jcop_set_atr_hist.gpsh)'
-	print
-	os._exit(True)
-		
+        print()
+        print("  Can't select atrhist applet!")
+        print('  Please load jcop_set_atr_hist.cap onto JCOP card.')
+        print('  (Use command: gpshell java/jcop_set_atr_hist.gpsh)')
+        print()
+        os._exit(True)
+                
 if args[0] == 'SET':
-	stat, data= jcop_set_atr_hist(args[1])
-	if not stat:
-		error_exit('Set hist bytes failed', data)
-	else:
-		print
-		print '  ATR History Bytes (ATS) set to', args[1]
-		print 
-		print '  *** Remove card from reader and replace to finalise!'
-		print
-		print '  You can now delete jcop_set_atr_hist.cap from the JCOP card.'
-		print '  (Use command: gpshell java/jcop_delete_atr_hist.gpsh)'
-		print
-		os._exit(False)
+        stat, data= jcop_set_atr_hist(args[1])
+        if not stat:
+                error_exit('Set hist bytes failed', data)
+        else:
+                print()
+                print('  ATR History Bytes (ATS) set to', args[1])
+                print() 
+                print('  *** Remove card from reader and replace to finalise!')
+                print()
+                print('  You can now delete jcop_set_atr_hist.cap from the JCOP card.')
+                print('  (Use command: gpshell java/jcop_delete_atr_hist.gpsh)')
+                print()
+                os._exit(False)
 else:
-	print "Unrecognised command:", args[0]
-	os._exit(True)
+        print("Unrecognised command:", args[0])
+        os._exit(True)
