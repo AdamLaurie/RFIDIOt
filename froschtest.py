@@ -28,7 +28,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("froschtest v0.1d")
 print()
@@ -83,4 +83,4 @@ if card.frosch(card.FR_HT2_Read_PublicB, ""):
     )
 else:
     print(card.FROSCH_Errors[card.errorcode])
-os._exit(False)
+sys.exit(False)

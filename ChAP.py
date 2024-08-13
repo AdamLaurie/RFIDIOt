@@ -25,14 +25,15 @@ along with scard-python; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
+import getopt
+import sys
+
 from smartcard.CardType import AnyCardType
 from smartcard.CardRequest import CardRequest
 from smartcard.CardConnection import CardConnection
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.Exceptions import CardRequestTimeoutException
 
-import getopt
-import sys
 from operator import *
 
 # local imports

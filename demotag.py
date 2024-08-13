@@ -20,15 +20,15 @@
 #    GNU General Public License for more details.
 #
 
-import rfidiot
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(False)
+    sys.exit(False)
 
 args = rfidiot.args
 

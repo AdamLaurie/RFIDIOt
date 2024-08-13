@@ -21,19 +21,19 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("q5reset v0.1g")
 
@@ -42,7 +42,7 @@ CFB = "e601f004"
 B1 = "ff801bc2"
 B2 = "52500006"
 
-if help or len(args) == 0 or len(args) > 2:
+if chelp or len(args) == 0 or len(args) > 2:
     print(sys.argv[0] + " - sooth and heal a sorely mistreated Q5 tag")
     print("Usage: " + sys.argv[0] + " [OPTIONS] <CONTROL> [ID]")
     print()
@@ -53,7 +53,7 @@ if help or len(args) == 0 or len(args) > 2:
     print()
     print("\tNote that not all Q5 chips allow programming of their ID!")
     print()
-    os._exit(True)
+    sys.exit(True)
 
 if args[0] == "CONTROL":
     card.settagtype(card.ALL)
@@ -61,13 +61,9 @@ if args[0] == "CONTROL":
         print()
         card.select()
         print("  Card ID: " + card.uid)
-        x = string.upper(
-            input(
-                "  *** Warning! This will overwrite TAG! Place defective card and proceed (y/n)? "
-            )
-        )
+        x = input("  *** Warning! This will overwrite TAG! Place defective card and proceed (y/n)? ").upper()
         if x == "N":
-            os._exit(False)
+            sys.exit(False)
         if x == "Y":
             break
     print("Writing...")
@@ -75,7 +71,7 @@ if args[0] == "CONTROL":
     card.select()
     if not card.writeblock(0, CFB):
         print("Write failed!")
-        os._exit(True)
+        sys.exit(True)
     else:
         if len(args) > 1:
             if not args[1] == "ID":
@@ -84,9 +80,9 @@ if args[0] == "CONTROL":
                 B2 = "%08x" % int(out[32:64], 2)
             if not card.writeblock(1, B1) or not card.writeblock(2, B2):
                 print("Write failed!")
-                os._exit(True)
+                sys.exit(True)
     print("Done!")
     card.select()
-    print("  Card ID: " + card.data)
+    print(f"  Card ID: {card.data}")
     card.settagtype(card.ALL)
-os._exit(False)
+sys.exit(False)

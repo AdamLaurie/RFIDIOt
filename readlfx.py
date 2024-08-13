@@ -24,18 +24,18 @@
 #
 #        specifiy KEY for protected tags. If not specified, TRANSPORT key will be tried.
 
-import rfidiot
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 Q5Mod = {
     "000": "Manchester",
@@ -74,18 +74,14 @@ if card.tagtype == card.HITAG2 and card.readertype == card.READER_ACG:
     print(" Logging in with key: " + key)
     if not card.login("", "", key):
         print("Login failed!")
-        os._exit(True)
+        sys.exit(True)
 
 # Interpret EM4x05 ID structure
 if card.tagtype == card.EM4x05:
     card.FDXBIDPrint(ID)
 
 # Q5 cards can emulate other cards, so check if this one responds as Q5
-if (
-    card.tagtype == card.EM4x02
-    or card.tagtype == card.Q5
-    or card.tagtype == card.EM4x05
-):
+if card.tagtype in [card.EM4x02, card.Q5, card.EM4x05]:
     print("  Checking for Q5")
     card.settagtype(card.Q5)
     card.select()
@@ -196,4 +192,4 @@ print()
 card.settagtype(card.ALL)
 card.select()
 print()
-os._exit(False)
+sys.exit(False)

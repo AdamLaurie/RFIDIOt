@@ -28,7 +28,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("loginall v0.1h")
 

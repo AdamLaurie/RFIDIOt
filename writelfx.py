@@ -28,7 +28,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 help = rfidiot.help
@@ -70,7 +70,7 @@ if card.tagtype == card.HITAG2 and card.readertype == card.READER_ACG:
     print(" Logging in with key: " + key)
     if not card.login("", "", key):
         print("Login failed!")
-        os._exit(True)
+        sys.exit(True)
 
 # Interpret EM4x05 ID structure
 if card.tagtype == card.EM4x05:
@@ -199,4 +199,4 @@ print()
 card.settagtype(card.ALL)
 card.select()
 print()
-os._exit(False)
+sys.exit(False)

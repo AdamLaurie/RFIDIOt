@@ -21,24 +21,24 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+arg_help = rfidiot.help
 
 card.info("fdxbnum v0.1f")
 
 precoded = False
 
-if not help and (len(args) == 1 or len(args) == 2):
+if not arg_help and (len(args) == 1 or len(args) == 2):
     print("Decode: ")
     if len(args[0]) == 16:
         card.FDXBIDPrint(args[0])
@@ -49,18 +49,18 @@ if not help and (len(args) == 1 or len(args) == 2):
             precoded = True
         else:
             print("Unrecognised option: " + args[1])
-            os._exit(True)
+            sys.exit(True)
     else:
-        os._exit(False)
+        sys.exit(False)
 
-if not help and (len(args) >= 3 or precoded):
+if not arg_help and (len(args) >= 3 or precoded):
     if precoded:
-        id = args[0]
+        cid = args[0]
     else:
         print("Encode: ", end=" ")
-        id = card.FDXBIDEncode(args[0], args[1], args[2])
-        print(id)
-    out = card.FDXBID128Bit(id)
+        cid = card.FDXBIDEncode(args[0], args[1], args[2])
+        print(cid)
+    out = card.FDXBID128Bit(cid)
     if (len(args) == 4 and args[3] == "WRITE") or precoded:
         while True:
             # Q5 must be forced into Q5 mode to be sure of detection so try that first
@@ -73,11 +73,9 @@ if not help and (len(args) >= 3 or precoded):
             card.waitfortag("Waiting for blank tag...")
             print("  Tag ID: " + card.data)
             if card.tagtype == card.Q5 or card.tagtype == card.HITAG2:
-                x = string.upper(
-                    input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ")
-                )
+                x = input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ").upper()
                 if x == "N":
-                    os._exit(False)
+                    sys.exit(False)
                 if x == "Y":
                     break
             else:
@@ -142,7 +140,7 @@ if not help and (len(args) >= 3 or precoded):
                     print("Write failed!")
                     if card.readertype == card.READER_FROSCH:
                         print(card.FROSCH_Errors[card.errorcode])
-                    os._exit(True)
+                    sys.exit(True)
             else:
                 # hitag2 don't change mode until the next time they're selected so write
                 # confirmation of control block should be ok
@@ -159,7 +157,7 @@ if not help and (len(args) >= 3 or precoded):
                     print(outhex[x - offset])
         if card.readertype == card.READER_ACG:
             card.settagtype(card.ALL)
-    os._exit(False)
+    sys.exit(False)
 print(sys.argv[0] + " - generate / decode FDX-B EM4x05 compliant IDs")
 print(
     "Usage: "
@@ -187,4 +185,4 @@ print(
     "\tIf the WRITE option is specified, a Q5 or Hitag2 will be programmed to emulate FDX-B."
 )
 print()
-os._exit(True)
+sys.exit(True)

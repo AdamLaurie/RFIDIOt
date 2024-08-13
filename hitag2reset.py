@@ -30,7 +30,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 help = rfidiot.help
@@ -48,7 +48,7 @@ if len(args) == 0 or len(args) > 2 or help:
     print()
     print("If the optional PASSWD fields are specified, the password will be set,")
     print("otherwise factory password '%s' will be used" % card.HITAG2_TRANSPORT_RWD)
-    os._exit(True)
+    sys.exit(True)
 
 if args[0] == "CONTROL":
     while True:
@@ -61,7 +61,7 @@ if args[0] == "CONTROL":
             )
         )
         if x == "N":
-            os._exit(False)
+            sys.exit(False)
         if x == "Y":
             break
     print("Writing...")
@@ -70,11 +70,11 @@ if args[0] == "CONTROL":
         print("Hitag2 ID: " + card.data)
     else:
         print("No TAG, or incompatible hardware!")
-        os._exit(True)
+        sys.exit(True)
     if not card.writeblock(3, CFB):
         print(card.FROSCH_Errors[card.errorcode])
         print("Block 3 write failed!")
-        os._exit(True)
+        sys.exit(True)
     else:
         # set new passord if specified
         if len(args) > 1:
@@ -83,9 +83,9 @@ if args[0] == "CONTROL":
         if not card.writeblock(1, BLK1):
             print("Block 1 write failed!")
             print(card.FROSCH_Errors[card.errorcode])
-            os._exit(True)
+            sys.exit(True)
     card.settagtype(card.ALL)
     print("Done!")
     if card.select():
         print("  Card ID: " + card.uid)
-os._exit(False)
+sys.exit(False)

@@ -22,16 +22,17 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import time
+# import os
+# import time
+import rfidiot
 
 try:
     card = rfidiot.card
-except:
+except Exception as _e:
     print("Couldn't open reader!")
-    os._exit(True)
+    print(_e)
+    sys.exit(True)
 
 args = rfidiot.args
 
@@ -49,21 +50,22 @@ if card.select():
     print("Bruteforcing tag:", card.uid)
 else:
     print("No tag found!")
-    os._exit(True)
+    sys.exit(True)
 
 while 42:
     PWD = "%08X" % pwd
     if card.h2login(PWD):
-        print("Password is %s" % PWD)
-        os._exit(False)
+        print(f"Password is {PWD}")
+        sys.exit(False)
     else:
         if not pwd % 16:
             print(PWD + "                        \r", end=" ")
     if not card.select():
-        print("No tag found! Last try: %s\r" % PWD, end=" ")
+        print("No tag found! Last try: {PWD}\r", end=" ")
     else:
         pwd = pwd + 1
     sys.stdout.flush()
     if pwd == 0xFFFFFFFF:
-        os._exit(True)
-os._exit(False)
+        sys.exit(True)
+
+sys.exit(False)

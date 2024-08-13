@@ -23,33 +23,33 @@
 
 
 import sys
-import os
-import string
+# import os
+# import string
 import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("hidprox v0.1f")
 
 if not card.readersubtype == card.READER_OMNIKEY:
     print("Reader type not supported!", card.ReaderSubType, card.READER_OMNIKEY)
-    os._exit(True)
+    sys.exit(True)
 
 try:
     card.select()
     prox = card.pcsc_atr[:6]
-    type = card.HID_PROX_TYPES[prox]
-    print("  Card type:", type)
+    ctype = card.HID_PROX_TYPES[prox]
+    print("  Card type:", ctype)
 except:
     if not card.pcsc_atr:
         print("No card detected!")
     else:
         print("Unrecognised card type! ATR:", card.pcsc_atr)
-    os._exit(True)
+    sys.exit(True)
 
 # H10301 - 26 bit (FAC + CN)
 if prox == card.HID_PROX_H10301:
@@ -106,4 +106,4 @@ print("    Facility Code:", fc)
 print("      Card Number:", cn)
 print("            Octal:", octal)
 print()
-os._exit(False)
+sys.exit(False)

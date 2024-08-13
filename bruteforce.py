@@ -21,62 +21,66 @@
 #
 
 
-import rfidiot
 import random
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
-except:
+except Exception as _e:
     print("Couldn't open reader!")
-    os._exit(True)
+    print(_e)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("bruteforce v0.1i")
 card.select()
-print("Card ID: " + card.uid)
+print(f"Card ID: {card.uid}")
 
 finished = 0
 tries = 0
-print(" Tries: %s\r" % tries, end=" ")
+print(f" Tries: {tries}s\r", end=" ")
 sys.stdout.flush()
 
 while not finished:
 
     tries += 1
     if tries % 10 == 0:
-        print(" Tries: %s\r" % tries, end=" ")
+        print(" Tries: {tries}\r", end=" ")
         sys.stdout.flush()
 
     if len(args) == 1:
         key = args[0]
         if len(key) != 12:
             print("  Static Key must be 12 HEX characters!")
-            os._exit(True)
-        print("Trying static key: " + key)
+            sys.exit(True)
+        print(f"Trying static key: {key}")
     else:
         key = "%012x" % random.getrandbits(48)
 
-    for type in ["AA", "BB"]:
+    for ctype in ["AA", "BB"]:
         card.select()
-        if card.login(0, type, key):
-            print("\nlogin succeeded after %d tries!" % tries)
-            print("key: " + type + " " + key)
+        if card.login(0, ctype, key):
+            print(f"\nlogin succeeded after {tries} tries!")
+            print("key: {ctype} {key}")
             finished = 1
             break
-        elif (
-            card.errorcode != "X"
-            and card.errorcode != "6982"
-            and card.errorcode != "6200"
-        ):
+
+        # elif (
+        #     card.errorcode != "X"
+        #     and card.errorcode != "6982"
+        #     and card.errorcode != "6200"
+        # ):
+        if not card.errorcode in ["X", "6982", "6200"]:
             print("\nerror!")
-            print("key: " + type + " " + key)
+            print("key: " + ctype + " " + key)
             print("error code: " + card.errorcode)
             finished = 1
             break
+
     if finished:
         break
-os._exit(False)
+sys.exit(False)

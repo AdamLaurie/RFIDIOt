@@ -21,19 +21,19 @@
 #
 
 import sys
-import os
+# import os
+# import time
+# import string
 import rfidiot
-import time
-import string
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(False)
+    sys.exit(False)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 blocksread = 0
 blockslocked = 0
@@ -59,7 +59,7 @@ CloneData = []
 RESET_DATA = "00000000000000000000000000000000"
 RESET_TRAILER = "FFFFFFFFFFFFFF078069FFFFFFFFFFFF"
 
-if help or len(args) > 6:
+if chelp or len(args) > 6:
     print(sys.argv[0] + " - read mifare tags")
     print(
         "Usage: "
@@ -82,7 +82,7 @@ if help or len(args) > 6:
     print("\tIf the option 'COPY' is specified, a card will be programmed with")
     print("\twith the data blocks read (note that block 0 cannot normally be written)")
     print()
-    os._exit(True)
+    sys.exit(True)
 
 card.info("readmifaresimple v0.1h")
 
@@ -113,7 +113,7 @@ if copy:
         pass
 
 try:
-    keytype = string.upper(args[3])
+    keytype = args[3].upper()
     KEYTYPES.remove(keytype)
     trykeytype = [keytype] + KEYTYPES
 except:
@@ -121,7 +121,7 @@ except:
     trykeytype = KEYTYPES
 
 try:
-    key = string.upper(args[2])
+    key = args[2].upper()
     trykey = [key] + KEYS
 except:
     key = DEFAULT_KEY
@@ -138,13 +138,9 @@ except:
     startblock = 0
 
 if not reset:
-    print("  Card ID:", card.uid)
+    print(f"  Card ID: {card.uid}")
     print()
-    print(
-        "    Reading from %02d to %02d, key %s (%s)\n"
-        % (startblock, endblock, key, keytype)
-    )
-
+    print(f"    Reading from {startblock:02d} to {endblock:02d}, key {key} ({keytype})\n")
 # see if key is an abbreviation
 # if so, only need to set keytype and login will use transport keys
 for d in ["AA", "BB", "FF"]:
@@ -154,7 +150,7 @@ for d in ["AA", "BB", "FF"]:
 
 if len(key) > 12:
     print("Invalid key: ", key)
-    os._exit(True)
+    sys.exit(True)
 
 block = startblock
 while block <= endblock and not reset:
@@ -181,7 +177,7 @@ while block <= endblock and not reset:
                 card.select()
 
     if loggedin:
-        print("OK (%s %s) Data:" % (goodkey, goodkeytype), end=" ")
+        print(f"OK {goodkey} {goodkeytype}) Data:", end=" ")
         locked = False
         if card.readMIFAREblock(block):
             blocksread += 1
@@ -189,14 +185,9 @@ while block <= endblock and not reset:
             print(card.ReadablePrint(card.ToBinary(card.MIFAREdata)))
             CloneData += [card.MIFAREdata]
         else:
-            print(
-                "Read error: %s %s"
-                % (card.errorcode, card.get_error_str(card.errorcode))
-            )
+            print(f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}")
     else:
-        print(
-            "Login error: %s %s" % (card.errorcode, card.get_error_str(card.errorcode))
-        )
+        print(f"Login error: {card.errorcode} {card.get_error_str(card.errorcode)}")
         locked = True
         blockslocked += 1
         lockedblocks.append(block)
@@ -207,37 +198,33 @@ while block <= endblock and not reset:
 
 if not reset:
     print()
-    print("  Total blocks read: %d" % blocksread)
-    print("  Total blocks locked: %d" % blockslocked)
+    print(f"  Total blocks read: {blocksread}")
+    print(f"  Total blocks locked: {blockslocked}")
     if blockslocked > 0:
         print("  Locked block numbers:", lockedblocks)
     print()
 
 if not reset and not copy:
-    os._exit(False)
+    sys.exit(False)
 
 input("Place tag to be written and hit <ENTER> to proceed")
 
 while True:
     print()
     card.select()
-    print("  Card ID: " + card.uid)
+    print("  Card ID: {card.uid}")
     print()
     if not reset:
         if keytype == "AA":
-            print("  KeyA will be set to", key + ", KeyB will be set to %s" % otherkey)
+            print(f"  KeyA will be set to {key}, KeyB will be set to {otherkey}")
         else:
-            print("  KeyA will be set to %s," % otherkey, "KeyB will be set to", key)
+            print(f"  KeyA will be set to {otherkey}, KeyB will be set to {key}")
     else:
         print("  KeyA will be set to FFFFFFFFFFFF, KeyB will be set to FFFFFFFFFFFF")
     print()
-    x = string.upper(
-        input(
-            "  *** Warning! This will overwrite TAG! Proceed (y/n) or <ENTER> to select new TAG? "
-        )
-    )
+    x = input("  *** Warning! This will overwrite TAG! Proceed (y/n) or <ENTER> to select new TAG? ").upper()
     if x == "N":
-        os._exit(False)
+        sys.exit(False)
     if x == "Y":
         print()
         break
@@ -291,21 +278,16 @@ while block <= endblock:
                 else:
                     # ACL plus KeyB
                     blockdata = key + CloneData[outblock][12:20] + otherkey
-        print("OK (%s %s), writing: %s" % (goodkey, goodkeytype, blockdata), end=" ")
+        print(f"OK ({goodkey}, {goodkeytype}), writing: {blockdata}", end=" ")
         if card.writeblock(block, blockdata):
             print("OK")
         else:
-            print(
-                "Write error: %s %s"
-                % (card.errorcode, card.get_error_str(card.errorcode))
-            )
+            print(f"Write error: {card.errorcode} {card.get_error_str(card.errorcode)}")
     else:
-        print(
-            "Login error: %s %s" % (card.errorcode, card.get_error_str(card.errorcode))
-        )
+        print(f"Login error: {card.errorcode} {card.get_error_str(card.errorcode)}")
         # ACG requires re-select to clear error condition after failed login
         if card.readertype == card.READER_ACG:
             card.select()
     block += 1
     outblock += 1
-os._exit(False)
+sys.exit(False)

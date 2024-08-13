@@ -21,22 +21,22 @@
 #
 
 
+import sys
+# import os
 import rfidiot
 from rfidiot.pn532 import *
-import sys
-import os
 
 try:
     card = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("pn532emulate v0.1d")
 
-if help or len(args) < 6:
+if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")
     print()
     print(
@@ -110,16 +110,16 @@ if help or len(args) < 6:
     )
     print("    to which it will reply '9000' and exit.")
     print()
-    os._exit(True)
+    sys.exit(True)
 
-if not card.readersubtype == card.READER_ACS:
+if  card.readersubtype != card.READER_ACS:
     print("  Reader type not supported!")
-    os._exit(True)
+    sys.exit(True)
 
 # switch off auto-polling (for ACS v1 firmware only) (doesn't seem to help anyway!)
 # if not card.acs_send_apdu(card.PCSC_APDU['ACS_DISABLE_AUTO_POLL']):
 #       print '  Could not disable auto-polling'
-#       os._exit(True)
+#       sys.exit(True)
 
 if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
     print("  NXP PN532 Firmware:")
@@ -162,9 +162,9 @@ status = card.acs_send_apdu(
     + lentk
     + tk
 )
-if not status or not card.data[:4] == "D58D":
+if not status or card.data[:4] != "D58D":
     print("Target Init failed:", card.errorcode)
-    os._exit(True)
+    sys.exit(True)
 mode = int(card.data[4:6], 16)
 baudrate = mode & 0x70
 print("  Emulator activated:")
@@ -182,19 +182,19 @@ print()
 
 print("  Waiting for APDU...")
 status = card.acs_send_apdu(PN532_APDU["TG_GET_DATA"])
-if not status or not card.data[:4] == "D587":
+if not status or card.data[:4] != "D587":
     print("Target Get Data failed:", card.errorcode)
     print("Data:", card.data)
-    os._exit(True)
+    sys.exit(True)
 errorcode = int(card.data[4:6], 16)
-if not errorcode == 0x00:
+if errorcode: # != 0
     print("Error:", PN532_ERRORS[errorcode])
-    os._exit(True)
+    sys.exit(True)
 print("<<", card.data[6:])
 
 print(">>", card.ISO_OK)
 status = card.acs_send_apdu(PN532_APDU["TG_SET_DATA"] + [card.ISO_OK])
 if not status:
-    os._exit(True)
+    sys.exit(True)
 else:
-    os._exit(False)
+    sys.exit(False)

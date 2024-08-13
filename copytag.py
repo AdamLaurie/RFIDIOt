@@ -22,20 +22,20 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("copytag v0.1d")
 card.select()
-print("\nID: " + card.uid)
+print(f"\nID: {card.uid}")
 print("  Reading:")
 
 buffer = []
@@ -43,7 +43,7 @@ buffer = []
 card.select()
 for x in range(98):
     if card.readblock(x):
-        print("    Block %02x: %s\r" % (x, card.data), end=" ")
+        print(f"    Block {x:02x}: {card.data}\r", end=" ")
         sys.stdout.flush()
         buffer.append(card.data)
     else:
@@ -52,7 +52,7 @@ for x in range(98):
         break
 
 if x > 0:
-    print("\nRead %d blocks" % x)
+    print(f"\nRead {x} blocks")
     input("Remove source tag and hit <CR> to continue...")
     targettype = card.tagtype
     while 42:
@@ -65,36 +65,31 @@ if x > 0:
             input("Tag not readable! Hit <CR> to continue...")
             continue
         if len(card.data) != len(buffer[0]):
-            print(
-                "Wrong blocksize! (%d / %d)" % (len(buffer[0]), len(card.data)), end=" "
-            )
+            print("Wrong blocksize! ({len(buffer[0])} / {len(card.data)})", end=" ")
             input(" Hit <CR> to continue...")
             continue
-        if (
-            string.upper(
-                input("*** Warning! Data will be overwritten! Continue (y/n)?")
-            )
-            == "Y"
-        ):
+        if input("*** Warning! Data will be overwritten! Continue (y/n)?").upper() == "Y":
             break
         else:
-            os._exit(False)
+            sys.exit(False)
     print("  Writing:")
     for n in range(x):
-        print("    Block %02x: %s\r" % (n, buffer[n]), end=" ")
+        # print("    Block %02x: %s\r" % (n, buffer[n]), end=" ")
+        print(f"    Block {n:02x}: {buffer[n]}\r", end=" ")
         sys.stdout.flush()
         if not card.writeblock(n, buffer[n]):
             print("\nWrite failed!")
     print("\n  Verifying:")
     for n in range(x):
-        print("    Block %02x: %s" % (n, buffer[n]), end=" ")
+        # print("    Block %02x: %s" % (n, buffer[n]), end=" ")
+        print(f"    Block {n:02x}: {buffer[n]}\r", end=" ")
         if not card.readblock(n) or card.data != buffer[n]:
             print("\nVerify failed!")
-            os._exit(True)
+            sys.exit(True)
         print(" OK\r", end=" ")
         sys.stdout.flush()
     print()
-    os._exit(False)
+    sys.exit(False)
 else:
     print("No data!")
-    os._exit(True)
+    sys.exit(True)

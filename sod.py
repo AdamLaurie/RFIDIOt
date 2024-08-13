@@ -42,6 +42,6 @@ while x < len(data):
         print("PKCS7 certificate found at offset %d:" % x)
         print()
         print(outtext)
-        os._exit(False)
+        sys.exit(False)
     x += 1
-os._exit(True)
+sys.exit(True)

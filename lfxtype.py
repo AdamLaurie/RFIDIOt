@@ -30,7 +30,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 
 card.info("lfxtype v0.1j")
@@ -45,7 +45,7 @@ if ID:
         card.select()
         if card.uid:
             print("  *** This is a Q5 tag in EM4x02 emulation mode ***")
-    os._exit(False)
+    sys.exit(False)
 else:
     print("No TAG present!")
-    os._exit(True)
+    sys.exit(True)

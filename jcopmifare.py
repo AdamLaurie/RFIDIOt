@@ -36,7 +36,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 Help = rfidiot.help
@@ -93,7 +93,7 @@ if Help or len(args) < 2:
         "\tNote that jcop_mifare_access.cap or native Mifare emulation must be active on the card."
     )
     print()
-    os._exit(True)
+    sys.exit(True)
 
 
 def mifare_read(key, sector):
@@ -156,7 +156,7 @@ def error_exit(message, error):
         print(card.get_error_str(card.errorcode))
     except:
         print()
-    os._exit(True)
+    sys.exit(True)
 
 
 if card.select():
@@ -169,11 +169,11 @@ else:
 # high speed select required for ACG
 if not card.hsselect("08"):
     print("    Could not select card for APDU processing")
-    os._exit(True)
+    sys.exit(True)
 
 if not select_mifare_app():
     print("  Could not select mifare applet!")
-    os._exit(True)
+    sys.exit(True)
 
 if args[0] == "READ":
     stat, data = mifare_read(args[1], args[2])
@@ -181,7 +181,7 @@ if args[0] == "READ":
         error_exit("Read failed", data)
     else:
         print("Data: ", data)
-        os._exit(False)
+        sys.exit(False)
 
 if args[0] == "WRITE":
     stat, data = mifare_write(args[1], args[2], args[3])
@@ -189,7 +189,7 @@ if args[0] == "WRITE":
         error_exit("Write failed", data)
     else:
         print("Write completed")
-        os._exit(False)
+        sys.exit(False)
 
 if args[0] == "RANDOM":
     stat, data = mifare_random(args[1])
@@ -197,8 +197,8 @@ if args[0] == "RANDOM":
         error_exit("Random_UID mode failed", data)
     else:
         print("Random_UID set")
-        os._exit(False)
+        sys.exit(False)
 
 
 print("Unrecognised command:", args[0])
-os._exit(True)
+sys.exit(True)

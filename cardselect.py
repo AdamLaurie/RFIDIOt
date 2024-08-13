@@ -22,15 +22,15 @@
 #
 
 
-import rfidiot
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 
@@ -50,5 +50,5 @@ else:
         print("    " + card.get_error_str(card.errorcode))
     else:
         print("    No card present")
-        os._exit(True)
-os._exit(False)
+        sys.exit(True)
+sys.exit(False)

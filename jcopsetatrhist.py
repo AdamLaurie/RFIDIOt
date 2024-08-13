@@ -32,7 +32,7 @@ import string
 try:
     card = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 Help = rfidiot.help
@@ -52,7 +52,7 @@ if Help or len(args) < 2:
     print()
     print("\t./jcopsetatrhist.py SET 0064041101013180009000")
     print()
-    os._exit(True)
+    sys.exit(True)
 
 
 def jcop_set_atr_hist(bytes):
@@ -87,7 +87,7 @@ def error_exit(message, error):
         print(card.get_error_str(card.errorcode))
     except:
         print()
-    os._exit(True)
+    sys.exit(True)
 
 
 card.info("jcopsetatrhist v0.1c")
@@ -98,12 +98,12 @@ if card.select():
         print("    ATR: " + card.pcsc_atr)
 else:
     print("    No card present")
-    os._exit(True)
+    sys.exit(True)
 
 # high speed select required for ACG
 if not card.hsselect("08"):
     print("    Could not select card for APDU processing")
-    os._exit(True)
+    sys.exit(True)
 
 if not select_atrhist_app():
     print()
@@ -111,7 +111,7 @@ if not select_atrhist_app():
     print("  Please load jcop_set_atr_hist.cap onto JCOP card.")
     print("  (Use command: gpshell java/jcop_set_atr_hist.gpsh)")
     print()
-    os._exit(True)
+    sys.exit(True)
 
 if args[0] == "SET":
     stat, data = jcop_set_atr_hist(args[1])
@@ -126,7 +126,7 @@ if args[0] == "SET":
         print("  You can now delete jcop_set_atr_hist.cap from the JCOP card.")
         print("  (Use command: gpshell java/jcop_delete_atr_hist.gpsh)")
         print()
-        os._exit(False)
+        sys.exit(False)
 else:
     print("Unrecognised command:", args[0])
-    os._exit(True)
+    sys.exit(True)

@@ -94,7 +94,7 @@ class Android(object):
     def select(self):
         if debug:
             self.log.debug("pyandroid in select statement")
-        print("Waiting for connection from Android device as PCD on port: %s" % PORT)
+        print(f"Waiting for connection from Android device as PCD on port: {PORT}")
         self.c, addr = self.s.accept()  # Establish connection with client.
         if debug:
             self.log.debug("pyandroid: Got connection from " + addr[0])

@@ -31,7 +31,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 help = rfidiot.help
 
@@ -39,7 +39,7 @@ if help:
     print(sys.argv[0] + " - read mifare ultralight tags")
     print("Usage: " + sys.argv[0])
     print()
-    os._exit(True)
+    sys.exit(True)
 
 card.info("readmifareultra v0.1b")
 card.waitfortag("Waiting for Mifare Ultralight...")
@@ -136,6 +136,6 @@ for x in range(blocks):
 print()
 
 if x > 0:
-    os._exit(False)
+    sys.exit(False)
 else:
-    os._exit(True)
+    sys.exit(True)

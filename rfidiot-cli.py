@@ -33,14 +33,14 @@
 # perform one-off tasks that are not worth writing an entire program for.
 
 
-import rfidiot
 import sys
 import time
+import rfidiot
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
-if help or len(sys.argv) == 1:
+if chelp or len(sys.argv) == 1:
     print()
     print(
         "Usage: %s [OPTIONS] <COMMAND> [ARG(s)] ... [<COMMAND> [ARG(s)] ... ]"
@@ -134,13 +134,13 @@ if help or len(sys.argv) == 1:
     print(
         "       rfidiot-cli.py select mf key a 112233445566 mf auth a 0 mf clone FFFFFFFFFFFF"
     )
-    exit(True)
+    sys.exit(True)
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    exit(True)
+    sys.exit(True)
 
 print()
 card.info("rfidiot-cli v0.1")
@@ -237,7 +237,7 @@ while args:
             isofile = args.pop().upper()
         else:
             print("Invalid FILE mode:", args.pop().upper())
-            exit(True)
+            sys.exit(True)
         print()
         print("  Selecting ISO File:", isofile)
         print()
@@ -299,7 +299,7 @@ while args:
                 print("B (%s)" % Mifare_Key)
             else:
                 print("failed! Invalid keytype:", keytype)
-                exit(True)
+                sys.exit(True)
             print()
             if card.login(sector, Mifare_KeyType, Mifare_Key):
                 print("    OK")
@@ -310,10 +310,10 @@ while args:
             print("  Cloning Mifare TAG", end=" ")
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
-                exit(True)
+                sys.exit(True)
             print()
             print()
             print("    Key A will be set to:", Mifare_KeyA)
@@ -362,7 +362,7 @@ while args:
                         card.select()
                     else:
                         print("      Failed: " + card.get_error_str(card.errorcode))
-                        exit(True)
+                        sys.exit(True)
                 sector += 1
                 p += 16
             print()
@@ -374,7 +374,7 @@ while args:
             print("  Dumping data blocks %02X to %02X:" % (start, end), end=" ")
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
-                exit(True)
+                sys.exit(True)
             print()
             print()
             sector = start
@@ -405,7 +405,7 @@ while args:
                 print("B:", Mifare_KeyB)
             else:
                 print("failed! Invalid keytype:", keytype)
-                exit(True)
+                sys.exit(True)
             continue
         if mfcommand == "READ":
             start = int(args.pop(), 16)
@@ -419,10 +419,10 @@ while args:
             outfile = open(filename, "wb")
             if not outfile:
                 print("failed! Couldn't open output file!")
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
-                exit(True)
+                sys.exit(True)
             print()
             print()
             sector = start
@@ -441,13 +441,13 @@ while args:
             print("  Wiping Mifare TAG", end=" ")
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyB:
                 print("failed! KEY B not set!")
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
-                exit(True)
+                sys.exit(True)
             print()
             print()
             print("    Key A will be set to:", Mifare_KeyA)
@@ -468,7 +468,7 @@ while args:
                     and card.writeblock(sector, block)
                 ):
                     print("    Failed: " + card.get_error_str(card.errorcode))
-                    exit(True)
+                    sys.exit(True)
                 sector += 1
             print("    OK")
             continue
@@ -483,13 +483,13 @@ while args:
                 print(
                     "failed! File length is not divisible by Mifare block length (16)!"
                 )
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
-                exit(True)
+                sys.exit(True)
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
-                exit(True)
+                sys.exit(True)
             end = start + len(data) / 16 - 1
             print("to blocks %02X to %02X" % (start, end))
             print()
@@ -518,19 +518,19 @@ while args:
                         card.select()
                     else:
                         print("    Failed: " + card.get_error_str(card.errorcode))
-                        exit(True)
+                        sys.exit(True)
                 sector += 1
                 p += 16
             print("    OK")
             continue
         print("  Invalid MF command:", mfcommand)
-        exit(True)
+        sys.exit(True)
     if command == "PROMPT":
         message = args.pop()
         print()
         x = input(message).upper()
         if x == "N":
-            exit(False)
+            sys.exit(False)
         continue
     if command == "SCRIPT":
         filename = args.pop()
@@ -539,7 +539,7 @@ while args:
         print("  Reading commands from", filename)
         if not infile:
             print("failed! Can't open file!")
-            exit(True)
+            sys.exit(True)
         script = []
         while 42:
             line = infile.readline()
@@ -599,11 +599,11 @@ while args:
         print("  Writing data %s to block %02x" % (data, block), end=" ")
         if not (card.writeblock(block, data)):
             print("    Failed: " + card.get_error_str(card.errorcode))
-            exit(True)
+            sys.exit(True)
         print("    OK")
         continue
     print()
     print("Unrecognised command:", command)
-    exit(True)
+    sys.exit(True)
 print()
-exit(False)
+sys.exit(False)

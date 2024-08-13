@@ -187,7 +187,7 @@ DG2_ELEMENTS = {
     "88": "Format type (Mandatory)",
     BDB: "Biometric data (encoded according to Format Owner) also called the biometric data block (BDB).",
     BDB1: "Biometric data (encoded according to Format Owner) also called the biometric data block (BDB).",
-    "7f60": "2nd Biometric Information Template",
+#DUP "7f60": "2nd Biometric Information Template",
     FAC: "Format Identifier ASCII FAC\0",
 }
 # Data Group 2 field types
@@ -209,7 +209,7 @@ DG2_TYPE = {
     "88": SUB,
     "5f2e": TEMPLATE,
     "7f2e": TEMPLATE,
-    "7f60": TEMPLATE,
+# DUP    "7f60": TEMPLATE,
 }
 
 # ISO 19794_5 (Biometric identifiers)
@@ -554,7 +554,7 @@ def check_cc(key, rapdu):
         passport.HexPrint(cc)
         print("Received CC: ", end=" ")
         print(rapdu[len(rapdu) - len(cc) * 2 :])
-        os._exit(True)
+        sys.exit(True)
 
 
 def decode_ef_com(data):
@@ -610,7 +610,7 @@ def decode_ef_com(data):
                     pos += fieldlength * 2
         if not decoded:
             print("Unrecognised element:", hexdata[pos : pos + 4])
-            os._exit(True)
+            sys.exit(True)
     return ef_groups
 
 
@@ -817,7 +817,7 @@ def decode_ef_dg2(data):
                         tag = datahex[position : position + length]
                         if not tag == FAC:
                             print("Missing FAC in CBEFF block: %s" % tag)
-                            os._exit(True)
+                            sys.exit(True)
                         position += length
                         # FACE version
                         print(
@@ -968,7 +968,7 @@ def decode_ef_dg2(data):
                 ":",
                 datahex[position : position + 4],
             )
-            os._exit(True)
+            sys.exit(True)
     return img_features
 
 
@@ -1012,7 +1012,7 @@ def decode_ef_dg7(data):
                     position += fieldlength * 2
         if not decoded:
             print("Unrecognised element:", datahex[position : position + 4])
-            os._exit(True)
+            sys.exit(True)
     return
 
 
@@ -1146,7 +1146,7 @@ def vonjeek_setBAC():
         print(
             "ERROR Could not enable BAC, make sure you are using a recent vonJeek emulator"
         )
-        os._exit(True)
+        sys.exit(True)
 
 
 def vonjeek_unsetBAC():
@@ -1160,7 +1160,7 @@ def vonjeek_unsetBAC():
         print(
             "ERROR Could not disable BAC, make sure you are using a recent vonJeek emulator"
         )
-        os._exit(True)
+        sys.exit(True)
 
 
 def jmrtd_lock():
@@ -1211,7 +1211,7 @@ def bruteno(init):
 try:
     passport = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 Help = rfidiot.help
@@ -1281,7 +1281,7 @@ def help():
     )
     print("\tPadding character '<' should be used for unknown fields.")
     print()
-    os._exit(True)
+    sys.exit(True)
 
 
 if len(args) == 0 or Help:
@@ -1322,7 +1322,7 @@ if os.access(args[0], os.F_OK):
         passfile = open(filespath + "EF_COM.BIN", "rb")
     except:
         print("Can't open %s" % (filespath + "EF_COM.BIN"))
-        os._exit(True)
+        sys.exit(True)
     data = passfile.read()
     eflist = decode_ef_com(data)
     raw_efcom = data
@@ -1357,11 +1357,11 @@ if arg0 == "CHECK":
         passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
     ):
         print("Device is a Machine Readable Document")
-        os._exit(False)
+        sys.exit(False)
     else:
         print("Device may NOT be a Machine Readable Document")
         passport.iso_7816_fail(passport.errorcode)
-        os._exit(True)
+        sys.exit(True)
 
 if arg0 == "PLAIN":
     MRZ = False
@@ -1439,19 +1439,20 @@ if BAC:
 
 if SETBAC:
     vonjeek_setBAC()
-    os._exit(True)
+    sys.exit(True)
 
 if UNSETBAC:
     vonjeek_unsetBAC()
-    os._exit(True)
+    sys.exit(True)
 
 if BAC and not MRZ:
     print("Please provide a MRZ!")
-    os._exit(True)
+    sys.exit(True)
 
 if not FILES and BAC:
     print("Passport number: " + passport.MRPnumber)
-    if passport.MRPnumber.find("?") >= 0:
+    # if passport.MRPnumber.find("?") >= 0:
+    if "?" in passport.MRPnumber:
         bruteforce = True
         bruteforceno = True
         # initialise bruteforce for number
@@ -1614,7 +1615,7 @@ if not FILES and BAC:
             print("Expected rnd_ifd: ", rnd_ifd)
             print("Received rnd_ifd: ", recifd)
             if not bruteforce or iterations == 0:
-                os._exit(True)
+                sys.exit(True)
             if bruteforcereset:
                 while not passport.hsselect("08", cardtype):
                     print("Waiting for passport... (%s)" % passport.errorcode)
@@ -1659,7 +1660,7 @@ if not FILES and BAC:
         KSmac = passport.ToBinary("F1CB1F1FB5ADF208806B89DC579DC1F8")
         rapdu = "990290008E08FA855A5D4C50A8ED9000"
         # ran out of steam on testing here!
-        os._exit(False)
+        sys.exit(False)
     else:
         status, data = secure_read_file(KSenc, KSmac, TAG_FID[EF_COM])
         if not status:
@@ -1825,7 +1826,7 @@ if Jmrtd:
         passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
     ):
         print("Couldn't select JMRTD!")
-        os._exit(True)
+        sys.exit(True)
     print("Initialising JMRTD or vonJeek...")
     if STRIP_INDEX:
         print("Stripping AA & EAC files")
@@ -1937,7 +1938,7 @@ if not Nogui:
                 "Could not convert JPEG 2000 image (%d) - please install ImageMagick"
                 % exitstatus
             )
-            os._exit(True)
+            sys.exit(True)
         elif Display_DG7:
             os.system(
                 "convert %sJP2 %sJPG" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7.")
@@ -2053,4 +2054,4 @@ if not Nogui:
     Label(frame, text="http://rfidiot.org").grid(row=row, sticky=W, column=1)
     root.mainloop()
 passport.shutdown()
-os._exit(False)
+sys.exit(False)

@@ -23,15 +23,15 @@
 
 
 import sys
-import os
-import string
+# import os
+##  import string
 import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 
 card.info("isotype v0.1n")
@@ -56,17 +56,18 @@ if card.readertype == card.READER_ACG:
     for command, cardtype in card.ISOTagsA.items():
         if not card.settagtype(command):
             print("Could not reset reader to " + cardtype + "!")
-            os._exit(True)
+            sys.exit(True)
 if card.readertype == card.READER_PCSC:
     if card.select():
         print("     ID: " + card.uid)
         print("       Tag is " + card.tagtype)
-        if string.find(card.tagtype, "ISO 15693") >= 0:
+        # if string.find(card.tagtype, "ISO 15693") >= 0:
+        if "ISO 15693" in card.tagtype:
             print("         Manufacturer:", end=" ")
             try:
                 print(card.ISO7816Manufacturer[card.uid[2:4]])
             except:
-                print("Unknown (%s)" % card.uid[2:4])
+                print(f"Unknown ({card.uid[2:4]})")
         typed = True
         print()
         print()
@@ -74,7 +75,7 @@ if card.readertype == card.READER_PCSC:
             card.PCSCPrintATR(card.pcsc_atr)
     else:
         print(card.get_error_str(card.errorcode))
-        os._exit(True)
+        sys.exit(True)
 if card.readertype == card.READER_LIBNFC:
     if card.select("A"):
         print("     ID: " + card.uid)
@@ -100,6 +101,6 @@ if card.readertype == card.READER_LIBNFC:
         typed = True
 if not typed:
     print("Could not determine type")
-    os._exit(True)
+    sys.exit(True)
 
-os._exit(False)
+sys.exit(False)

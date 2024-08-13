@@ -29,7 +29,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("eeprom v0.1e")
 print("Station:\t" + card.station())

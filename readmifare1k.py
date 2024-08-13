@@ -21,15 +21,15 @@
 #
 
 
-import rfidiot
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
-except:
+except Exception as _e:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 card.info("readmifare1k v0.1j")
 card.select()
@@ -39,18 +39,15 @@ blocksread = 0
 blockslocked = 0
 lockedblocks = []
 
-for type in ["AA", "BB", "FF"]:
+for ctype in ["AA", "BB", "FF"]:
     card.select()
-    if card.login(0, type, ""):
+    if card.login(0, ctype, ""):
         if card.readMIFAREblock(0):
             card.MIFAREmfb(card.MIFAREdata)
         else:
-            print(
-                "Read error: %s %s"
-                % (card.errorcode, card.get_error_str(card.errorcode))
-            )
-            os._exit(True)
-        print("\nMIFARE data (keytype %s):" % type)
+            print(f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}")
+            sys.exit(True)
+        print(f"\nMIFARE data (keytype {ctype}):")
         print(
             "\tSerial number:\t\t%s\n\tCheck byte:\t\t%s\n\tManufacturer data:\t%s"
             % (
@@ -64,14 +61,14 @@ print()
 sector = 1
 while sector < 16:
     locked = True
-    for type in ["AA", "BB", "FF"]:
-        print(" sector %02x: Keytype: %s" % (sector, type), end=" ")
+    for ctype in ["AA", "BB", "FF"]:
+        print(" sector {sector:02x}: Keytype: {ctype}", end=" ")
         card.select()
-        if card.login(sector * 4, type, ""):
+        if card.login(sector * 4, ctype, ""):
             locked = False
             blocksread += 1
-            print("Login OK. Data:")
-            print()
+            print("Login OK. Data:\n")
+            # print()
             print(" ", end=" ")
             for block in range(4):
                 # card.login(sector,type,'')
@@ -80,10 +77,8 @@ while sector < 16:
                     sys.stdout.flush()
                 else:
                     # print('Read error: %s %s' % (card.errorcode , card.ISO7816ErrorCodes.get(card.errorcode, "unknown Code"))
-                    print(
-                        f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}"
-                    )
-                    os._exit(True)
+                    print(f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}")
+                    sys.exit(True)
             print()
             card.MIFAREkb(card.MIFAREdata)
             print(
@@ -113,11 +108,8 @@ while sector < 16:
             print()
             continue
         elif card.errorcode != "":
-            print(
-                "Login Error: %s %s"
-                % (card.errorcode, card.get_error_str(card.errorcode))
-            )
-        elif type == "FF":
+            print(f"Login Error: {card.errorcode} {card.get_error_str(card.errorcode)}")
+        elif ctype == "FF":
             print("Login failed")
         print("\r", end=" ")
         sys.stdout.flush()
@@ -130,4 +122,4 @@ print("  Total blocks read: %d" % blocksread)
 print("  Total blocks locked: %d" % blockslocked)
 if lockedblocks > 0:
     print("  Locked block numbers:", lockedblocks)
-os._exit(False)
+sys.exit(False)

@@ -21,39 +21,39 @@
 #
 
 
-import rfidiot
 import sys
 import random
-import string
+# import string
 import os
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("writemifare1k v0.1f")
 card.select()
 print("Card ID: " + card.uid)
 while True:
-    x = string.upper(
+    x = str.upper(
         input("\n*** Warning! This will overwrite all data blocks! Proceed (y/n)? ")
     )
     if x == "N":
-        os._exit(False)
+        sys.exit(False)
     if x == "Y":
         break
 
 sector = 1
 while sector < 0x10:
-    for type in ["AA", "BB", "FF"]:
+    for ctype in ["AA", "BB", "FF"]:
         card.select()
-        print(" sector %02x: Keytype: %s" % (sector, type), end=" ")
-        if card.login(sector, type, "FFFFFFFFFFFF"):
+        print(" sector %02x: Keytype: %s" % (sector, ctype), end=" ")
+        if card.login(sector, ctype, "FFFFFFFFFFFF"):
             for block in range(3):
                 print("\n  block %02x: " % ((sector * 4) + block), end=" ")
                 if len(args) == 1:
@@ -64,15 +64,13 @@ while sector < 0x10:
                 if card.writeblock((sector * 4) + block, data):
                     print(" OK")
                 elif card.errorcode:
-                    print(
-                        "error %s %s"
-                        % (card.errorcode, card.get_error_str(card.errorcode))
-                    )
-        elif type == "FF":
+                    print(f"error {card.errorcode} {card.get_error_str(card.errorcode)}")
+        elif ctype == "FF":
             print("login failed")
         print("\r", end=" ")
         sys.stdout.flush()
     sector += 1
     print()
 print()
-os._exit(False)
+
+sys.exit(False)

@@ -33,7 +33,7 @@ try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 Help = rfidiot.help
@@ -322,7 +322,7 @@ if Help or len(args) < 1:
         "\tIf not specified, the default '404142434445464748494A4B4C4D4E4F' will be used."
     )
     print()
-    os._exit(True)
+    sys.exit(True)
 
 command = args[0]
 
@@ -337,7 +337,7 @@ if card.select():
 else:
     print("    No RFID card present")
     print()
-    # os._exit(True)
+    # sys.exit(True)
 
 # print '    ATR: ' + card.pcsc_atr
 # print
@@ -345,7 +345,7 @@ else:
 # high speed select required for ACG
 if not card.hsselect("08"):
     print("    Could not select RFID card for APDU processing")
-    # os._exit(True)
+    # sys.exit(True)
 
 print()
 print("    JCOP Identity Data:", end=" ")
@@ -393,7 +393,7 @@ if command == "INFO":
     item = card.data[pointer : pointer + 2]
     if item != "66":
         print("Unrecognised template:", item)
-        os._exit(True)
+        sys.exit(True)
     pointer += 2
     item = card.data[pointer : pointer + 2]
     length = int(item, 16)
@@ -404,7 +404,7 @@ if command == "INFO":
     item = card.data[pointer : pointer + 2]
     if item != "73":
         print("Unrecognised template:", item)
-        os._exit(True)
+        sys.exit(True)
     pointer += 2
     item = card.data[pointer : pointer + 2]
     length = int(item, 16)
@@ -438,7 +438,7 @@ if command == "INFO":
             pointer += length * 2
         except:
             print("Unrecognised tag", item)
-            os._exit(True)
+            sys.exit(True)
     # set up DES keys for encryption operations
     if len(args) > 1:
         enc_key = args[1]
@@ -466,7 +466,7 @@ if command == "INFO" or command == "INSTALL":
     print()
     x = string.upper(input("      Attempt to authenticate (y/n)? "))
     if not x == "Y":
-        os._exit(True)
+        sys.exit(True)
 
     # high speed select required for ACG
     if not card.hsselect("08"):
@@ -509,7 +509,7 @@ if command == "INFO" or command == "INSTALL":
             print("Key mismatch!")
             print("Card Cryptogram:      ", card_cryptogram)
             print("Calculated Cryptogram:", check_cryptogram)
-            os._exit(True)
+            sys.exit(True)
 
         # cryptogram checks out, so we can use session key
         # create encryption object with ENC Session key
@@ -529,7 +529,7 @@ if command == "INFO" or command == "INSTALL":
             card.iso_7816_fail(card.errorcode)
     else:
         print("Unsupported Secure Channel Protocol:", secure_channel_protocol)
-        os._exit(True)
+        sys.exit(True)
 
 
 print("      Authentication succeeded")
@@ -553,5 +553,5 @@ for filter in "80", "40", "20", "10":
         if not decode_gp_registry_data(card.data, "       ", filter):
             print("  Can't decode Registry!")
             print(card.data)
-            os._exit(True)
-os._exit(False)
+            sys.exit(True)
+sys.exit(False)

@@ -9,7 +9,7 @@
 #  For non-commercial use only, the following terms apply - for all other
 #  uses, please contact the author:
 #
-#    This code is free software; you can redistribute it and/or modify
+#    This code is free software; you can redi!tribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
@@ -21,32 +21,32 @@
 #
 
 
-import rfidiot
-from rfidiot.pn532 import *
 import sys
-import os
-import string
+# import os
+# import string
 import socket
 import time
 import random
 import operator
+import rfidiot
+from rfidiot.pn532 import *
 
 
 # try to connect to remote host. if that fails, alternately listen and connect.
-def connect_to(host, port, type):
-    print("host", host, "port", port, "type", type)
+def connect_to(host, port, ctype):
+    print("host", host, "port", port, "type", ctype)
     peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     random.seed()
     first = True
     while 42:
         peer.settimeout(random.randint(1, 10))
-        print("  Paging %s %s                    \r" % (host, port), end=" ")
+        print("  Paging {host} {port}                    \r", end=" ")
         sys.stdout.flush()
         time.sleep(1)
         try:
             if peer.connect((host, port)) == 0:
-                print("  Connected to %s port %d                  " % (host, port))
-                send_data(peer, type)
+                print("  Connected to {host}s port {port}                  ")
+                send_data(peer, ctype)
                 data = recv_data(peer)
                 connection = peer
                 break
@@ -57,7 +57,7 @@ def connect_to(host, port, type):
             else:
                 print("Could not open local socket:                    ")
                 print(exc)
-                os._exit(True)
+                sys.exit(True)
         try:
             print("  Listening for REMOTE on port %s              \r" % port, end=" ")
             sys.stdout.flush()
@@ -71,16 +71,16 @@ def connect_to(host, port, type):
                     "  Connected to %s port %d                  " % (addr[0], addr[1])
                 )
                 data = recv_data(conn)
-                send_data(conn, type)
+                send_data(conn, ctype)
                 connection = conn
                 break
         except socket.timeout:
             pass
-    if data == type:
-        print("  Handshake failed - both ends are set to", type)
+    if data == ctype:
+        print("  Handshake failed - both ends are set to", ctype)
         time.sleep(1)
         connection.close()
-        os._exit(True)
+        sys.exit(True)
     print("  Remote is", data)
     print()
     return connection
@@ -111,24 +111,24 @@ def recv_data(host):
         out += host.recv(length - len(out))
     for x in out[:-2]:
         lrc = operator.xor(lrc, ord(x))
-    if not lrc == int(out[-2:], 16):
+    if lrc != int(out[-2:], 16):
         print("  Remote socket CRC failed!")
         host.close()
-        os._exit(True)
+        sys.exit(True)
     return out[:-2]
 
 
 try:
     card = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("pn532mitm v0.1e")
 
-if help or len(args) < 1:
+if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")
     print()
     print("\tUsage: " + sys.argv[0] + " <EMULATOR|REMOTE> [LOG FILE] ['QUIET']")
@@ -172,24 +172,23 @@ if help or len(args) < 1:
     print()
     print("\t      " + sys.argv[0] + " -r 2 reader:192.168.1.3:5000")
     print()
-    os._exit(True)
+    sys.exit(True)
 
-logging = False
+# logging = False
+logfile = None
 if len(args) > 1:
-    try:
-        logfile = open(args[1], "r")
-        x = string.upper(input("  *** Warning! File already exists! Overwrite (y/n)? "))
-        if not x == "Y":
-            os._exit(True)
-        logfile.close()
-    except:
-        pass
+    if os.path.isfile(args[1]) :
+        x = input("  *** Warning! File already exists! Overwrite (y/n)? ").upper()
+        if x != "Y":
+            sys.exit(True)
+
     try:
         logfile = open(args[1], "w")
-        logging = True
-    except:
+        # logging = True
+    except Exception as _e:
         print("  Couldn't create logfile:", args[1])
-        os._exit(True)
+        print("  {_e}")
+        sys.exit(True)
 
 try:
     if args[2] == "QUIET":
@@ -199,18 +198,21 @@ except:
 
 if len(args) < 1:
     print("No EMULATOR or REMOTE specified")
-    os._exit(True)
+    sys.exit(True)
 
 # check if we are using a REMOTE system
 remote = ""
 remote_type = ""
-if string.find(args[0], "emulator:") == 0:
+# if string.find(args[0], "emulator:") == 0:
+if args[0].startswith("emulator:"):
     remote = args[0][9:]
     em_remote = True
     remote_type = "EMULATOR"
 else:
     em_remote = False
-if string.find(args[0], "reader:") == 0:
+
+# if string.find(args[0], "reader:") == 0
+if args[0].startswith("reader:"):
     remote = args[0][7:]
     rd_remote = True
     remote_type = "READER"
@@ -220,8 +222,8 @@ else:
 
 
 if remote:
-    host = remote[: string.find(remote, ":")]
-    port = int(remote[string.find(remote, ":") + 1 :])
+    host = remote[: remote.find(":")]
+    port = int(remote[remote.find(":") + 1 :])
     connection = connect_to(host, port, remote_type)
 else:
     try:
@@ -231,19 +233,19 @@ else:
         )
         print("  Emulator:", end=" ")
         emulator.info("")
-        if not emulator.readersubtype == card.READER_ACS:
+        if emulator.readersubtype != card.READER_ACS:
             print("EMULATOR is not an ACS")
-            os._exit(True)
+            sys.exit(True)
     except:
         print("Couldn't initialise EMULATOR on reader", args[0])
-        os._exit(True)
+        sys.exit(True)
 
 # always check at least one device locally
-if not card.readersubtype == card.READER_ACS:
+if card.readersubtype != card.READER_ACS:
     print("READER is not an ACS")
     if remote:
         connection.close()
-    os._exit(True)
+    sys.exit(True)
 
 if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
     if remote:
@@ -251,11 +253,11 @@ if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
         print("  Local NXP PN532 Firmware:")
     else:
         print("  Reader NXP PN532 Firmware:")
-    if not card.data[:4] == PN532_OK:
+    if card.data[:4] != PN532_OK:
         print("  Bad data from PN532:", card.data)
         if remote:
             connection.close()
-        os._exit(True)
+        sys.exit(True)
     else:
         pn532_print_firmware(card.data)
 
@@ -268,11 +270,11 @@ else:
     emulator.acs_send_apdu(card.PCSC_APDU["ACS_LED_ORANGE"])
     print("  Emulator NXP PN532 Firmware:")
 
-if not data[:4] == PN532_OK:
+if data[:4] != PN532_OK:
     print("  Bad data from PN532:", data)
     if remote:
         connection.close()
-    os._exit(True)
+    sys.exit(True)
 else:
     pn532_print_firmware(data)
 
@@ -328,7 +330,7 @@ if tags > 1:
     print("  Too many TAGS to EMULATE!")
     if remote:
         connection.close()
-    os._exit(True)
+    sys.exit(True)
 
 # emulator.acs_send_apdu(emulator.PCSC_APDU['ACS_SET_PARAMETERS']+['14'])
 
@@ -355,7 +357,7 @@ if not remote or remote_type == "READER":
         )
         if remote:
             connection.close()
-        os._exit(True)
+        sys.exit(True)
     data = emulator.data
 if remote:
     if remote_type == "READER":
@@ -399,7 +401,7 @@ try:
                 print("Data:", emulator.data)
                 if remote:
                     connection.close()
-                os._exit(True)
+                sys.exit(True)
         if remote:
             if remote_type == "READER":
                 send_data(connection, data)
@@ -407,25 +409,26 @@ try:
                 connection.settimeout(None)
                 data = recv_data(connection)
         errorcode = int(data[4:6], 16)
-        if not errorcode == 0x00:
+        if errorcode != 0x00:
             if remote:
                 connection.close()
             if errorcode == 0x29:
-                if logging:
+                if logfile:
                     logfile.close()
+                    logfile = None
                 print("  Session ended: EMULATOR released by Initiator")
                 if not remote or remote_type == "READER":
                     emulator.acs_send_apdu(card.PCSC_APDU["ACS_LED_GREEN"])
-                os._exit(False)
+                sys.exit(False)
             print("Error:", PN532_ERRORS[errorcode])
-            os._exit(True)
+            sys.exit(True)
         if not quiet:
             print("<<", data[6:])
         else:
             if not started:
                 print("  Logging started...")
                 started = True
-        if logging:
+        if logfile:
             logfile.write("<< %s\n" % data[6:])
             logfile.flush()
         # relay command to tag
@@ -442,7 +445,7 @@ try:
                 errorcode = recv_data(connection)
         if not quiet:
             print(">>", data, errorcode)
-        if logging:
+        if logfile:
             logfile.write(">> %s %s\n" % (data, errorcode))
             logfile.flush
         # relay tag's response back via emulator
@@ -451,11 +454,12 @@ try:
                 PN532_APDU["TG_SET_DATA"] + [data] + [errorcode]
             )
 except:
-    if logging:
+    if logfile:
         logfile.close()
+        logfile = None
     print("  Session ended with possible errors")
     if remote:
         connection.close()
     if not remote or remote_type == "READER":
         emulator.acs_send_apdu(card.PCSC_APDU["ACS_LED_GREEN"])
-    os._exit(True)
+    sys.exit(True)

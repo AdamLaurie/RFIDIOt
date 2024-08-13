@@ -21,25 +21,25 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("transit v0.1b")
 
 precoded = False
 
-if not help and len(args) > 0 and len(args[0]) == 64:
+if not chelp and len(args) > 0 and len(args[0]) == 64:
     print("\nDecode: ", end=" ")
     card.TRANSITIDPrint(args[0])
     if len(args) == 2:
@@ -47,12 +47,12 @@ if not help and len(args) > 0 and len(args[0]) == 64:
             precoded = True
         else:
             print("Unrecognised option: " + args[1])
-            os._exit(True)
+            sys.exit(True)
     else:
         print()
-        os._exit(False)
+        sys.exit(False)
 
-if not help and ((len(args) > 0 and len(args[0]) == 8) or precoded):
+if not chelp and ((len(args) > 0 and len(args[0]) == 8) or precoded):
     if precoded:
         out = args[0]
     else:
@@ -69,13 +69,11 @@ if not help and ((len(args) > 0 and len(args[0]) == 8) or precoded):
                 if not card.tagtype == card.Q5:
                     card.settagtype(card.ALL)
             card.waitfortag("Waiting for blank tag...")
-            print("  Tag ID: " + card.data)
+            print("  Tag ID: {card.data}")
             if card.tagtype == card.Q5:
-                x = string.upper(
-                    input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ")
-                )
+                x = input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ").uppper()
                 if x == "N":
-                    os._exit(False)
+                    sys.exit(False)
                 if x == "Y":
                     break
             else:
@@ -102,7 +100,7 @@ if not help and ((len(args) > 0 and len(args[0]) == 8) or precoded):
         print("    Q5 Data Block %02d:" % (x / 4 + 1), end=" ")
         outhex[x / 4 + 1] = card.ToHex(outbin[x : x + 4])
         print(outhex[x / 4 + 1])
-    if writetag == True:
+    if writetag is True:
         print()
         outhex[0] = q5control
         for x in range(2, -1, -1):
@@ -117,13 +115,13 @@ if not help and ((len(args) > 0 and len(args[0]) == 8) or precoded):
                     print("  Done!")
                 else:
                     print("Write failed!")
-                    os._exit(True)
+                    sys.exit(True)
             else:
                 print(outhex[x])
         if card.readertype == card.READER_ACG:
             card.settagtype(card.ALL)
     print()
-    os._exit(False)
+    sys.exit(False)
 print()
 print(sys.argv[0] + " - Q5 encode / decode TRANSIT compliant IDs")
 print("\nUsage: " + sys.argv[0] + " [OPTIONS] <UID> [WRITE]")
@@ -139,4 +137,4 @@ print(
     "\tIf the WRITE option is specified, a Q5 will be programmed to emulate a TRANSIT tag."
 )
 print()
-os._exit(True)
+sys.exit(True)

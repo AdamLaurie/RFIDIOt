@@ -31,7 +31,7 @@ import string
 try:
     card = rfidiot.card
 except:
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 
@@ -41,7 +41,7 @@ card.info("multiselect v0.1n")
 if len(args) == 1:
     if not card.settagtype(args[0]):
         print("Could not set tag type")
-        os._exit(True)
+        sys.exit(True)
 else:
     card.settagtype(card.ALL)
 

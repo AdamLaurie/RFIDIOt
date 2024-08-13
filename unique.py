@@ -25,17 +25,17 @@
 #
 
 
-import rfidiot
 import sys
 import os
-import string
+# import string
 import time
+import rfidiot
 
 try:
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
-    os._exit(True)
+    sys.exit(True)
 
 args = rfidiot.args
 help = rfidiot.help
@@ -66,10 +66,10 @@ if len(args) < 1 or len(args) > 3 or help:
     print("\ta Unique tag and then wait for a suitable blank to be presented")
     print("\tfor writing. No prompting will take place before the target is")
     print("\toverwritten.")
-    os._exit(True)
+    sys.exit(True)
 
 
-if len(args) == 1 and string.upper(args[0]) == "CLONE":
+if len(args) == 1 and str.upper(args[0]) == "CLONE":
     type = "UNIQUE"
     clone = True
     card.settagtype(card.EM4x02)
@@ -80,7 +80,7 @@ else:
     clone = False
     if len(args[1]) != 10:
         print("ID must be 10 HEX digits!")
-        os._exit(True)
+        sys.exit(True)
     id = args[1]
 
 if args[0] == "E":
@@ -93,7 +93,7 @@ else:
     else:
         if not clone:
             print("Unknown TYPE: " + args[0])
-            os._exit(True)
+            sys.exit(True)
 
 
 out = card.Unique64Bit(idbin)
@@ -118,7 +118,7 @@ print("  Hitag2 Config Block (3): " + H2CFB)
 print("  Data Block 4: " + db1)
 print("  Data Block 5: " + db2)
 
-if (len(args) == 3 and string.upper(args[2]) == "WRITE") or clone:
+if (len(args) == 3 and str.upper(args[2]) == "WRITE") or clone:
     # check for Q5 first`
     if card.readertype == card.READER_ACG:
         card.settagtype(card.Q5)
@@ -128,11 +128,11 @@ if (len(args) == 3 and string.upper(args[2]) == "WRITE") or clone:
         card.waitfortag("Waiting for blank tag (Q5 or Hitag2)...")
         print("Tag ID: " + card.uid)
     if not clone:
-        x = string.upper(
+        x = str.upper(
             input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ")
         )
         if x != "Y":
-            os._exit(False)
+            sys.exit(False)
     # allow blank to settle
     time.sleep(2)
     print("Writing...")
@@ -143,7 +143,7 @@ if (len(args) == 3 and string.upper(args[2]) == "WRITE") or clone:
             or not card.writeblock(2, db2)
         ):
             print("Write failed!")
-            os._exit(True)
+            sys.exit(True)
     if card.tagtype == card.HITAG2:
         if card.readertype == card.READER_ACG:
             card.login("", "", card.HITAG2_TRANSPORT_RWD)
@@ -153,11 +153,11 @@ if (len(args) == 3 and string.upper(args[2]) == "WRITE") or clone:
             or not card.writeblock(5, db2)
         ):
             print("Write failed!")
-            os._exit(True)
+            sys.exit(True)
     card.settagtype(card.EM4x02)
     card.select()
     print("Card ID: " + card.uid)
     print("  Unique ID: " + card.EMToUnique(card.uid))
     print("Done!")
     card.settagtype(card.ALL)
-os._exit(False)
+sys.exit(False)
