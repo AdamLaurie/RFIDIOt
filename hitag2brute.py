@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  hitag2brute.py - Brute Force hitag2 password
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,6 +21,7 @@
 
 
 import sys
+
 # import os
 # import time
 import rfidiot

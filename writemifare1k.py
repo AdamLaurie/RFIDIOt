@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  writemifare1k.py - write all blocks on a mifare standard tag
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,6 +22,7 @@
 
 import sys
 import random
+
 # import string
 import os
 import rfidiot
@@ -40,9 +40,7 @@ card.info("writemifare1k v0.1f")
 card.select()
 print("Card ID: " + card.uid)
 while True:
-    x = str.upper(
-        input("\n*** Warning! This will overwrite all data blocks! Proceed (y/n)? ")
-    )
+    x = str.upper(input("\n*** Warning! This will overwrite all data blocks! Proceed (y/n)? "))
     if x == "N":
         sys.exit(False)
     if x == "Y":

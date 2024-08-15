@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  demotag.py - test IAIK TUG DemoTag`
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -21,6 +20,7 @@
 #
 
 import sys
+
 # import os
 import rfidiot
 

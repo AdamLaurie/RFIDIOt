@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  loginall.py - attempt to login to each sector with transport keys
 #
 #  Adam Laurie <adam@algroup.co.uk>

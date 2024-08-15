@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #
 # NFC ID.py - Python code for Identifying NFC cards
 # version 0.1
@@ -87,9 +86,7 @@ while 42:
         if r[-4:] == "9000":
             # print card.data + card.errorcode
             uid = uid[:-1]
-            n.sendResults(
-                "Card found-UID: " + uid + "-Card type: " + aidlist[current][0]
-            )
+            n.sendResults("Card found-UID: " + uid + "-Card type: " + aidlist[current][0])
             break
 
         current += 1

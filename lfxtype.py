@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  lfxtype.py - select card and display tag type
 #
 #  Adam Laurie <adam@algroup.co.uk>

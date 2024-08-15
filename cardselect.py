@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  cardselect.py - select card and display ID
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,6 +21,7 @@
 
 
 import sys
+
 # import os
 import rfidiot
 

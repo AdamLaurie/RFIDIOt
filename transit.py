@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  transit.py - generate / decode FDI Matalec Transit 500 and Transit 999 UIDs
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,7 +22,7 @@
 
 import sys
 # import os
-# import string
+import string
 import rfidiot
 
 try:
@@ -126,15 +125,9 @@ print()
 print(sys.argv[0] + " - Q5 encode / decode TRANSIT compliant IDs")
 print("\nUsage: " + sys.argv[0] + " [OPTIONS] <UID> [WRITE]")
 print()
-print(
-    "\tIf a single 64 Bit BINARY UID is provided, it will be decoded according to the TRANSIT standard."
-)
-print(
-    "\tAlternatively, specifying a 8 HEX digit UID will encode the 64 Bit BINARY with LRC and sentinels."
-)
+print("\tIf a single 64 Bit BINARY UID is provided, it will be decoded according to the TRANSIT standard.")
+print("\tAlternatively, specifying a 8 HEX digit UID will encode the 64 Bit BINARY with LRC and sentinels.")
 print()
-print(
-    "\tIf the WRITE option is specified, a Q5 will be programmed to emulate a TRANSIT tag."
-)
+print("\tIf the WRITE option is specified, a Q5 will be programmed to emulate a TRANSIT tag.")
 print()
 sys.exit(True)

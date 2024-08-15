@@ -93,10 +93,8 @@ class rfidiot:
                 try:
                     self.pcsc_protocol = smartcard.scard.SCARD_PROTOCOL_T1
                 except:
-                    print(
-                        "Could not find PCSC daemon, try with option -n if you don't have a reader"
-                    )
-                    os._exit(True)
+                    print("Could not find PCSC daemon, try with option -n if you don't have a reader")
+                    sys.exit(True)
                 # select the reader specified
                 try:
                     self.pcsc = smartcard.System.readers()
@@ -104,13 +102,13 @@ class rfidiot:
                     print(
                         "Could not find PCSC daemon, try with option -n if you don't have a reader"
                     )
-                    os._exit(True)
+                    sys.exit(True)
                 if readernum >= len(self.pcsc):
                     print(
                         "There is no such reader #%i, PCSC sees only %i reader(s)"
                         % (readernum, len(self.pcsc))
                     )
-                    os._exit(True)
+                    sys.exit(True)
                 try:
                     self.readername = self.pcsc[readernum].name.decode("utf-8")
                     self.pcsc_connection = self.pcsc[readernum].createConnection()
@@ -124,7 +122,7 @@ class rfidiot:
                         self.pcsc_connection.addObserver(observer)
                 except:
                     print("Could not create connection to %s" % self.readername)
-                    os._exit(True)
+                    sys.exit(True)
                 # determine PCSC subtype
                 if self.readername.find("OMNIKEY") == 0:
                     self.readersubtype = self.READER_OMNIKEY
@@ -197,15 +195,16 @@ class rfidiot:
                                 print(
                                     "Did you set DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED in ifdDriverOptions in libccid_Info.plist?"
                                 )
-                            os._exit(True)
+                            sys.exit(True)
                     self.pcsc_atr = self.ListToHex(newstates[0][2])
                     pass
                 if self.readersubtype == self.READER_ACS:
                     self.acs_set_retry(to)
             # libnfc device
             elif self.readertype == self.READER_LIBNFC:
+                print("self.READER_LIBNFC", self.READER_LIBNFC) ## PMS
                 self.nfc = pynfc.NFC(self.NFCReader)
-                self.readername = self.nfc.LIBNFC_READER.decode("utf-8")
+                self.readername = self.nfc.LIBNFC_READER
             # Andoid reader
             elif self.readertype == self.READER_ANDROID:
                 self.android = pyandroid.Android()
@@ -224,7 +223,7 @@ class rfidiot:
                     self.ser.flushOutput()
                 except:
                     print("Could not open serial port %s" % port)
-                    os._exit(True)
+                    sys.exit(True)
 
     #
     # variables
@@ -840,6 +839,7 @@ class rfidiot:
     def info(self, caller) -> None:
         if len(caller) > 0:
             print(caller + " (using RFIDIOt v" + self.VERSION + ")")
+        print("self.readertype:", self.readertype) ## PMS
         if not self.NoInit:
             self.reset()
             self.version()
@@ -873,17 +873,17 @@ class rfidiot:
                             )
                         else:
                             print("\ncan't get firmware revision!")
-                            os._exit(True)
+                            sys.exit(True)
                         if self.acs_get_sam_serial():
                             print("SAM Serial: %s, " % self.data, end=" ")
                         else:
                             print("\ncan't get SAM Serial Number!")
-                            os._exit(True)
+                            sys.exit(True)
                         if self.acs_get_sam_id():
                             print("SAM ID: %s)" % self.ToBinary(self.data))
                         else:
                             print("\ncan't get SAM Serial Number!")
-                            os._exit(True)
+                            sys.exit(True)
                 elif (
                     self.readersubtype == self.READER_ACS
                     and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1
@@ -892,7 +892,7 @@ class rfidiot:
                         print("          (Firmware: %s)" % self.ToBinary(self.data))
                     else:
                         print("\ncan't get firmware revision!")
-                        os._exit(True)
+                        sys.exit(True)
             if self.readertype == self.READER_LIBNFC:
                 print("LibNFC", self.readername)
             if self.readertype == self.READER_ANDROID:
@@ -936,7 +936,7 @@ class rfidiot:
                 return True
             else:
                 print(self.FROSCH_Errors[self.errorcode])
-                os._exit(True)
+                sys.exit(True)
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 self.acs_power_off()
@@ -956,18 +956,18 @@ class rfidiot:
                 self.readername = self.data.decode("utf-8")
             except:
                 print("\nReader not responding - check baud rate")
-                os._exit(True)
+                sys.exit(True)
             # check for garbage data (wrong baud rate)
             if not self.data or self.data[0] < " " or self.data[0] > "~":
                 print("\nGarbage received from reader - check baud rate")
-                os._exit(True)
+                sys.exit(True)
             return True
         if self.readertype == self.READER_FROSCH:
             if self.frosch(self.FR_RWD_Get_Version, ""):
                 return True
             else:
                 print(self.FROSCH_Errors[self.errorcode])
-                os._exit(True)
+                sys.exit(True)
         if self.readertype == self.READER_ANDROID:
             print("Android version: ", self.android.VERSION)
 
@@ -1379,7 +1379,7 @@ class rfidiot:
             if hresult != smartcard.scard.SCARD_S_SUCCESS:
                 return "", 0x63, 0x00
                 # print 'Failed to control: ' + smartcard.scard.SCardGetErrorMessage(hresult)
-                # os._exit(True)
+                # sys.exit(True)
             # evil hacky bodge as ACS returns only one byte for this APDU (ACS_DISABLE_AUTO_POLL)
             # and we ignore failure of we're running on firmware V1 as it doesn't support this command
             if apdu == [0xFF, 0x00, 0x51, 0x3F, 0x00]:
@@ -1497,7 +1497,7 @@ class rfidiot:
             self.errorcode = self.ISO_OK
             return True
         print("Can't read %s blocks" % self.ACS_TAG_TYPES[self.tagtype])
-        os._exit(True)
+        sys.exit(True)
 
     def acs_get_sam_serial(self) -> bool:
         "ACS get SAM serial"
@@ -1666,12 +1666,12 @@ class rfidiot:
         "print 7816 failure code and exit"
         if code == self.ACG_FAIL:
             print("Application not implemented!")
-            os._exit(True)
+            sys.exit(True)
         print(
             "Failed - reason code " + code + " (" + self.ISO7816ErrorCodes[code] + ")"
         )
         print()
-        os._exit(True)
+        sys.exit(True)
 
     def iso_7816_get_challenge(self, length) -> bool:
         "get random challenge - challenge will be in .data"
@@ -2073,7 +2073,7 @@ class rfidiot:
             print("Frosch error! Checksum error:", end=" ")
             self.HexPrint(ret)
             print("Expected BCC: %02x" % bcc)
-            os._exit(True)
+            sys.exit(True)
         status = ret[1]
         if status == self.FR_NO_ERROR:
             self.errorcode = ""
@@ -2981,4 +2981,4 @@ class rfidiot:
         if self.readertype == self.READER_LIBNFC:
             self.nfc.powerOff()
             self.nfc.deconfigure()
-        os._exit(False)
+        sys.exit(False)

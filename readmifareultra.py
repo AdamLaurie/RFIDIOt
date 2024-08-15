@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  readmifareultra.py - read all sectors from a Ultralight tag
 #
 #  Keith Howell <kch@kch.net>

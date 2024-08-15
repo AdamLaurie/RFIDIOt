@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  readmifaresimple.py - read all sectors from a mifare tag
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -21,6 +20,7 @@
 #
 
 import sys
+
 # import os
 # import time
 # import string
@@ -61,11 +61,7 @@ RESET_TRAILER = "FFFFFFFFFFFFFF078069FFFFFFFFFFFF"
 
 if chelp or len(args) > 6:
     print(sys.argv[0] + " - read mifare tags")
-    print(
-        "Usage: "
-        + sys.argv[0]
-        + " [START BLOCK] [END BLOCK] [KEY] [KEYTYPE] [COPY|RESET]"
-    )
+    print("Usage: " + sys.argv[0] + " [START BLOCK] [END BLOCK] [KEY] [KEYTYPE] [COPY|RESET]")
     print()
     print("\tRead Mifare sector numbers [START BLOCK] to [END BLOCK], using")
     print("\t[KEY] to authenticate. Keys can be truncated to 'AA' for transport")

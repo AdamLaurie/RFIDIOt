@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  eeprom.py - display reader's eeprom settings
 #
 #  Adam Laurie <adam@algroup.co.uk>

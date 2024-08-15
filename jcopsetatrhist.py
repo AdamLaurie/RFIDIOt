@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  jcopsetatrhist.py - set ATR History bytes on JCOP cards
 #
 #  The applet jcop_set_atr_hist.cap must be loaded onto the card first,

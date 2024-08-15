@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  writelfx.py - read and then write all sectors from a LFX reader
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -77,11 +76,7 @@ if card.tagtype == card.EM4x05:
     card.FDXBIDPrint(ID)
 
 # Q5 cards can emulate other cards, so check if this one responds as Q5
-if (
-    card.tagtype == card.EM4x02
-    or card.tagtype == card.Q5
-    or card.tagtype == card.EM4x05
-):
+if card.tagtype == card.EM4x02 or card.tagtype == card.Q5 or card.tagtype == card.EM4x05:
     print("  Checking for Q5")
     card.settagtype(card.Q5)
     card.select()
@@ -156,13 +151,7 @@ if (
         print("      D70-D73: " + tdbin[44:48] + " " + tdbin[48])
         print("      D80-D83: " + tdbin[49:53] + " " + tdbin[53])
         print("      D90-D93: " + tdbin[54:58] + " " + tdbin[58])
-        print(
-            "               "
-            + tdbin[59:63]
-            + " "
-            + tdbin[63]
-            + " Column Parity & Stop Bit"
-        )
+        print("               " + tdbin[59:63] + " " + tdbin[63] + " Column Parity & Stop Bit")
         # reconstruct data bytes
         d0 = chr(int(tdbin[9:13] + tdbin[14:18], 2))
         d1 = chr(int(tdbin[19:23] + tdbin[24:28], 2))

@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  hitag2reset.py - hitag2 tags need love too...
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -55,11 +54,7 @@ if args[0] == "CONTROL":
         print()
         #               if card.frosch(card.FR_HT2_Read_PublicB):
         #                       print '  Card ID: ' + card.data
-        x = string.upper(
-            input(
-                "  *** Warning! This will overwrite TAG! Place card and proceed (y/n)? "
-            )
-        )
+        x = string.upper(input("  *** Warning! This will overwrite TAG! Place card and proceed (y/n)? "))
         if x == "N":
             sys.exit(False)
         if x == "Y":

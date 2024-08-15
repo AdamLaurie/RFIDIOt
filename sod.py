@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  sod.py - try to find X509 data in EF.SOD
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -35,9 +33,7 @@ while x < len(data):
     out.write(data[x:])
     out.flush()
     out.close()
-    (exitstatus, outtext) = subprocess.getstatusoutput(
-        "openssl pkcs7 -text -print_certs -in /tmp/SOD -inform DER"
-    )
+    (exitstatus, outtext) = subprocess.getstatusoutput("openssl pkcs7 -text -print_certs -in /tmp/SOD -inform DER")
     if not exitstatus and len(outtext) > 0:
         print("PKCS7 certificate found at offset %d:" % x)
         print()

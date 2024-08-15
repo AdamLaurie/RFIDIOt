@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  readmifare1k.py - read all sectors from a mifare standard tag
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,18 +21,30 @@
 
 
 import sys
-# import os
-import rfidiot
 
+# import os
+# try to deal with segfault with no readers
 try:
+    import rfidiot
+
     card = rfidiot.card
-except Exception as _e:
+except ConnectionAbortedError as _e:
     print("Couldn't open reader!")
+    print(_e)
     sys.exit(True)
 
+
+print("CONN")  ## PMS
+
 card.info("readmifare1k v0.1j")
-card.select()
+x = card.select()
+
+if not x:
+    print("Couldn't open card!")
+    sys.exit(True)
+
 print("Card ID: " + card.uid)
+
 
 blocksread = 0
 blockslocked = 0
@@ -58,53 +69,63 @@ for ctype in ["AA", "BB", "FF"]:
         )
 print()
 
+print("----")  ## PMS
+
 sector = 1
 while sector < 16:
     locked = True
     for ctype in ["AA", "BB", "FF"]:
-        print(" sector {sector:02x}: Keytype: {ctype}", end=" ")
+        print(f"\n Sector 0x{sector:02X}: Keytype: {ctype}", end=" ")
+        sys.stdout.flush()
+        sys.stderr.flush()
+        print("1---")
         card.select()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        print("2---")
+        sys.stdout.flush()
+        sys.stderr.flush()
         if card.login(sector * 4, ctype, ""):
             locked = False
             blocksread += 1
             print("Login OK. Data:\n")
             # print()
-            print(" ", end=" ")
+            # print(" ", end=" ")
             for block in range(4):
                 # card.login(sector,type,'')
                 if card.readMIFAREblock((sector * 4) + block):
-                    print(card.MIFAREdata, end=" ")
+                    # print(card.MIFAREdata, end=" ")
+                    print('    ' + card.MIFAREdata)
                     sys.stdout.flush()
+                    sys.stderr.flush()
                 else:
                     # print('Read error: %s %s' % (card.errorcode , card.ISO7816ErrorCodes.get(card.errorcode, "unknown Code"))
                     print(f"Read error: {card.errorcode} {card.get_error_str(card.errorcode)}")
                     sys.exit(True)
             print()
             card.MIFAREkb(card.MIFAREdata)
-            print(
-                "  Access Block User Data Byte: " + card.MIFAREaccessconditionsuserbyte
-            )
+            print(f"  Access Block User Data Byte: {card.MIFAREaccessconditionsuserbyte}")
             print()
             print(
-                "\tKey A (non-readable):\t%s\n\tKey B:\t\t\t%s\n\tAccess conditions:\t%s"
+                "    Key A (non-readable):\t%s\n\tKey B:\t\t\t%s\n\tAccess conditions:\t%s"
                 % (card.MIFAREkeyA, card.MIFAREkeyB, card.MIFAREaccessconditions)
             )
             print(
-                "\t\tMIFAREC1:\t%s\n\t\tMIFAREC2:\t%s\n\t\tMIFAREC3:\t%s"
+                "\tMIFAREC1:\t%s\n\tMIFAREC2:\t%s\n\tMIFAREC3:\t%s"
                 % (
                     hex(card.MIFAREC1)[2:],
                     hex(card.MIFAREC2)[2:],
                     hex(card.MIFAREC3)[2:],
                 )
             )
-            print("\t\tMIFAREblock0AC: " + card.MIFAREblock0AC)
-            print("\t\t\t" + card.MIFAREACDB[card.MIFAREblock0AC])
-            print("\t\tMIFAREblock1AC: " + card.MIFAREblock1AC)
-            print("\t\t\t" + card.MIFAREACDB[card.MIFAREblock1AC])
-            print("\t\tMIFAREblock2AC: " + card.MIFAREblock2AC)
-            print("\t\t\t" + card.MIFAREACDB[card.MIFAREblock2AC])
+            print("\tMIFAREblock0AC: " + card.MIFAREblock0AC)
+            print("\t    " + card.MIFAREACDB[card.MIFAREblock0AC])
+            print("\tMIFAREblock1AC: " + card.MIFAREblock1AC)
+            print("\t    " + card.MIFAREACDB[card.MIFAREblock1AC])
+            print("\tMIFAREblock2AC: " + card.MIFAREblock2AC)
+            print("\t    " + card.MIFAREACDB[card.MIFAREblock2AC])
             print("\t\tMIFAREblock3AC: " + card.MIFAREblock3AC)
-            print("\t\t\t" + card.MIFAREACKB[card.MIFAREblock3AC])
+            print("\t    " + card.MIFAREACKB[card.MIFAREblock3AC])
             print()
             continue
         elif card.errorcode != "":
@@ -113,13 +134,17 @@ while sector < 16:
             print("Login failed")
         print("\r", end=" ")
         sys.stdout.flush()
+        sys.stderr.flush()
+
     if locked:
         blockslocked += 1
         lockedblocks.append(sector)
     sector += 1
+
 print()
-print("  Total blocks read: %d" % blocksread)
-print("  Total blocks locked: %d" % blockslocked)
-if lockedblocks > 0:
+print(f"  Total blocks read: {blocksread}")
+print(f"  Total blocks locked: {blockslocked}")
+
+if lockedblocks:
     print("  Locked block numbers:", lockedblocks)
 sys.exit(False)

@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  mrpkey.py - calculate 3DES key for Machine Readable Passport
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -54,9 +52,7 @@ TEST_MRZ = "L898902C<3UTO6908061F9406236ZE184226B<<<<<14"
 TEST_rnd_ifd = "781723860C06C226"
 TEST_rnd_icc = "4608F91988702212"
 TEST_Kifd = "0B795240CB7049B01C19B33E32804F0B"
-TEST_respdata = (
-    "46B9342A41396CD7386BF5803104D7CEDC122B9132139BAF2EEDC94EE178534F2F2D235D074D7449"
-)
+TEST_respdata = "46B9342A41396CD7386BF5803104D7CEDC122B9132139BAF2EEDC94EE178534F2F2D235D074D7449"
 MRZ_WEIGHT = [7, 3, 1]
 APDU_OK = "9000"
 APDU_BAC = "6982"
@@ -187,7 +183,7 @@ DG2_ELEMENTS = {
     "88": "Format type (Mandatory)",
     BDB: "Biometric data (encoded according to Format Owner) also called the biometric data block (BDB).",
     BDB1: "Biometric data (encoded according to Format Owner) also called the biometric data block (BDB).",
-#DUP "7f60": "2nd Biometric Information Template",
+    # DUP "7f60": "2nd Biometric Information Template",
     FAC: "Format Identifier ASCII FAC\0",
 }
 # Data Group 2 field types
@@ -209,7 +205,7 @@ DG2_TYPE = {
     "88": SUB,
     "5f2e": TEMPLATE,
     "7f2e": TEMPLATE,
-# DUP    "7f60": TEMPLATE,
+    # DUP    "7f60": TEMPLATE,
 }
 
 # ISO 19794_5 (Biometric identifiers)
@@ -388,16 +384,10 @@ def drawfeatures(face, features):
         x = int(item[4:8], 16)
         y = int(item[8:12], 16)
         if Style == "Arrow":
-            face.create_line(
-                0, 0, x, y, fill="Red", arrow="last", width=2, tags="feature"
-            )
+            face.create_line(0, 0, x, y, fill="Red", arrow="last", width=2, tags="feature")
         if Style == "Cross":
-            face.create_line(
-                x - 6, y - 6, x + 6, y + 6, fill="Red", width=2, tags="feature"
-            )
-            face.create_line(
-                x - 6, y + 6, x + 6, y - 6, fill="Red", width=2, tags="feature"
-            )
+            face.create_line(x - 6, y - 6, x + 6, y + 6, fill="Red", width=2, tags="feature")
+            face.create_line(x - 6, y + 6, x + 6, y - 6, fill="Red", width=2, tags="feature")
         if Style == "Target":
             face.create_line(x, y - 15, x, y + 15, fill="Red", width=3, tags="feature")
             face.create_line(x - 15, y, x + 15, y, fill="Red", width=3, tags="feature")
@@ -593,12 +583,7 @@ def decode_ef_com(data):
                     pos += asn1fieldlength(hexdata[pos:])
                     for n in range(length):
                         print("      Data Group: ", end=" ")
-                        print(
-                            hexdata[pos : pos + 2]
-                            + " ("
-                            + TAG_NAME[hexdata[pos : pos + 2]]
-                            + ")"
-                        )
+                        print(hexdata[pos : pos + 2] + " (" + TAG_NAME[hexdata[pos : pos + 2]] + ")")
                         ef_groups.append(hexdata[pos : pos + 2])
                         pos += 2
                 else:
@@ -754,9 +739,7 @@ def decode_ef_dg1(data):
         FieldLengths = MRZ_FIELD_LENGTHS_ID
         FieldKeys = MRZ_FIELD_KEYS_ID
     elif DocumentType == "AC":
-        print(
-            "    Document type: Aircrew card, which we do not know how to decode. Attempting ID card settings."
-        )
+        print("    Document type: Aircrew card, which we do not know how to decode. Attempting ID card settings.")
         DOCUMENT_TYPE = "Aircrew Card"
         Fields = MRZ_FIELD_DISPLAY_ID
         FieldNames = MRZ_FIELD_NAMES_ID
@@ -820,16 +803,10 @@ def decode_ef_dg2(data):
                             sys.exit(True)
                         position += length
                         # FACE version
-                        print(
-                            "    FACE version: %s"
-                            % passport.ToBinary(datahex[position : position + 6])
-                        )
+                        print("    FACE version: %s" % passport.ToBinary(datahex[position : position + 6]))
                         position += 8
                         # Image length
-                        print(
-                            "      Record Length: %d"
-                            % int(datahex[position : position + 8], 16)
-                        )
+                        print("      Record Length: %d" % int(datahex[position : position + 8], 16))
                         imagelength = int(datahex[position : position + 8], 16)
                         position += 8
                         # Number of Images
@@ -837,101 +814,52 @@ def decode_ef_dg2(data):
                         print("      Number of Images: %d" % images)
                         position += 4
                         # Facial Image block
-                        print(
-                            "      Block Length: %d"
-                            % int(datahex[position : position + 8], 16)
-                        )
+                        print("      Block Length: %d" % int(datahex[position : position + 8], 16))
                         position += 8
                         features = int(datahex[position : position + 4], 16)
                         print("      Number of Features: %d" % features)
                         position += 4
-                        print(
-                            "      Gender: %s"
-                            % ISO19794_5_GENDER[datahex[position : position + 2]]
-                        )
+                        print("      Gender: %s" % ISO19794_5_GENDER[datahex[position : position + 2]])
                         position += 2
-                        print(
-                            "      Eye Colour: %s"
-                            % ISO19794_5_EYECOLOUR[datahex[position : position + 2]]
-                        )
+                        print("      Eye Colour: %s" % ISO19794_5_EYECOLOUR[datahex[position : position + 2]])
                         position += 2
-                        print(
-                            "      Hair Colour: %s"
-                            % ISO19794_5_HAIRCOLOUR[datahex[position : position + 2]]
-                        )
+                        print("      Hair Colour: %s" % ISO19794_5_HAIRCOLOUR[datahex[position : position + 2]])
                         position += 2
                         mask = int(datahex[position : position + 6], 16)
-                        print(
-                            "      Feature Mask: %s" % datahex[position : position + 6]
-                        )
+                        print("      Feature Mask: %s" % datahex[position : position + 6])
                         position += 6
                         if features:
                             print("      Features:")
                             for m, d in list(ISO19794_5_FEATURE.items()):
                                 if and_(mask, m):
                                     print("        : %s" % d)
-                        print(
-                            "      Expression: %s"
-                            % ISO19794_5_EXPRESSION[datahex[position : position + 4]]
-                        )
+                        print("      Expression: %s" % ISO19794_5_EXPRESSION[datahex[position : position + 4]])
                         position += 4
                         print("      Pose Angle: %s" % datahex[position : position + 6])
                         position += 6
-                        print(
-                            "      Pose Angle Uncertainty: %s"
-                            % datahex[position : position + 6]
-                        )
+                        print("      Pose Angle Uncertainty: %s" % datahex[position : position + 6])
                         position += 6
                         while features > 0:
-                            print(
-                                "      Feature block: %s"
-                                % datahex[position : position + 16]
-                            )
+                            print("      Feature block: %s" % datahex[position : position + 16])
                             img_features.append(datahex[position : position + 16])
                             features -= 1
                             position += 16
-                        print(
-                            "      Image Type: %s"
-                            % ISO19794_5_IMG_TYPE[datahex[position : position + 2]]
-                        )
+                        print("      Image Type: %s" % ISO19794_5_IMG_TYPE[datahex[position : position + 2]])
                         position += 2
-                        print(
-                            "      Image Data Type: %s"
-                            % ISO19794_5_IMG_DTYPE[datahex[position : position + 2]]
-                        )
-                        Filetype = ISO19794_5_IMG_FTYPE[
-                            datahex[position : position + 2]
-                        ]
+                        print("      Image Data Type: %s" % ISO19794_5_IMG_DTYPE[datahex[position : position + 2]])
+                        Filetype = ISO19794_5_IMG_FTYPE[datahex[position : position + 2]]
                         position += 2
-                        print(
-                            "      Image Width: %d"
-                            % int(datahex[position : position + 4], 16)
-                        )
+                        print("      Image Width: %d" % int(datahex[position : position + 4], 16))
                         position += 4
-                        print(
-                            "      Image Height: %d"
-                            % int(datahex[position : position + 4], 16)
-                        )
+                        print("      Image Height: %d" % int(datahex[position : position + 4], 16))
                         position += 4
-                        print(
-                            "      Image Colour Space: %s"
-                            % ISO19794_5_IMG_CSPACE[datahex[position : position + 2]]
-                        )
+                        print("      Image Colour Space: %s" % ISO19794_5_IMG_CSPACE[datahex[position : position + 2]])
                         position += 2
-                        print(
-                            "      Image Source Type: %s"
-                            % ISO19794_5_IMG_SOURCE[datahex[position : position + 2]]
-                        )
+                        print("      Image Source Type: %s" % ISO19794_5_IMG_SOURCE[datahex[position : position + 2]])
                         position += 2
-                        print(
-                            "      Image Device Type: %s"
-                            % datahex[position : position + 6]
-                        )
+                        print("      Image Device Type: %s" % datahex[position : position + 6])
                         position += 6
-                        print(
-                            "      Image Quality: %s"
-                            % ISO19794_5_IMG_QUALITY[datahex[position : position + 2]]
-                        )
+                        print("      Image Quality: %s" % ISO19794_5_IMG_QUALITY[datahex[position : position + 2]])
                         position += 2
                         if instances > 1:
                             filename = "%sEF_DG2_%i.%s" % (
@@ -957,9 +885,7 @@ def decode_ef_dg2(data):
                     position += asn1fieldlength(datahex[position:])
                     print("     data:", datahex[position : position + fieldlength * 2])
                     if tag == "02":
-                        instances = int(
-                            datahex[position : position + fieldlength * 2], 16
-                        )
+                        instances = int(datahex[position : position + fieldlength * 2], 16)
                     position += fieldlength * 2
         if not decoded:
             print(
@@ -993,10 +919,7 @@ def decode_ef_dg7(data):
                     position += asn1fieldlength(datahex[position:])
                 elif tag == "02":
                     position += asn1fieldlength(datahex[position:])
-                    print(
-                        "     content: %i instance(s)"
-                        % int(datahex[position : position + fieldlength * 2], 16)
-                    )
+                    print("     content: %i instance(s)" % int(datahex[position : position + fieldlength * 2], 16))
                     # note that for now we don't support decoding several instances...
                     position += fieldlength * 2
                 elif tag == "5f43":
@@ -1005,9 +928,7 @@ def decode_ef_dg7(data):
                     img.write(data[position / 2 : position + fieldlength])
                     img.flush()
                     img.close()
-                    print(
-                        "     JPEG image stored in %sEF_DG7.%s" % (tempfiles, Filetype)
-                    )
+                    print("     JPEG image stored in %sEF_DG7.%s" % (tempfiles, Filetype))
                     Display_DG7 = True
                     position += fieldlength * 2
         if not decoded:
@@ -1138,28 +1059,20 @@ def vonjeek_setBAC():
     "enable BAC on vonjeek emulator card"
     # Setting BAC works only on recent vonJeek emulators, older have only BAC anyway
     print("Forcing BAC mode to ENABLED")
-    if passport.send_apdu(
-        "", "", "", "", "10", "VONJEEK_SET_BAC", "00", "01", "00", "", ""
-    ):
+    if passport.send_apdu("", "", "", "", "10", "VONJEEK_SET_BAC", "00", "01", "00", "", ""):
         return
     else:
-        print(
-            "ERROR Could not enable BAC, make sure you are using a recent vonJeek emulator"
-        )
+        print("ERROR Could not enable BAC, make sure you are using a recent vonJeek emulator")
         sys.exit(True)
 
 
 def vonjeek_unsetBAC():
     "disable BAC on vonjeek emulator card"
     print("Forcing BAC mode to DISABLED")
-    if passport.send_apdu(
-        "", "", "", "", "10", "VONJEEK_SET_BAC", "00", "00", "00", "", ""
-    ):
+    if passport.send_apdu("", "", "", "", "10", "VONJEEK_SET_BAC", "00", "00", "00", "", ""):
         return
     else:
-        print(
-            "ERROR Could not disable BAC, make sure you are using a recent vonJeek emulator"
-        )
+        print("ERROR Could not disable BAC, make sure you are using a recent vonJeek emulator")
         sys.exit(True)
 
 
@@ -1238,47 +1151,23 @@ PACE = False
 def help():
     print()
     print("Usage:")
-    print(
-        "\t"
-        + sys.argv[0]
-        + " [OPTIONS] <MRZ (Lower)|PLAIN|CHECK|[PATH]> [WRITE|WRITELOCK|SLOWBRUTE]"
-    )
+    print("\t" + sys.argv[0] + " [OPTIONS] <MRZ (Lower)|PLAIN|CHECK|[PATH]> [WRITE|WRITELOCK|SLOWBRUTE]")
     print()
-    print(
-        "\tSpecify the Lower MRZ as a quoted string or the word TEST to use sample data."
-    )
-    print(
-        "\tLower MRZ can be full line or shortened to the essentials: chars 1-9;14-19;22-27"
-    )
-    print(
-        "\tFor Passport Cards, all three lines are required or use card number, DOB and expiry (NNNNNNNNNNYYMMDDYYMMDD)"
-    )
-    print(
-        "\tSpecify the word PLAIN if the passport doesn't have BAC (shorthand for dummy MRZ)"
-    )
+    print("\tSpecify the Lower MRZ as a quoted string or the word TEST to use sample data.")
+    print("\tLower MRZ can be full line or shortened to the essentials: chars 1-9;14-19;22-27")
+    print("\tFor Passport Cards, all three lines are required or use card number, DOB and expiry (NNNNNNNNNNYYMMDDYYMMDD)")
+    print("\tSpecify the word PLAIN if the passport doesn't have BAC (shorthand for dummy MRZ)")
     print("\tSpecify the word CHECK to check if the device is a passport.")
     print("\tSpecify a PATH to use files that were previously read from a passport.")
-    print(
-        "\tSpecify the option WRITE after a PATH to initialise a JMRTD or vonJeek emulator 'blank'."
-    )
-    print(
-        "\tSpecify the option WRITELOCK after a PATH to initialise a JMRTD emulator 'blank' and set to Read Only."
-    )
-    print(
-        "\tSpecify the option WRITE/WRITELOCK after a MRZ or PLAIN to clone a passport to a JMRTD or vonJeek emulator."
-    )
-    print(
-        "\tSpecify the option SETBAC   to enable  BAC on a (already configured) vonJeek emulator card."
-    )
-    print(
-        "\tSpecify the option UNSETBAC to disable BAC on a (already configured) vonJeek emulator card."
-    )
+    print("\tSpecify the option WRITE after a PATH to initialise a JMRTD or vonJeek emulator 'blank'.")
+    print("\tSpecify the option WRITELOCK after a PATH to initialise a JMRTD emulator 'blank' and set to Read Only.")
+    print("\tSpecify the option WRITE/WRITELOCK after a MRZ or PLAIN to clone a passport to a JMRTD or vonJeek emulator.")
+    print("\tSpecify the option SETBAC   to enable  BAC on a (already configured) vonJeek emulator card.")
+    print("\tSpecify the option UNSETBAC to disable BAC on a (already configured) vonJeek emulator card.")
     print("\tSpecify '?' for check digits if not known and they will be calculated.")
     print("\tSpecify '?' in the passport number field for bruteforce of that portion.")
     print("\tNote: only one contiguous portion of the field may be bruteforced.")
-    print(
-        "\tSpecify the option SLOWBRUTE after MRZ to force reset between attempts (required on some new passports)"
-    )
+    print("\tSpecify the option SLOWBRUTE after MRZ to force reset between attempts (required on some new passports)")
     print("\tPadding character '<' should be used for unknown fields.")
     print()
     sys.exit(True)
@@ -1353,9 +1242,7 @@ if arg0 == "UNSETBAC":
 if arg0 == "CHECK":
     while not passport.hsselect("08", "A") and not passport.hsselect("08", "B"):
         print("Waiting for passport... (%s)" % passport.errorcode)
-    if passport.iso_7816_select_file(
-        passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
-    ):
+    if passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"):
         print("Device is a Machine Readable Document")
         sys.exit(False)
     else:
@@ -1395,9 +1282,7 @@ if not FILES and not TEST:
             break
         print("Waiting for passport... (%s)" % passport.errorcode)
     print("Device set to %s transfers" % passport.ISO_SPEED[passport.speed])
-    print(
-        "Device supports %s Byte transfers" % passport.ISO_FRAMESIZE[passport.framesize]
-    )
+    print("Device supports %s Byte transfers" % passport.ISO_FRAMESIZE[passport.framesize])
     print()
     print("Checking presence of EF_CardAccess (PACE):")
     status, data = read_file(TAG_FID[EF_CardAccess])
@@ -1414,17 +1299,13 @@ if not FILES and not TEST:
         print("ePP doesn't support PACE")
 
     print("Select Passport Application (AID): ", end=" ")
-    if passport.iso_7816_select_file(
-        passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
-    ):
+    if passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"):
         print("OK")
     else:
         passport.iso_7816_fail(passport.errorcode)
 
     print("Select Master File: ", end=" ")
-    if passport.iso_7816_select_file(
-        TAG_FID[EF_COM], passport.ISO_7816_SELECT_BY_EF, "0C"
-    ):
+    if passport.iso_7816_select_file(TAG_FID[EF_COM], passport.ISO_7816_SELECT_BY_EF, "0C"):
 
         # try forcing BAC by reading a file
         status, data = read_file(TAG_FID[EF_DG1])
@@ -1487,14 +1368,7 @@ if not FILES and BAC:
             + passport.MRPoptionalcd
         )
 
-        kmrz = (
-            passport.MRPnumber
-            + passport.MRPnumbercd
-            + passport.MRPdob
-            + passport.MRPdobcd
-            + passport.MRPexpiry
-            + passport.MRPexpirycd
-        )
+        kmrz = passport.MRPnumber + passport.MRPnumbercd + passport.MRPdob + passport.MRPdobcd + passport.MRPexpiry + passport.MRPexpirycd
 
         print()
         print("Generate local keys:")
@@ -1619,9 +1493,7 @@ if not FILES and BAC:
             if bruteforcereset:
                 while not passport.hsselect("08", cardtype):
                     print("Waiting for passport... (%s)" % passport.errorcode)
-                passport.iso_7816_select_file(
-                    passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
-                )
+                passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C")
         else:
             if DEBUG or TEST:
                 print("(verified)")
@@ -1758,17 +1630,10 @@ for tag in eflist:
         outfile.write(data[1 + fieldlength / 2 :])
         outfile.flush()
         outfile.close()
-        exitstatus = os.system(
-            "openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles
-        )
+        exitstatus = os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)
         if not exitstatus:
-            exitstatus = os.system(
-                "openssl pkcs7 -in %sEF_SOD.TMP -out %sEF_SOD.PEM -inform DER"
-                % (tempfiles, tempfiles)
-            )
-            exitstatus = os.system(
-                "openssl pkcs7 -text -print_certs -in %sEF_SOD.PEM" % tempfiles
-            )
+            exitstatus = os.system("openssl pkcs7 -in %sEF_SOD.TMP -out %sEF_SOD.PEM -inform DER" % (tempfiles, tempfiles))
+            exitstatus = os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.PEM" % tempfiles)
             print()
             print("Certificate stored in %sEF_SOD.PEM" % tempfiles)
     if tag == EF_DG1:
@@ -1779,9 +1644,7 @@ for tag in eflist:
         decode_ef_dg7(data)
     if tag == EF_DG14:
         # TODO parse DG14 SecurityInfos
-        exitstatus = os.system(
-            "openssl asn1parse -i -in %sEF_DG14.BIN -inform DER" % tempfiles
-        )
+        exitstatus = os.system("openssl asn1parse -i -in %sEF_DG14.BIN -inform DER" % tempfiles)
     if tag == EF_DG15:
         dg15hex = passport.ToHex(data)
         tag = dg15hex[:2]
@@ -1790,26 +1653,15 @@ for tag in eflist:
         outfile.write(data[1 + fieldlength / 2 :])
         outfile.flush()
         outfile.close()
-        exitstatus = os.system(
-            "openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles
-        )
+        exitstatus = os.system("openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
         if not exitstatus:
-            os.system(
-                "openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin"
-                % (tempfiles, tempfiles)
-            )
+            os.system("openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles, tempfiles))
             print("Key stored in %sEF_DG15.PEM" % tempfiles)
             continue
         if exitstatus:
-            exitstatus = os.system(
-                "openssl ec -in %sEF_DG15.TMP -inform DER -pubin -text -noout"
-                % tempfiles
-            )
+            exitstatus = os.system("openssl ec -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
         if not exitstatus:
-            os.system(
-                "openssl ec -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin"
-                % (tempfiles, tempfiles)
-            )
+            os.system("openssl ec -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles, tempfiles))
             print("Key stored in %sEF_DG15.PEM" % tempfiles)
 
 # initialise app if we are going to WRITE JMRTD
@@ -1817,12 +1669,8 @@ if Jmrtd:
     if not FILES:
         filespath = tempfiles
         print()
-        input(
-            "Please replace passport with a JMRTD or vonJeek emulator card and press ENTER when ready..."
-        )
-    if (
-        not passport.hsselect("08", "A") and not passport.hsselect("08", "B")
-    ) or not passport.iso_7816_select_file(
+        input("Please replace passport with a JMRTD or vonJeek emulator card and press ENTER when ready...")
+    if (not passport.hsselect("08", "A") and not passport.hsselect("08", "B")) or not passport.iso_7816_select_file(
         passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"
     ):
         print("Couldn't select JMRTD!")
@@ -1852,9 +1700,7 @@ if Jmrtd:
                 # Keeping only known files in the tag index
                 oldindex = raw_efcom[i : i + length]
                 clearDGs = [EF_DG1, EF_DG2, EF_DG7, EF_DG11, EF_DG12, EF_DG13]
-                newindex = "".join(
-                    [x for x in list(oldindex) if x.encode("hex") in clearDGs]
-                )
+                newindex = "".join([x for x in list(oldindex) if x.encode("hex") in clearDGs])
                 newlength = len(newindex)
                 tmp += chr(newlength) + newindex
                 i += newlength
@@ -1926,27 +1772,14 @@ if not Nogui:
     root.title("%s (RFIDIOt v%s)" % (myver, passport.VERSION))
     if Filetype == "JP2":
         # nasty hack to deal with JPEG 2000 until PIL support comes along
-        exitstatus = os.system(
-            "convert %sJP2 %sJPG" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2.")
-        )
-        print(
-            "      (converted %sJP2 to %sJPG for display)"
-            % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2.")
-        )
+        exitstatus = os.system("convert %sJP2 %sJPG" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
+        print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
         if exitstatus:
-            print(
-                "Could not convert JPEG 2000 image (%d) - please install ImageMagick"
-                % exitstatus
-            )
+            print("Could not convert JPEG 2000 image (%d) - please install ImageMagick" % exitstatus)
             sys.exit(True)
         elif Display_DG7:
-            os.system(
-                "convert %sJP2 %sJPG" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7.")
-            )
-            print(
-                "      (converted %sJP2 to %sJPG for display)"
-                % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7.")
-            )
+            os.system("convert %sJP2 %sJPG" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7."))
+            print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7."))
         Filetype = "JPG"
     # TODO need to open EF_DG2_* in case of multiple images??
     imagedata = ImageTk.PhotoImage(file=tempfiles + "EF_DG2." + Filetype)
@@ -1998,17 +1831,12 @@ if not Nogui:
         mrzoffset = 0
         for x in range(item):
             mrzoffset += FieldLengths[x]
-        if (
-            FieldNames[item] == "Issuing State or Organisation"
-            or FieldNames[item] == "Nationality"
-        ):
+        if FieldNames[item] == "Issuing State or Organisation" or FieldNames[item] == "Nationality":
             Label(
                 frame,
                 text=mrzspaces(mrz[mrzoffset : mrzoffset + FieldLengths[item]], " ")
                 + "  "
-                + passport.ISO3166CountryCodesAlpha[
-                    mrzspaces(mrz[mrzoffset : mrzoffset + FieldLengths[item]], "")
-                ],
+                + passport.ISO3166CountryCodesAlpha[mrzspaces(mrz[mrzoffset : mrzoffset + FieldLengths[item]], "")],
                 font=font,
             ).grid(row=row, sticky=W, column=1)
         else:
@@ -2020,26 +1848,16 @@ if not Nogui:
         row += 1
     if len(mrz) == 90:
         # Passport cards have a three-line MRZ
-        Label(frame, text=mrz[:30], font=fonta, justify="center").grid(
-            row=row, columnspan=4
-        )
+        Label(frame, text=mrz[:30], font=fonta, justify="center").grid(row=row, columnspan=4)
         row += 1
-        Label(frame, text=mrz[30:60], font=fonta, justify="center").grid(
-            row=row, columnspan=4
-        )
+        Label(frame, text=mrz[30:60], font=fonta, justify="center").grid(row=row, columnspan=4)
         row += 1
-        Label(frame, text=mrz[60:], font=fonta, justify="center").grid(
-            row=row, columnspan=4
-        )
+        Label(frame, text=mrz[60:], font=fonta, justify="center").grid(row=row, columnspan=4)
         row += 1
     else:
-        Label(frame, text="  " + mrz[: len(mrz) / 2], font=fonta, justify="left").grid(
-            row=row, sticky=W, columnspan=4
-        )
+        Label(frame, text="  " + mrz[: len(mrz) / 2], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
         row += 1
-        Label(frame, text="  " + mrz[len(mrz) / 2 :], font=fonta, justify="left").grid(
-            row=row, sticky=W, columnspan=4
-        )
+        Label(frame, text="  " + mrz[len(mrz) / 2 :], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
         row += 1
     if Display_DG7:
         im = Image.open(tempfiles + "EF_DG7." + Filetype)

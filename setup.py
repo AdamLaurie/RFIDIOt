@@ -1,5 +1,4 @@
 from distutils.core import setup, Extension
-
 # https://stackoverflow.com/questions/70705404/systemerror-py-ssize-t-clean-macro-must-be-defined-for-formats
 # pip install pycryptodome
 

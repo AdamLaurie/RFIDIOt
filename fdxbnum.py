@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  fdxbnum.py - generate / decode FDX-B EM4x05 compliant IDs
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import os
 # import string
 import rfidiot
@@ -159,30 +159,16 @@ if not arg_help and (len(args) >= 3 or precoded):
             card.settagtype(card.ALL)
     sys.exit(False)
 print(sys.argv[0] + " - generate / decode FDX-B EM4x05 compliant IDs")
-print(
-    "Usage: "
-    + sys.argv[0]
-    + " [OPTIONS] <ID> [WRITE] | <APPID> <COUNTRY CODE> <NATIONAL ID> [WRITE]"
-)
+print("Usage: " + sys.argv[0] + " [OPTIONS] <ID> [WRITE] | <APPID> <COUNTRY CODE> <NATIONAL ID> [WRITE]")
 print()
-print(
-    "\tIf a single 16 HEX digit ID is provided, it will be decoded according to the FDX-B standard."
-)
-print(
-    "\tAlternatively, specifying a 4 HEX digit Application ID, 3 or 4 digit decimal country code"
-)
-print(
-    "\t(normally based on ISO-3166 country codes or ICAR.ORG manufacturer codes, range 0 - 4095)"
-)
+print("\tIf a single 16 HEX digit ID is provided, it will be decoded according to the FDX-B standard.")
+print("\tAlternatively, specifying a 4 HEX digit Application ID, 3 or 4 digit decimal country code")
+print("\t(normally based on ISO-3166 country codes or ICAR.ORG manufacturer codes, range 0 - 4095)")
 print("\tand a decimal National ID Number will generate a 16 HEX digit ID.")
 print("\tNote: Application ID 8000 is 'Animal', and 0000 is non-Animal.")
-print(
-    "\tMaximum value for country code is 999 according to the standard, but 4 digits will work."
-)
+print("\tMaximum value for country code is 999 according to the standard, but 4 digits will work.")
 print("\tMaximum value for National ID is 274877906943.")
 print()
-print(
-    "\tIf the WRITE option is specified, a Q5 or Hitag2 will be programmed to emulate FDX-B."
-)
+print("\tIf the WRITE option is specified, a Q5 or Hitag2 will be programmed to emulate FDX-B.")
 print()
 sys.exit(True)

@@ -25,6 +25,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
 import ctypes
 import ctypes.util
 import binascii
@@ -370,10 +371,14 @@ class NFC(object):
         self.poweredUp = False
 
         self.initLog()
-        self.LIBNFC_VER = self.initlibnfc()
+        self.LIBNFC_VER = self.initlibnfc().decode("utf-8")
         if rfidiotglobals.Debug:
             self.log.debug("libnfc %s" % self.LIBNFC_VER)
+        print("call self.configure") ## PMS
         self.configure(nfcreader)
+        print("end __init__") ## PMS
+        sys.stdout.flush()
+
 
     def __del__(self):
         self.deconfigure()
@@ -471,15 +476,23 @@ class NFC(object):
             target = None
         if target:
             target = ctypes.byref(target)
+        print("target", target)  ### PMS
         self.device = self.libnfc.nfc_open(self.context, target)
-        self.LIBNFC_READER = self.libnfc.nfc_device_get_name(self.device)
+        print("device", self.device)  ### PMS
+
+        if self.device is None:
+            raise ConnectionAbortedError("Error opening NFC reader")
+        else:
+            # Segmentation fault if self.device is None *pnd->nam
+            self.LIBNFC_READER = self.libnfc.nfc_device_get_name(self.device).decode("utf-8")
+
         if rfidiotglobals.Debug:
-            if self.device == None:
-                self.log.error("Error opening NFC reader")
-            else:
-                self.log.debug(
-                    "Opened NFC reader " + self.LIBNFC_READER.decode("utf-8")
-                )
+            # if self.device == None:
+            #     self.log.error("Error opening NFC reader")
+            # else:
+            self.log.debug(
+                "Opened NFC reader " + self.LIBNFC_READER
+            )
             self.log.debug("Initing NFC reader")
         self.libnfc.nfc_initiator_init(self.device)
         if rfidiotglobals.Debug:

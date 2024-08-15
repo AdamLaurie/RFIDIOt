@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  rfidiot-cli.py - CLI for rfidiot
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -42,98 +40,55 @@ chelp = rfidiot.help
 
 if chelp or len(sys.argv) == 1:
     print()
-    print(
-        "Usage: %s [OPTIONS] <COMMAND> [ARG(s)] ... [<COMMAND> [ARG(s)] ... ]"
-        % sys.argv[0]
-    )
+    print("Usage: %s [OPTIONS] <COMMAND> [ARG(s)] ... [<COMMAND> [ARG(s)] ... ]" % sys.argv[0])
     print()
     print("  Commands:")
     print()
     print('     AID <AID|"ALL"|"ANY">                            Select ISO 7816 AID')
     print("     AIDS                                             List well known AIDs")
-    print(
-        '     APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>      Send raw ISO 7816 APDU (use "" for empty elements)'
-    )
-    print(
-        "     CHANGE <MESSAGE>                                 Print message and wait for TAG to change"
-    )
+    print('     APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>      Send raw ISO 7816 APDU (use "" for empty elements)')
+    print("     CHANGE <MESSAGE>                                 Print message and wait for TAG to change")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
-    print(
-        "     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:"
-    )
+    print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
     print("                                                        1 == 106 kBaud")
     print("                                                        2 == 212 kBaud")
     print("                                                        4 == 424 kBaud")
     print("                                                        8 == 848 kBaud")
     print("     IDENTIFY                                         Show TAG type")
     print("     MF <COMMAND> [<ARGS> ... ]                       Mifare commands:")
-    print(
-        '        AUTH <"A|B"> <BLOCK>                            Authenticate with KEY A or B (future authentications'
-    )
+    print('        AUTH <"A|B"> <BLOCK>                            Authenticate with KEY A or B (future authentications')
     print("                                                        are automated)")
-    print(
-        "        CLONE <HEX KEY>                                 Duplicate a Mifare TAG (KEY is KEY A of BLANK)"
-    )
+    print("        CLONE <HEX KEY>                                 Duplicate a Mifare TAG (KEY is KEY A of BLANK)")
     print("        DUMP <START> <END>                              Show data blocks")
-    print(
-        '        KEY <"A|B"> <HEX KEY>                           Set Mifare KEY A or B'
-    )
-    print(
-        "        READ <START> <END> <FILE>                       Read data blocks and save as FILE"
-    )
-    print(
-        "        WIPE                                            Set Mifare TAG to all 00"
-    )
-    print(
-        "        WRITE <START> <FILE>                            Write data blocks from FILE (note that KEY A will"
-    )
-    print(
-        "                                                        be inserted from previously set value and KEY B"
-    )
-    print(
-        "                                                        will also be inserted if set, overriding FILE value)"
-    )
-    print(
-        "     PROMPT <MESSAGE>                                 Print message and wait for Y/N answer (exit if N)"
-    )
-    print(
-        "     SCRIPT <FILE>                                    Read commands from FILE (see script.txt for example)"
-    )
+    print('        KEY <"A|B"> <HEX KEY>                           Set Mifare KEY A or B')
+    print("        READ <START> <END> <FILE>                       Read data blocks and save as FILE")
+    print("        WIPE                                            Set Mifare TAG to all 00")
+    print("        WRITE <START> <FILE>                            Write data blocks from FILE (note that KEY A will")
+    print("                                                        be inserted from previously set value and KEY B")
+    print("                                                        will also be inserted if set, overriding FILE value)")
+    print("     PROMPT <MESSAGE>                                 Print message and wait for Y/N answer (exit if N)")
+    print("     SCRIPT <FILE>                                    Read commands from FILE (see script.txt for example)")
     print("     SELECT                                           Select TAG")
-    print(
-        "     WAIT <MESSAGE>                                   Print message and wait for TAG"
-    )
-    print(
-        "     WRITEHEX <BLOCK> <HEX>                           Write HEX data to BLOCK"
-    )
+    print("     WAIT <MESSAGE>                                   Print message and wait for TAG")
+    print("     WRITEHEX <BLOCK> <HEX>                           Write HEX data to BLOCK")
     print()
-    print(
-        "  Commands will be executed sequentially and must be combined as appropriate."
-    )
+    print("  Commands will be executed sequentially and must be combined as appropriate.")
     print("  Block numbers must be specified in HEX.")
     print()
     print("  Examples:")
     print()
-    print(
-        '     Select TAG, set Mifare KEY A to "FFFFFFFFFFFF" and authenticate against sector 0:'
-    )
+    print('     Select TAG, set Mifare KEY A to "FFFFFFFFFFFF" and authenticate against sector 0:')
     print()
     print("       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0")
     print()
-    print(
-        "     Write Mifare data to new TAG, changing Key A to 112233445566 (writing block 0 is allowed to fail):"
-    )
+    print("     Write Mifare data to new TAG, changing Key A to 112233445566 (writing block 0 is allowed to fail):")
     print()
-    print(
-        "       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0 mf key a 112233445566 mf write 0 mifare.dat"
-    )
+    print("       rfidiot-cli.py select mf key a FFFFFFFFFFFF mf auth a 0 mf key a 112233445566 mf write 0 mifare.dat")
     print()
     print("     Clone a Mifare TAG to a new blank:")
     print()
-    print(
-        "       rfidiot-cli.py select mf key a 112233445566 mf auth a 0 mf clone FFFFFFFFFFFF"
-    )
+    print("       rfidiot-cli.py select mf key a 112233445566 mf auth a 0 mf clone FFFFFFFFFFFF")
     sys.exit(True)
 
 try:
@@ -221,10 +176,7 @@ while args:
         sector = start
         while sector <= end:
             if card.readblock(sector):
-                print(
-                    "    %02X: %s %s"
-                    % (sector, card.data, card.ReadablePrint(card.data.decode("hex")))
-                )
+                print("    %02X: %s %s" % (sector, card.data, card.ReadablePrint(card.data.decode("hex"))))
             else:
                 print("    Failed: " + card.get_error_str(card.errorcode))
             sector += 1
@@ -325,9 +277,7 @@ while args:
             sector = start
             print("    Reading...")
             while sector <= end:
-                if card.login(
-                    sector, Mifare_KeyType, Mifare_Key
-                ) and card.readMIFAREblock(sector):
+                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
                     data += card.MIFAREdata.decode("hex")
                 else:
                     print("    Failed: " + card.get_error_str(card.errorcode))
@@ -353,10 +303,7 @@ while args:
                 if not (sector + 1) % 4:
                     # trailing block must contain keys, so reconstruct
                     block = Mifare_KeyA + block[12:]
-                if not (
-                    card.login(sector, "A", blank_key)
-                    and card.writeblock(sector, block)
-                ):
+                if not (card.login(sector, "A", blank_key) and card.writeblock(sector, block)):
                     if sector == 0:
                         print("      Sector 0 write failed")
                         card.select()
@@ -379,9 +326,7 @@ while args:
             print()
             sector = start
             while sector <= end:
-                if card.login(
-                    sector, Mifare_KeyType, Mifare_Key
-                ) and card.readMIFAREblock(sector):
+                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
                     print(
                         "    %02X: %s %s"
                         % (
@@ -412,8 +357,7 @@ while args:
             end = int(args.pop(), 16)
             filename = args.pop()
             print(
-                "  Reading data blocks %02X to %02X and saving as %s:"
-                % (start, end, filename),
+                "  Reading data blocks %02X to %02X and saving as %s:" % (start, end, filename),
                 end=" ",
             )
             outfile = open(filename, "wb")
@@ -427,9 +371,7 @@ while args:
             print()
             sector = start
             while sector <= end:
-                if card.login(
-                    sector, Mifare_KeyType, Mifare_Key
-                ) and card.readMIFAREblock(sector):
+                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
                     outfile.write(card.MIFAREdata.decode("hex"))
                 else:
                     print("    Failed: " + card.get_error_str(card.errorcode))
@@ -463,10 +405,7 @@ while args:
                     block = Mifare_KeyA + perms + Mifare_KeyB
                 else:
                     block = "00" * 16
-                if not (
-                    card.login(sector, Mifare_KeyType, Mifare_Key)
-                    and card.writeblock(sector, block)
-                ):
+                if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
                     print("    Failed: " + card.get_error_str(card.errorcode))
                     sys.exit(True)
                 sector += 1
@@ -480,9 +419,7 @@ while args:
             infile.close()
             print("  Writing data from file", filename, end=" ")
             if len(data) % 16:
-                print(
-                    "failed! File length is not divisible by Mifare block length (16)!"
-                )
+                print("failed! File length is not divisible by Mifare block length (16)!")
                 sys.exit(True)
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
@@ -509,10 +446,7 @@ while args:
                         block = Mifare_KeyA + block[12:20] + Mifare_KeyB
                     else:
                         block = Mifare_KeyA + block[12:]
-                if not (
-                    card.login(sector, Mifare_KeyType, Mifare_Key)
-                    and card.writeblock(sector, block)
-                ):
+                if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
                     if sector == 0:
                         print("    Sector 0 write failed")
                         card.select()

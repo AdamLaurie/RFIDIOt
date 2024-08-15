@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  bruteforce.py - try random numbers to login to sector 0
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,6 +22,7 @@
 
 import random
 import sys
+
 # import os
 import rfidiot
 

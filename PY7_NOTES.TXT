@@ -38,3 +38,4 @@ removed refs to Deprecated module 'string
 adding python type hint / annotations as
 	https://docs.python.org/3/library/typing.html
 
+refactored mifarekeys.py to use bytearrays instead of strings

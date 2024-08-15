@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  copytag.py - read all sectors from a standard tag and write them back
 #               to a blank
 #
@@ -23,6 +22,7 @@
 
 
 import sys
+
 # import os
 # import string
 import rfidiot

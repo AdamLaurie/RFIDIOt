@@ -278,9 +278,7 @@ def printhelp():
     print("Ver 0.1c\n")
     print("usage:\n\n ChAP.py [options] [PIN]")
     print()
-    print(
-        "If the optional numeric PIN argument is given, the PIN will be verified (note that this"
-    )
+    print("If the optional numeric PIN argument is given, the PIN will be verified (note that this")
     print("updates the PIN Try Counter and may result in the card being PIN blocked).")
     print("\nOptions:\n")
     print("\t-a\t\tBruteforce AIDs")
@@ -516,9 +514,7 @@ def bruteforce_aids(aid):
                 # aidb= aid + [x]
                 aidb = [x, y, 0x00, 0x00, z]
                 if Verbose:
-                    print(
-                        "\r  %02x %02x %02x %02x %02x" % (x, y, 0x00, 0x00, z), end=" "
-                    )
+                    print("\r  %02x %02x %02x %02x %02x" % (x, y, 0x00, 0x00, z), end=" ")
                 status, response, sw1, sw2 = select_aid(aidb)
                 if [sw1, sw2] != SW12_NOT_FOUND:
                     print("\r  Found AID:", end=" ")

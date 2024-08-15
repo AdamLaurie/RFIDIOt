@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  formatmifare1kvalue.py - format value blocks on a mifare standard tag
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import string
 # import os
 import rfidiot

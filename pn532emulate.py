@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  pn532emulate.py - switch NXP PN532 reader chip into TAG emulation mode
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import os
 import rfidiot
 from rfidiot.pn532 import *
@@ -45,9 +45,7 @@ if chelp or len(args) < 6:
         + " <MODE> <SENS_RES> <NFCID1t> <SEL_RES> <NFCID2t> <PAD> <SYSTEM_CODE> <NFCID3t> [General Bytes] [Historical Bytes]"
     )
     print()
-    print(
-        "  The NXP PN532 chip inside some readers (such as ACS/Tikitag) are capable of emulating the following tags:"
-    )
+    print("  The NXP PN532 chip inside some readers (such as ACS/Tikitag) are capable of emulating the following tags:")
     print()
     print("    ISO-14443-3")
     print("    ISO-14443-4")
@@ -78,41 +76,31 @@ if chelp or len(args) < 6:
     print("        8 Bytes.")
     print()
     print("    SYSTEM_CODE:")
-    print(
-        "        2 Bytes, returned in the POL_RES frame if the 4th byte of the incoming POL_REQ"
-    )
+    print("        2 Bytes, returned in the POL_RES frame if the 4th byte of the incoming POL_REQ")
     print("        command frame is 0x01.")
     print()
     print("    NFCID3t:")
-    print(
-        "        10 Bytes, used in the ATR_RES in case of ATR_REQ received from the initiator."
-    )
+    print("        10 Bytes, used in the ATR_RES in case of ATR_REQ received from the initiator.")
     print()
     print("    General Bytes:")
     print("        Optional, Max 47 Bytes, to be used in the ATR_RES.")
     print()
     print("    Historical Bytes:")
-    print(
-        "        Optional, Max 48 Bytes, to be used in the ATS when in ISO/IEC 14443-4 PICC"
-    )
+    print("        Optional, Max 48 Bytes, to be used in the ATS when in ISO/IEC 14443-4 PICC")
     print("        emulation mode.")
     print()
     print("  Example:")
     print()
     print(
-        "    "
-        + sys.argv[0]
-        + " 00 0800 dc4420 60 01fea2a3a4a5a6a7c0c1c2c3c4c5c6c7ffff aa998877665544332211 00 52464944494f7420504e353332"
+        "    " + sys.argv[0] + " 00 0800 dc4420 60 01fea2a3a4a5a6a7c0c1c2c3c4c5c6c7ffff aa998877665544332211 00 52464944494f7420504e353332"
     )
     print()
-    print(
-        "    In ISO/IEC 14443-4 PICC emulation mode, the emulator will wait for initiator, then wait for an APDU,"
-    )
+    print("    In ISO/IEC 14443-4 PICC emulation mode, the emulator will wait for initiator, then wait for an APDU,")
     print("    to which it will reply '9000' and exit.")
     print()
     sys.exit(True)
 
-if  card.readersubtype != card.READER_ACS:
+if card.readersubtype != card.READER_ACS:
     print("  Reader type not supported!")
     sys.exit(True)
 
@@ -149,19 +137,7 @@ except:
 
 print("  Waiting for activation...")
 card.acs_send_apdu(card.PCSC_APDU["ACS_LED_RED"])
-status = card.acs_send_apdu(
-    PN532_APDU["TG_INIT_AS_TARGET"]
-    + mode
-    + sens_res
-    + uid
-    + sel_res
-    + felica
-    + nfcid
-    + lengt
-    + gt
-    + lentk
-    + tk
-)
+status = card.acs_send_apdu(PN532_APDU["TG_INIT_AS_TARGET"] + mode + sens_res + uid + sel_res + felica + nfcid + lengt + gt + lentk + tk)
 if not status or card.data[:4] != "D58D":
     print("Target Init failed:", card.errorcode)
     sys.exit(True)
@@ -187,7 +163,7 @@ if not status or card.data[:4] != "D587":
     print("Data:", card.data)
     sys.exit(True)
 errorcode = int(card.data[4:6], 16)
-if errorcode: # != 0
+if errorcode:  # != 0
     print("Error:", PN532_ERRORS[errorcode])
     sys.exit(True)
 print("<<", card.data[6:])

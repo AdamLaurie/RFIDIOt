@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  pn532mitm.py - NXP PN532 Man-In-The_Middle - log conversations between TAG and external reader
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import os
 # import string
 import socket
@@ -67,9 +67,7 @@ def connect_to(host, port, ctype):
                 first = False
             conn, addr = peer.accept()
             if conn:
-                print(
-                    "  Connected to %s port %d                  " % (addr[0], addr[1])
-                )
+                print("  Connected to %s port %d                  " % (addr[0], addr[1]))
                 data = recv_data(conn)
                 send_data(conn, ctype)
                 connection = conn
@@ -133,32 +131,20 @@ if chelp or len(args) < 1:
     print()
     print("\tUsage: " + sys.argv[0] + " <EMULATOR|REMOTE> [LOG FILE] ['QUIET']")
     print()
-    print(
-        "\t  Default PCSC reader will be the READER. Specify reader number to use as an EMULATOR as"
-    )
+    print("\t  Default PCSC reader will be the READER. Specify reader number to use as an EMULATOR as")
     print("\t  the <EMULATOR> argument.")
     print()
-    print(
-        "\t  To utilise a REMOTE device, use a string in the form 'emulator:HOST:PORT' or 'reader:HOST:PORT'."
-    )
+    print("\t  To utilise a REMOTE device, use a string in the form 'emulator:HOST:PORT' or 'reader:HOST:PORT'.")
     print()
-    print(
-        "\t  COMMANDS and RESPONSES will be relayed between the READER and the EMULATOR, and relayed"
-    )
+    print("\t  COMMANDS and RESPONSES will be relayed between the READER and the EMULATOR, and relayed")
     print("\t  traffic will be displayed (and logged if [LOG FILE] is specified).")
     print()
-    print(
-        "\t  If the 'QUIET' option is specified, traffic log will not be displayed on screen."
-    )
+    print("\t  If the 'QUIET' option is specified, traffic log will not be displayed on screen.")
     print()
     print("\t  Logging is in the format:")
     print()
-    print(
-        "\t    << DATA...        - HEX APDU received by EMULATOR and relayed to READER"
-    )
-    print(
-        "\t    >> DATA... SW1SW2 - HEX response and STATUS received by READER and relayed to EMULATOR"
-    )
+    print("\t    << DATA...        - HEX APDU received by EMULATOR and relayed to READER")
+    print("\t    >> DATA... SW1SW2 - HEX response and STATUS received by READER and relayed to EMULATOR")
     print()
     print("\t  Examples:")
     print()
@@ -166,9 +152,7 @@ if chelp or len(args) < 1:
     print()
     print("\t      " + sys.argv[0] + " -r 2 3")
     print()
-    print(
-        "\t    Use device no. 2 as the EMULATOR and remote system on 192.168.1.3 port 5000 as the READER:"
-    )
+    print("\t    Use device no. 2 as the EMULATOR and remote system on 192.168.1.3 port 5000 as the READER:")
     print()
     print("\t      " + sys.argv[0] + " -r 2 reader:192.168.1.3:5000")
     print()
@@ -177,7 +161,7 @@ if chelp or len(args) < 1:
 # logging = False
 logfile = None
 if len(args) > 1:
-    if os.path.isfile(args[1]) :
+    if os.path.isfile(args[1]):
         x = input("  *** Warning! File already exists! Overwrite (y/n)? ").upper()
         if x != "Y":
             sys.exit(True)
@@ -228,9 +212,7 @@ if remote:
 else:
     try:
         readernum = int(args[0])
-        emulator = rfidiot.RFIDIOt.rfidiot(
-            readernum, card.readertype, "", "", "", "", "", ""
-        )
+        emulator = rfidiot.RFIDIOt.rfidiot(readernum, card.readertype, "", "", "", "", "", "")
         print("  Emulator:", end=" ")
         emulator.info("")
         if emulator.readersubtype != card.READER_ACS:
@@ -337,17 +319,7 @@ if tags > 1:
 if not remote or remote_type == "READER":
     print("  Waiting for EMULATOR activation...")
     status = emulator.acs_send_apdu(
-        PN532_APDU["TG_INIT_AS_TARGET"]
-        + mode
-        + sens_res
-        + uid
-        + sel_res
-        + felica
-        + nfcid
-        + lengt
-        + gt
-        + lentk
-        + tk
+        PN532_APDU["TG_INIT_AS_TARGET"] + mode + sens_res + uid + sel_res + felica + nfcid + lengt + gt + lentk + tk
     )
     if not status or not emulator.data[:4] == "D58D":
         print(
@@ -450,9 +422,7 @@ try:
             logfile.flush
         # relay tag's response back via emulator
         if not remote or remote_type == "READER":
-            status = emulator.acs_send_apdu(
-                PN532_APDU["TG_SET_DATA"] + [data] + [errorcode]
-            )
+            status = emulator.acs_send_apdu(PN532_APDU["TG_SET_DATA"] + [data] + [errorcode])
 except:
     if logfile:
         logfile.close()

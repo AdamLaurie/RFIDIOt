@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  unique.py -  generate EM4x02 and/or UNIQUE compliant IDs
 #       these can then be written to a Q5 tag to emulate EM4x02
 #       by transmitting data blocks 1 & 2 (MAXBLOCK == 2),
@@ -27,6 +26,7 @@
 
 import sys
 import os
+
 # import string
 import time
 import rfidiot
@@ -128,30 +128,20 @@ if (len(args) == 3 and str.upper(args[2]) == "WRITE") or clone:
         card.waitfortag("Waiting for blank tag (Q5 or Hitag2)...")
         print("Tag ID: " + card.uid)
     if not clone:
-        x = str.upper(
-            input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ")
-        )
+        x = str.upper(input("  *** Warning! This will overwrite TAG! Proceed (y/n)? "))
         if x != "Y":
             sys.exit(False)
     # allow blank to settle
     time.sleep(2)
     print("Writing...")
     if card.tagtype == card.Q5:
-        if (
-            not card.writeblock(0, Q5CFB)
-            or not card.writeblock(1, db1)
-            or not card.writeblock(2, db2)
-        ):
+        if not card.writeblock(0, Q5CFB) or not card.writeblock(1, db1) or not card.writeblock(2, db2):
             print("Write failed!")
             sys.exit(True)
     if card.tagtype == card.HITAG2:
         if card.readertype == card.READER_ACG:
             card.login("", "", card.HITAG2_TRANSPORT_RWD)
-        if (
-            not card.writeblock(3, H2CFB)
-            or not card.writeblock(4, db1)
-            or not card.writeblock(5, db2)
-        ):
+        if not card.writeblock(3, H2CFB) or not card.writeblock(4, db1) or not card.writeblock(5, db2):
             print("Write failed!")
             sys.exit(True)
     card.settagtype(card.EM4x02)

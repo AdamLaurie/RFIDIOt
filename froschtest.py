@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  froschtest.py - test frosch HTRM112 reader`
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -49,9 +48,7 @@ else:
     print(card.FROSCH_Errors[card.errorcode])
 
 print("Trying Hitag2: ", end=" ")
-if card.frosch(card.FR_HT2_Get_Snr_PWD, "") or card.frosch(
-    card.FR_HT2_Get_Snr_CRYPTO, ""
-):
+if card.frosch(card.FR_HT2_Get_Snr_PWD, "") or card.frosch(card.FR_HT2_Get_Snr_CRYPTO, ""):
     print(card.data[: len(card.data) - 2])
     if not card.select():
         print("Select failed: ", end=" ")
@@ -75,12 +72,8 @@ else:
 print("Trying Hitag2 Public B (FDX-B): ", end=" ")
 if card.frosch(card.FR_HT2_Read_PublicB, ""):
     print("Raw: " + card.data, end=" ")
-    print(
-        "ID: " + card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data)))
-    )
-    card.FDXBIDPrint(
-        card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data)))
-    )
+    print("ID: " + card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data))))
+    card.FDXBIDPrint(card.FDXBID128BitDecode(card.ToBinaryString(card.ToBinary(card.data))))
 else:
     print(card.FROSCH_Errors[card.errorcode])
 sys.exit(False)

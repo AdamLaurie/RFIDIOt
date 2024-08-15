@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  q5reset.py - plooking too hard on your Q5? this should sort it out.
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import os
 # import string
 import rfidiot

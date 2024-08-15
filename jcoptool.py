@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  jcoptool.py - JCOP card toolkit
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -155,25 +153,13 @@ def decode_jcop_identify(data, padding):
     print(padding + "PATCH ID:        %s" % patch_id)
     print(padding + "TARGET ID:       %s" % target + " (" + targets[target] + ")")
     print(padding + "MASK ID:         %s" % mask_id + " (Mask %s)" % int(mask_id, 16))
-    print(
-        padding
-        + "CUSTOM MASK:     %s" % custom_mask
-        + " (%s)" % card.ReadablePrint(card.ToBinary(custom_mask))
-    )
+    print(padding + "CUSTOM MASK:     %s" % custom_mask + " (%s)" % card.ReadablePrint(card.ToBinary(custom_mask)))
     print(padding + "MASK NAME:       %s" % card.ToBinary(mask_name))
     print(padding + "FUSE STATE:      %s" % fuse + " (" + fuse_state[fuse] + ")")
     print(padding + "ROM INFO:        %s" % rom_info + " (Checksum)")
-    print(
-        padding
-        + "COMBO NAME:      %s-m%s.%s.%s-%s"
-        % (targets[target], mask_id, fabkey, patch_id, card.ToBinary(mask_name))
-    )
+    print(padding + "COMBO NAME:      %s-m%s.%s.%s-%s" % (targets[target], mask_id, fabkey, patch_id, card.ToBinary(mask_name)))
     print(padding + "MANUFACTURER:    %s" % manufacturers[manufacturer])
-    print(
-        padding
-        + "PRODUCED:        Year %s, Week %s, Build %d"
-        % (manufacture_year, manufacture_week, manufacture_mask)
-    )
+    print(padding + "PRODUCED:        Year %s, Week %s, Build %d" % (manufacture_year, manufacture_week, manufacture_mask))
 
 
 def decode_jcop_lifecycle(data, padding):
@@ -202,34 +188,18 @@ def decode_jcop_lifecycle(data, padding):
     print(padding + "OS ID                               %s" % os_id)
     print(padding + "OS Release Date                     %s" % os_release_date)
     print(padding + "OS Release Level                    %s" % os_release_level)
-    print(
-        padding
-        + "IC Fabrication Date                 Year %s Day %s"
-        % (ic_fab_date[0], ic_fab_date[1:4])
-    )
+    print(padding + "IC Fabrication Date                 Year %s Day %s" % (ic_fab_date[0], ic_fab_date[1:4]))
     print(padding + "IC Serial Number                    %s" % ic_serial)
     print(padding + "IC Batch Number                     %s" % ic_batch)
     print(padding + "IC Module Fabricator                %s" % ic_mod_fab)
-    print(
-        padding
-        + "IC Module Packaging Date            Year %s Day %s"
-        % (ic_mod_pack_date[0], ic_mod_pack_date[1:4])
-    )
+    print(padding + "IC Module Packaging Date            Year %s Day %s" % (ic_mod_pack_date[0], ic_mod_pack_date[1:4]))
     print(padding + "ICC Manufacturer                    %s" % icc_man)
-    print(
-        padding
-        + "IC Embedding Date                   Year %s Day %s"
-        % (ic_embed_date[0], ic_embed_date[1:4])
-    )
+    print(padding + "IC Embedding Date                   Year %s Day %s" % (ic_embed_date[0], ic_embed_date[1:4]))
     print(padding + "IC Pre-Personalizer                 %s" % ic_pre_perso)
     print(padding + "IC Pre-Personalization Date         %s" % ic_pre_perso_date)
     print(padding + "IC Pre-Personalization Equipment    %s" % ic_pre_perso_equip)
     print(padding + "IC Personalizer                     %s" % ic_perso)
-    print(
-        padding
-        + "IC Personalization Date             Year %s Day %s"
-        % (ic_perso_date[0], ic_perso_date[1:4])
-    )
+    print(padding + "IC Personalization Date             Year %s Day %s" % (ic_perso_date[0], ic_perso_date[1:4]))
     print(padding + "IC Personalization Equipment        %s" % ic_perso_equip)
 
 
@@ -306,21 +276,14 @@ def decode_gp_registry_data(data, padding, filter):
 
 card.info("jcoptool v0.1d")
 if Help or len(args) < 1:
-    print(
-        "\nUsage:\n\n\t%s [OPTIONS] <COMMAND> [ARGS] [ENC Key] [MAC Key] [KEK Key]"
-        % sys.argv[0]
-    )
+    print("\nUsage:\n\n\t%s [OPTIONS] <COMMAND> [ARGS] [ENC Key] [MAC Key] [KEK Key]" % sys.argv[0])
     print()
     print("\tWhere COMMAND/ARGS are one of the following combinations:")
     print()
     print("\tINFO\t\t\tDisplay useful info about the JCOP card and it's contents.")
     print()
-    print(
-        "\tDES keys ENC MAC and KEK are always the final 3 arguments, and should be in HEX."
-    )
-    print(
-        "\tIf not specified, the default '404142434445464748494A4B4C4D4E4F' will be used."
-    )
+    print("\tDES keys ENC MAC and KEK are always the final 3 arguments, and should be in HEX.")
+    print("\tIf not specified, the default '404142434445464748494A4B4C4D4E4F' will be used.")
     print()
     sys.exit(True)
 
@@ -330,10 +293,7 @@ if card.select():
     print()
     print("    Card ID: " + card.uid)
     if card.readertype == card.READER_PCSC:
-        print(
-            "    ATS: %s (%s)"
-            % (card.pcsc_ats, card.ReadablePrint(card.ToBinary(card.pcsc_ats)))
-        )
+        print("    ATS: %s (%s)" % (card.pcsc_ats, card.ReadablePrint(card.ToBinary(card.pcsc_ats))))
 else:
     print("    No RFID card present")
     print()
@@ -418,19 +378,11 @@ if command == "INFO":
             length = int(card.data[pointer : pointer + 2], 16)
             pointer += 2
             if tags[item] == "OID":
-                decodedOID, dummy = decoder.decode(
-                    card.ToBinary(
-                        item
-                        + ("%02x" % length)
-                        + card.data[pointer : pointer + length * 2]
-                    )
-                )
+                decodedOID, dummy = decoder.decode(card.ToBinary(item + ("%02x" % length) + card.data[pointer : pointer + length * 2]))
                 print(decodedOID.prettyPrint())
             else:
                 if (card.data[pointer : pointer + 2]) == "06":
-                    decodedOID, dummy = decoder.decode(
-                        card.ToBinary(card.data[pointer : pointer + length * 2])
-                    )
+                    decodedOID, dummy = decoder.decode(card.ToBinary(card.data[pointer : pointer + length * 2]))
                     print()
                     print("          OID:", decodedOID.prettyPrint())
                 else:
@@ -493,18 +445,10 @@ if command == "INFO" or command == "INSTALL":
         e_enc = DES3.new(card.ToBinary(enc_key), DES3.MODE_CBC, card.DES_IV)
         enc_s_key = e_enc.encrypt(card.ToBinary(derivation_data))
         # data for cryptograms
-        card_cryptogram_source = (
-            host_challenge + card_sc_sequence_counter + card_challenge
-        )
-        host_cryptogram_source = (
-            card_sc_sequence_counter + card_challenge + host_challenge
-        )
+        card_cryptogram_source = host_challenge + card_sc_sequence_counter + card_challenge
+        host_cryptogram_source = card_sc_sequence_counter + card_challenge + host_challenge
         # check card cryptogram
-        check_cryptogram = string.upper(
-            card.ToHex(
-                card.DES3MAC(card.ToBinary(card_cryptogram_source), enc_s_key, "")
-            )
-        )
+        check_cryptogram = string.upper(card.ToHex(card.DES3MAC(card.ToBinary(card_cryptogram_source), enc_s_key, "")))
         if not check_cryptogram == card_cryptogram:
             print("Key mismatch!")
             print("Card Cryptogram:      ", card_cryptogram)
@@ -516,9 +460,7 @@ if command == "INFO" or command == "INSTALL":
         s_enc = DES3.new(enc_s_key, DES3.MODE_CBC, card.DES_IV)
 
         # authenticate to card
-        host_cryptogram = card.DES3MAC(
-            card.ToBinary(host_cryptogram_source), enc_s_key, ""
-        )
+        host_cryptogram = card.DES3MAC(card.ToBinary(host_cryptogram_source), enc_s_key, "")
         # create encryption object with MAC key
         e_enc = DES3.new(card.ToBinary(mac_key), DES3.MODE_CBC, card.DES_IV)
         # create C-MAC session key

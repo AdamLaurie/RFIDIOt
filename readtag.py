@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #  readtag.py - read all sectors from a standard tag
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -22,6 +21,7 @@
 
 
 import sys
+
 # import os
 import rfidiot
 

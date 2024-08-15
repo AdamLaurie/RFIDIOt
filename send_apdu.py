@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 #
 # send_apdu.py - Python code for Sending raw APDU commands
 # version 0.1

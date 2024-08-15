@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  jcopmifare.py - test program for mifare emulation on JCOP
 #
 #  This program can be used to test READ/WRITE functionality of the built-in
@@ -53,45 +51,28 @@ MIFARE_AID = "DC4420060606"
 card.info("jcopmifare v0.1e")
 
 if Help or len(args) < 2:
-    print(
-        "\nUsage:\n\n\t%s [OPTIONS] <READ|WRITE|RANDOM> <MIFARE_PWD> [SECTOR] [HEX DATA]"
-        % sys.argv[0]
-    )
+    print("\nUsage:\n\n\t%s [OPTIONS] <READ|WRITE|RANDOM> <MIFARE_PWD> [SECTOR] [HEX DATA]" % sys.argv[0])
     print()
-    print(
-        "\tMIFARE_PWD should be the HEX 8 BYTE MifarePWD produced by mifarekeys.py, or the"
-    )
+    print("\tMIFARE_PWD should be the HEX 8 BYTE MifarePWD produced by mifarekeys.py, or the")
     print("\tRANDOM_UID secret key.")
     print()
-    print(
-        "\tSECTOR number must be specified for READ and WRITE operations. Note that not all"
-    )
+    print("\tSECTOR number must be specified for READ and WRITE operations. Note that not all")
     print("\tsectors are WRITEable.")
     print()
-    print(
-        "\tRANDOM will set card into RANDOM_UID mode. All future selects will return a random"
-    )
-    print(
-        "\tUID instead of the one stored in sector 0. This behaviour cannot be reversed."
-    )
+    print("\tRANDOM will set card into RANDOM_UID mode. All future selects will return a random")
+    print("\tUID instead of the one stored in sector 0. This behaviour cannot be reversed.")
     print()
     print("\tHEX DATA must be 16 BYTES worth of HEX for WRITE operations.")
     print()
-    print(
-        "\t(default NXP transport keys are both FFFFFFFFFFFF, so MifarePWD is 0B54570745FE3AE7)"
-    )
+    print("\t(default NXP transport keys are both FFFFFFFFFFFF, so MifarePWD is 0B54570745FE3AE7)")
     print("\t(sector 0 default is A0A1A2A3A4A5, so MifarePWD is 0FB3BBC7099ED432)")
     print()
     print("\tExample:")
     print()
-    print(
-        "\t\t./jcopmifare.py WRITE 0B54570745FE3AE7 1 12345678123456781234567812345678"
-    )
+    print("\t\t./jcopmifare.py WRITE 0B54570745FE3AE7 1 12345678123456781234567812345678")
     print()
     print()
-    print(
-        "\tNote that jcop_mifare_access.cap or native Mifare emulation must be active on the card."
-    )
+    print("\tNote that jcop_mifare_access.cap or native Mifare emulation must be active on the card.")
     print()
     sys.exit(True)
 

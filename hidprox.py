@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  hidprox.py - show HID Prox card type and site/id code
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -23,6 +21,7 @@
 
 
 import sys
+
 # import os
 # import string
 import rfidiot
