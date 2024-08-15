@@ -1,0 +1,40 @@
+
+** Bug TODO:   Need to do more to fix with segfault when no readers are found
+	added ConnectionAbortedError exceptions if nfc_open returns false
+	** This will be a work in progress
+
+NOTE:   temp debug code marked with ## PMS
+
+piped code though expand(1) to get rid of tabs
+
+Ran 2to3 for general concvert
+
+manually reindented
+
+eventually just ran ran black (The uncompromising code formatter) with these options
+    [tool.black]
+    line-length = 140
+    target-version = ["py38", "py39", "py310", "py311"]
+    skip-source-first-line = true
+    skip-string-normalization = true
+
+ran pylint to spot redefined built-in funtions name used as vars
+	(eg: type() use a as a var)
+
+manually updating print formating methods where obvious (more needs doing)
+
+add decode("utf-8")  as needed
+
+Bug: card.errorcode sometimes contained ISO7816ErrorCodes and sometimes libnfc return codes
+    added card.get_error_str(card.errorcode) to fix index KeyError runtime exceptions
+
+replace os._exit() with sys.exit()
+
+reordered imports (standard import should be placed before first party import)
+
+removed refs to Deprecated module 'string
+
+
+adding python type hint / annotations as
+	https://docs.python.org/3/library/typing.html
+
