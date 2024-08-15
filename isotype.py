@@ -46,7 +46,7 @@ if card.readertype == card.READER_ACG:
             print("       Tag is " + cardtype)
             typed = True
             if command == card.ISO15693:
-                print("         Manufacturer:", end=" ")
+                print("         Manufacturer:", end="")
                 try:
                     print(card.ISO7816Manufacturer[card.uid[2:4]])
                 except:
@@ -62,7 +62,7 @@ if card.readertype == card.READER_PCSC:
         print("       Tag is " + card.tagtype)
         # if string.find(card.tagtype, "ISO 15693") >= 0:
         if "ISO 15693" in card.tagtype:
-            print("         Manufacturer:", end=" ")
+            print("         Manufacturer:", end="")
             try:
                 print(card.ISO7816Manufacturer[card.uid[2:4]])
             except:

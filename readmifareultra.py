@@ -94,23 +94,23 @@ for x in range(15, -1, -1):
     y += 1
 
 # show status of the OTP area on the tag
-print("OTP area is", end=" ")
+print("OTP area is", end="")
 if int(plock[3:4]) == 1:
-    print("locked and", end=" ")
+    print("locked and", end="")
 else:
-    print("unlocked and", end=" ")
+    print("unlocked and", end="")
 if int(plock[0:1]) == 1:
     print("cannot be changed")
 else:
     print("can be changed")
 
-print("If locked, blocks 4 through 9", end=" ")
+print("If locked, blocks 4 through 9", end="")
 if int(plock[1:2]) == 1:
     print("cannot be unlocked")
 else:
     print("can be unlocked")
 
-print("If locked, blocks 0a through 0f", end=" ")
+print("If locked, blocks 0a through 0f", end="")
 if int(plock[2:3]) == 1:
     print("cannot be unlocked")
 else:
@@ -119,10 +119,10 @@ else:
 print("\nTag Data:")
 # DATA0 byte starts on page/block 4
 for x in range(blocks):
-    print("    Block %02x:" % x, end=" ")
+    print("    Block %02x:" % x, end="")
     if card.readblock(x):
-        print(card.data[:8], end=" ")
-        print(card.ReadablePrint(card.ToBinary(card.data[:8])), end=" ")
+        print(card.data[:8], end="")
+        print(card.ReadablePrint(card.ToBinary(card.data[:8])), end="")
         if x > 2:
             if int(plock[x : x + 1]) == 1:
                 print("  locked")

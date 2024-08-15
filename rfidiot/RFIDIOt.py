@@ -34,14 +34,14 @@ import random
 
 # import string
 import time
+import signal
+import socket
 from typing import Union, Tuple
 from Crypto.Hash import SHA
 from Crypto.Cipher import DES3
 from Crypto.Cipher import DES
 from operator import *
 from . import pynfc
-import signal
-import socket
 from . import pyandroid
 
 try:
@@ -74,8 +74,7 @@ class rfidiot:
     pcsc_atr = None
     "RFIDIOt - RFID I/O tools - http://rfidiot.org"
     # local imports
-    from .iso3166 import ISO3166CountryCodesAlpha
-    from .iso3166 import ISO3166CountryCodes
+    from .iso3166 import ISO3166CountryCodesAlpha, ISO3166CountryCodes
 
     #
     # open reader port
@@ -99,15 +98,10 @@ class rfidiot:
                 try:
                     self.pcsc = smartcard.System.readers()
                 except:
-                    print(
-                        "Could not find PCSC daemon, try with option -n if you don't have a reader"
-                    )
+                    print("Could not find PCSC daemon, try with option -n if you don't have a reader")
                     sys.exit(True)
                 if readernum >= len(self.pcsc):
-                    print(
-                        "There is no such reader #%i, PCSC sees only %i reader(s)"
-                        % (readernum, len(self.pcsc))
-                    )
+                    print("There is no such reader #%i, PCSC sees only %i reader(s)" % (readernum, len(self.pcsc)))
                     sys.exit(True)
                 try:
                     self.readername = self.pcsc[readernum].name.decode("utf-8")
@@ -154,25 +148,13 @@ class rfidiot:
                         print("pcsc_connection successful")
                 except:
                     # card may be something like a HID PROX which only returns ATR and does not allow connect
-                    hresult, hcontext = smartcard.scard.SCardEstablishContext(
-                        smartcard.scard.SCARD_SCOPE_USER
-                    )
+                    hresult, hcontext = smartcard.scard.SCardEstablishContext(smartcard.scard.SCARD_SCOPE_USER)
                     if hresult != 0:
-                        raise error(
-                            "Failed to establish context: "
-                            + smartcard.scard.SCardGetErrorMessage(hresult)
-                        )
+                        raise error("Failed to establish context: " + smartcard.scard.SCardGetErrorMessage(hresult))
                     hresult, readers = smartcard.scard.SCardListReaders(hcontext, [])
-                    readerstates = [
-                        (readers[readernum], smartcard.scard.SCARD_STATE_UNAWARE)
-                    ]
-                    hresult, newstates = smartcard.scard.SCardGetStatusChange(
-                        hcontext, 0, readerstates
-                    )
-                    if (
-                        self.readersubtype == self.READER_ACS
-                        and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1
-                    ):
+                    readerstates = [(readers[readernum], smartcard.scard.SCARD_STATE_UNAWARE)]
+                    hresult, newstates = smartcard.scard.SCardGetStatusChange(hcontext, 0, readerstates)
+                    if self.readersubtype == self.READER_ACS and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1:
                         # SCARD_SHARE_SHARED if there is a PICC otherwise SCARD_SHARE_DIRECT
                         hresult, hcard, dwActiveProtocol = smartcard.scard.SCardConnect(
                             hcontext,
@@ -183,18 +165,11 @@ class rfidiot:
                         self.hcard = hcard
                         # Let's test if we can really use SCardControl, e.g. by sending a get_firmware_version APDU
                         apdu = [0xFF, 0x00, 0x48, 0x00, 0x00]
-                        hresult, response = smartcard.scard.SCardControl(
-                            self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu
-                        )
+                        hresult, response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
                         if hresult != smartcard.scard.SCARD_S_SUCCESS:
-                            print(
-                                "Failed to control: "
-                                + smartcard.scard.SCardGetErrorMessage(hresult)
-                            )
+                            print("Failed to control: " + smartcard.scard.SCardGetErrorMessage(hresult))
                             if hresult == smartcard.scard.SCARD_E_NOT_TRANSACTED:
-                                print(
-                                    "Did you set DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED in ifdDriverOptions in libccid_Info.plist?"
-                                )
+                                print("Did you set DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED in ifdDriverOptions in libccid_Info.plist?")
                             sys.exit(True)
                     self.pcsc_atr = self.ListToHex(newstates[0][2])
                     pass
@@ -202,7 +177,7 @@ class rfidiot:
                     self.acs_set_retry(to)
             # libnfc device
             elif self.readertype == self.READER_LIBNFC:
-                print("self.READER_LIBNFC", self.READER_LIBNFC) ## PMS
+                print("self.READER_LIBNFC", self.READER_LIBNFC)  ## PMS
                 self.nfc = pynfc.NFC(self.NFCReader)
                 self.readername = self.nfc.LIBNFC_READER
             # Andoid reader
@@ -839,7 +814,7 @@ class rfidiot:
     def info(self, caller) -> None:
         if len(caller) > 0:
             print(caller + " (using RFIDIOt v" + self.VERSION + ")")
-        print("self.readertype:", self.readertype) ## PMS
+        print("self.readertype:", self.readertype)  ## PMS
         if not self.NoInit:
             self.reset()
             self.version()
@@ -850,19 +825,13 @@ class rfidiot:
                 print(" (serial no: " + self.id() + ")")
             if self.readertype == self.READER_FROSCH:
                 print(
-                    "Frosch "
-                    + self.ToBinary(self.data[:16])
-                    + " / "
-                    + self.ToBinary(self.data[16:32]),
+                    "Frosch " + self.ToBinary(self.data[:16]) + " / " + self.ToBinary(self.data[16:32]),
                     end=" ",
                 )
                 print(" (serial no: " + self.data[32:54] + ")")
             if self.readertype == self.READER_PCSC:
                 print("PCSC " + self.readername)
-                if (
-                    self.readersubtype == self.READER_ACS
-                    and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T0
-                ):
+                if self.readersubtype == self.READER_ACS and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T0:
                     # get ATR to see if we have a SAM
                     self.select()
                     if not self.pcsc_atr[:4] == self.ACS_NO_SAM:
@@ -884,10 +853,7 @@ class rfidiot:
                         else:
                             print("\ncan't get SAM Serial Number!")
                             sys.exit(True)
-                elif (
-                    self.readersubtype == self.READER_ACS
-                    and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1
-                ):
+                elif self.readersubtype == self.READER_ACS and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1:
                     if self.acs_get_firmware_revision():
                         print("          (Firmware: %s)" % self.ToBinary(self.data))
                     else:
@@ -972,12 +938,7 @@ class rfidiot:
             print("Android version: ", self.android.VERSION)
 
     def id(self) -> str:
-        return (
-            self.readEEPROM(0)[:2]
-            + self.readEEPROM(1)[:2]
-            + self.readEEPROM(2)[:2]
-            + self.readEEPROM(3)[:2]
-        )
+        return self.readEEPROM(0)[:2] + self.readEEPROM(1)[:2] + self.readEEPROM(2)[:2] + self.readEEPROM(3)[:2]
 
     def station(self) -> str:
         return self.readEEPROM(0x0A)[:2]
@@ -1071,10 +1032,7 @@ class rfidiot:
             print(message, end=" ")
             sys.stdout.flush()
         # we need a way to interrupt infinite loop
-        if (
-            self.readersubtype == self.READER_OMNIKEY
-            or self.readersubtype == self.READER_SCM
-        ):
+        if self.readersubtype == self.READER_OMNIKEY or self.readersubtype == self.READER_SCM:
             wait = True
             while wait:
                 try:
@@ -1276,11 +1234,7 @@ class rfidiot:
         return True
 
     def hsselect(self, speed, cardtype="A") -> bool:
-        if (
-            self.readertype == self.READER_PCSC
-            or self.readertype == self.READER_LIBNFC
-            or self.READER_ANDROID
-        ):
+        if self.readertype == self.READER_PCSC or self.readertype == self.READER_LIBNFC or self.READER_ANDROID:
             # low level takes care of this, so normal select only
             if self.select(cardtype):
                 # fixme - find true speed/framesize
@@ -1316,30 +1270,19 @@ class rfidiot:
         if myapdu[0] == "d4":
             # build pseudo command for ACS contactless interface
             lc = "%02x" % len(myapdu)
-            apduout = self.HexArrayToList(
-                self.PCSC_APDU["ACS_DIRECT_TRANSMIT"] + [lc] + myapdu
-            )
+            apduout = self.HexArrayToList(self.PCSC_APDU["ACS_DIRECT_TRANSMIT"] + [lc] + myapdu)
         else:
             if myapdu[0] == "ff" or myapdu[0] == "80":
                 apduout = self.HexArrayToList(myapdu)
             else:
                 # build pseudo command for ACS 14443-A
                 lc = "%02x" % (len(myapdu) + len(self.PCSC_APDU["ACS_14443_A"]))
-                apduout = self.HexArrayToList(
-                    self.PCSC_APDU["ACS_DIRECT_TRANSMIT"]
-                    + [lc]
-                    + self.PCSC_APDU["ACS_14443_A"]
-                    + myapdu
-                )
+                apduout = self.HexArrayToList(self.PCSC_APDU["ACS_DIRECT_TRANSMIT"] + [lc] + self.PCSC_APDU["ACS_14443_A"] + myapdu)
         result, sw1, sw2 = self.acs_transmit_apdu(apduout)
         self.errorcode = "%02X%02X" % (sw1, sw2)
         if self.errorcode == self.ISO_OK:
             self.data = self.ListToHex(result)
-            if (
-                not myapdu[0] == "ff"
-                and not myapdu[0] == "80"
-                and not myapdu[0] == "d4"
-            ):
+            if not myapdu[0] == "ff" and not myapdu[0] == "80" and not myapdu[0] == "d4":
                 # this is a 14443-A command, so needs further processing
                 # last 4 data bytes is status of wrapped command
                 if self.data[-4:] == self.ISO_OK and len(self.data) > 6:
@@ -1360,22 +1303,14 @@ class rfidiot:
     def acs_transmit_apdu(self, apdu) -> tuple[str, int, int]:
         "ACS send APDU and retrieve additional DATA if required"
         if self.hcard is None:
-            result, sw1, sw2 = self.pcsc_connection.transmit(
-                apdu, protocol=self.pcsc_protocol
-            )
+            result, sw1, sw2 = self.pcsc_connection.transmit(apdu, protocol=self.pcsc_protocol)
             if sw1 == 0x61:
                 # response bytes waiting
-                apduout = self.HexArrayToList(
-                    self.PCSC_APDU["ACS_GET_RESPONSE"] + [("%02x" % sw2)]
-                )
-                result, sw1, sw2 = self.pcsc_connection.transmit(
-                    apduout, protocol=self.pcsc_protocol
-                )
+                apduout = self.HexArrayToList(self.PCSC_APDU["ACS_GET_RESPONSE"] + [("%02x" % sw2)])
+                result, sw1, sw2 = self.pcsc_connection.transmit(apduout, protocol=self.pcsc_protocol)
             return result, sw1, sw2
         else:
-            hresult, response = smartcard.scard.SCardControl(
-                self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu
-            )
+            hresult, response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
             if hresult != smartcard.scard.SCARD_S_SUCCESS:
                 return "", 0x63, 0x00
                 # print 'Failed to control: ' + smartcard.scard.SCardGetErrorMessage(hresult)
@@ -1407,12 +1342,7 @@ class rfidiot:
         myapdu = self.HexArraysToArray(apdu)
         # build pseudo command for ACS 14443-A via NXP PN532
         lc = "%02x" % (len(myapdu) + len(self.PCSC_APDU["ACS_14443_A"]))
-        apduout = self.HexArrayToList(
-            self.PCSC_APDU["ACS_DIRECT_TRANSMIT"]
-            + [lc]
-            + self.PCSC_APDU["ACS_14443_A"]
-            + myapdu
-        )
+        apduout = self.HexArrayToList(self.PCSC_APDU["ACS_DIRECT_TRANSMIT"] + [lc] + self.PCSC_APDU["ACS_14443_A"] + myapdu)
         result, sw1, sw2 = self.acs_transmit_apdu(apduout)
         self.errorcode = "%02X%02X" % (sw1, sw2)
         if self.errorcode == self.ISO_OK:
@@ -1446,25 +1376,12 @@ class rfidiot:
         else:
             keytype = "60"
         loginblock = "%02x" % block
-        if (
-            self.tagtype == self.ACS_TAG_MIFARE_1K
-            or self.tagtype == self.ACS_TAG_MIFARE_4K
-        ):
-            status = self.acs_send_apdu(
-                self.PCSC_APDU["ACS_MIFARE_LOGIN"]
-                + [keytype]
-                + [loginblock]
-                + [key]
-                + [self.uid]
-            )
+        if self.tagtype in [self.ACS_TAG_MIFARE_1K, self.ACS_TAG_MIFARE_4K]:
+            status = self.acs_send_apdu(self.PCSC_APDU["ACS_MIFARE_LOGIN"] + [keytype] + [loginblock] + [key] + [self.uid])
         else:
             self.errorcode = self.ISO_NOINFO
             return False
-        if (
-            not status
-            or not self.data[:4] == self.ACS_DATA_OK
-            or not self.data[4:6] == "00"
-        ):
+        if not status or not self.data[:4] == self.ACS_DATA_OK or not self.data[4:6] == "00":
             self.errorcode = self.ISO_NOINFO
             return False
         self.errorcode = self.ISO_OK
@@ -1474,19 +1391,11 @@ class rfidiot:
         "ACS READ Block"
         readblock = "%02x" % block
         read = False
-        if (
-            self.tagtype == self.ACS_TAG_MIFARE_ULTRA
-            or self.tagtype == self.ACS_TAG_MIFARE_1K
-            or self.tagtype == self.ACS_TAG_MIFARE_4K
-        ):
+        if self.tagtype == self.ACS_TAG_MIFARE_ULTRA or self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
             status = self.acs_send_apdu(self.PCSC_APDU["ACS_READ_MIFARE"] + [readblock])
             read = True
         if read:
-            if (
-                not status
-                or len(self.data) < 8
-                or not self.data[:4] == self.ACS_DATA_OK
-            ):
+            if not status or len(self.data) < 8 or not self.data[:4] == self.ACS_DATA_OK:
                 self.errorcode = self.ISO_NOINFO
                 return False
             # MIFARE ultralight returns 4 blocks although only asking for one, so truncate
@@ -1571,9 +1480,7 @@ class rfidiot:
             keytype = "%02x" % pynfc.MC_AUTH_A
         loginblock = "%02x" % block
         # if self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
-        ret, self.errorcode = self.nfc.sendAPDU(
-            [keytype] + [loginblock] + [key] + [self.uid], self.timeout
-        )
+        ret, self.errorcode = self.nfc.sendAPDU([keytype] + [loginblock] + [key] + [self.uid], self.timeout)
         if not ret:
             self.errorcode = self.ISO_SECURE
             return False
@@ -1603,9 +1510,7 @@ class rfidiot:
         p2 = "00"
         data = self.ToHex(host_cryptogram)
         lc = "10"  # needs to include MAC that will be added after mac generation
-        mac = self.ToHex(
-            self.DESMAC(self.ToBinary(cla + "82" + p1 + p2 + lc + data), mac_key, "")
-        )
+        mac = self.ToHex(self.DESMAC(self.ToBinary(cla + "82" + p1 + p2 + lc + data), mac_key, ""))
         data += mac
         return self.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, "")
 
@@ -1667,9 +1572,7 @@ class rfidiot:
         if code == self.ACG_FAIL:
             print("Application not implemented!")
             sys.exit(True)
-        print(
-            "Failed - reason code " + code + " (" + self.ISO7816ErrorCodes[code] + ")"
-        )
+        print("Failed - reason code " + code + " (" + self.ISO7816ErrorCodes[code] + ")")
         print()
         sys.exit(True)
 
@@ -1717,9 +1620,7 @@ class rfidiot:
         for d in apdu:
             apdustring += d
         apduout = self.HexToList(apdustring)
-        result, sw1, sw2 = self.pcsc_connection.transmit(
-            apduout, protocol=self.pcsc_protocol
-        )
+        result, sw1, sw2 = self.pcsc_connection.transmit(apduout, protocol=self.pcsc_protocol)
         self.errorcode = "%02X%02X" % (sw1, sw2)
         self.data = self.ListToHex(result)
         # SCM readers need a little time to get over the excertion
@@ -1750,12 +1651,8 @@ class rfidiot:
             return self.pcsc_send_apdu(cla + ins + p1 + p2 + lc + data + le)
         if self.readertype == self.READER_LIBNFC:
             if self.DEBUG:
-                print(
-                    "In send_apdu - for libnfc:", cla + ins + p1 + p2 + lc + data + le
-                )
-            ret, result = self.nfc.sendAPDU(
-                cla + ins + p1 + p2 + lc + data + le, self.timeout
-            )
+                print("In send_apdu - for libnfc:", cla + ins + p1 + p2 + lc + data + le)
+            ret, result = self.nfc.sendAPDU(cla + ins + p1 + p2 + lc + data + le, self.timeout)
             if not ret:
                 self.errorcode = "PN00"
                 return False
@@ -1856,9 +1753,7 @@ class rfidiot:
                 apdu += self.PCSC_APDU["LOAD_KEY"]
                 if self.readersubtype == self.READER_OMNIKEY:
                     keynum = len(self.PCSC_Keys)
-                    apdu += (
-                        self.PCSC_NON_VOLATILE
-                    )  # load key to non-volatile reader memory
+                    apdu += self.PCSC_NON_VOLATILE  # load key to non-volatile reader memory
                 else:
                     apdu += self.PCSC_VOLATILE  # load key to volatile reader memory
                     keynum = len(self.PCSC_Keys) + 96  # SCM Mifare keys live at hex 60+
@@ -1982,9 +1877,7 @@ class rfidiot:
             return False
         count = 0
         while count * 2 < len(self.MIFAREdata):
-            self.MIFAREbinary += chr(
-                int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16)
-            )
+            self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
             count += 1
         return True
 
@@ -1997,9 +1890,7 @@ class rfidiot:
             return False
         count = 0
         while count * 2 < len(self.MIFAREdata):
-            self.MIFAREbinary += chr(
-                int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16)
-            )
+            self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
             count += 1
         return True
 
@@ -2008,9 +1899,7 @@ class rfidiot:
             # if self.tagtype == self.HITAG1:
             #       return(self.frosch(self.FR_HT1_Read_Page,self.FR_PLAIN + chr(block)))
             if self.tagtype == self.HITAG2:
-                return self.frosch(
-                    self.FR_HT2_Write_Page, chr(block) + self.ToBinary(data)
-                )
+                return self.frosch(self.FR_HT2_Write_Page, chr(block) + self.ToBinary(data))
         if self.readertype == self.READER_ACG:
             self.ser.write("w%02x%s" % (block, data))
             x = self.ser.readline()[:-2]
@@ -2487,26 +2376,10 @@ class rfidiot:
         self.MIFAREC1 = int(data[14:16], 16) >> 4
         self.MIFAREC2 = int(data[16:18], 16) & 0x0F
         self.MIFAREC3 = (int(data[16:18], 16) & 0xF0) >> 4
-        self.MIFAREblock0AC = (
-            str(self.MIFAREC1 & 0x01)
-            + str(self.MIFAREC2 & 0x01)
-            + str(self.MIFAREC3 & 0x01)
-        )
-        self.MIFAREblock1AC = (
-            str((self.MIFAREC1 & 0x02) >> 1)
-            + str((self.MIFAREC2 & 0x02) >> 1)
-            + str((self.MIFAREC3 & 0x02) >> 1)
-        )
-        self.MIFAREblock2AC = (
-            str((self.MIFAREC1 & 0x04) >> 2)
-            + str((self.MIFAREC2 & 0x04) >> 2)
-            + str((self.MIFAREC3 & 0x04) >> 2)
-        )
-        self.MIFAREblock3AC = (
-            str((self.MIFAREC1 & 0x08) >> 3)
-            + str((self.MIFAREC2 & 0x08) >> 3)
-            + str((self.MIFAREC3 & 0x08) >> 3)
-        )
+        self.MIFAREblock0AC = str(self.MIFAREC1 & 0x01) + str(self.MIFAREC2 & 0x01) + str(self.MIFAREC3 & 0x01)
+        self.MIFAREblock1AC = str((self.MIFAREC1 & 0x02) >> 1) + str((self.MIFAREC2 & 0x02) >> 1) + str((self.MIFAREC3 & 0x02) >> 1)
+        self.MIFAREblock2AC = str((self.MIFAREC1 & 0x04) >> 2) + str((self.MIFAREC2 & 0x04) >> 2) + str((self.MIFAREC3 & 0x04) >> 2)
+        self.MIFAREblock3AC = str((self.MIFAREC1 & 0x08) >> 3) + str((self.MIFAREC2 & 0x08) >> 3) + str((self.MIFAREC3 & 0x08) >> 3)
         self.MIFAREkeyB = data[20:32]
 
     def MIFAREvb(self, data) -> None:
@@ -2819,9 +2692,7 @@ class rfidiot:
         if "%d" % self.FDXBCCODE in self.ISO3166CountryCodes:
             self.FDXBCCODEHR = self.ISO3166CountryCodes["%d" % self.FDXBCCODE]
         else:
-            self.FDXBCCODEHR = (
-                "Undefined - see http://www.icar.org/manufacturer_codes.htm"
-            )
+            self.FDXBCCODEHR = "Undefined - see http://www.icar.org/manufacturer_codes.htm"
         # National ID
         natid = hexout[6:16]
         self.FDXBNID = int(natid, 16) & 0x3FFFFFFFFF
@@ -2914,9 +2785,7 @@ class rfidiot:
         if data[8:12] == self.PCSC_CSC:
             print("                 Detected STORAGECARD")
             print("     Historical:", data[8:-2])
-            print(
-                "                 80  Status indicator may be present (COMPACT-TLV object)"
-            )
+            print("                 80  Status indicator may be present (COMPACT-TLV object)")
             print("                   4F  Application Identifier presence indicator")
             applen = int(data[12:14], 16)
             print("                     %s  %d bytes follow" % (data[12:14], applen))
@@ -2940,10 +2809,7 @@ class rfidiot:
                     print("(Uknown Manufacturer)")
             else:
                 print()
-            print(
-                "                            Name:  %s  %s"
-                % (data[26:30], self.PCSC_NAME[data[26:30]])
-            )
+            print("                            Name:  %s  %s" % (data[26:30], self.PCSC_NAME[data[26:30]]))
             print("                                 RFU:  %s" % data[30:-2])
             spaces = histlen * 2
         else:
@@ -2953,9 +2819,7 @@ class rfidiot:
             # if ats starts with '00', '10' or '8X' it is an ISO-7816-4 card
             atsbyte = self.pcsc_ats[0:2]
             if atsbyte == "00" or atsbyte == "10" or self.pcsc_ats[0] == "8":
-                print(
-                    "       Category: %s  Format according to ISO/IEC 7816-4" % atsbyte
-                )
+                print("       Category: %s  Format according to ISO/IEC 7816-4" % atsbyte)
             else:
                 print("       Category: %s  Proprietary format" % atsbyte)
             spaces = len(self.pcsc_ats)

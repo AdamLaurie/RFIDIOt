@@ -132,7 +132,7 @@ def select_mifare_app():
 
 
 def error_exit(message, error):
-    print("  %s, error number: %s" % (message, error), end=" ")
+    print("  %s, error number: %s" % (message, error), end="")
     try:
         print(card.get_error_str(card.errorcode))
     except:

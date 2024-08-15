@@ -42,14 +42,14 @@ print(f"Card ID: {card.uid}")
 
 finished = 0
 tries = 0
-print(f" Tries: {tries}s\r", end=" ")
+print(f" Tries: {tries}s\r", end="")
 sys.stdout.flush()
 
 while not finished:
 
     tries += 1
     if tries % 10 == 0:
-        print(" Tries: {tries}\r", end=" ")
+        print(" Tries: {tries}\r", end="")
         sys.stdout.flush()
 
     if len(args) == 1:

@@ -22,12 +22,12 @@
 #    GNU General Public License for more details.
 #
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     sys.exit(True)
@@ -80,7 +80,7 @@ def select_atrhist_app():
 
 
 def error_exit(message, error):
-    print("  %s, error number: %s" % (message, error), end=" ")
+    print("  %s, error number: %s" % (message, error), end="")
     try:
         print(card.get_error_str(card.errorcode))
     except:

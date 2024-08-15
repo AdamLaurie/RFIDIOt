@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 #  pn532.py - NXP PN532 definitions for restricted functions
 #
 #  Adam Laurie <adam@algroup.co.uk>
@@ -134,17 +133,12 @@ def pn532_print_status(data):
     for n in range(tags):
         print("    Tag number %d:" % (n + 1))
         print("      Logical number:", data[10 + n * 2 : 12 + n * 2])
-        print(
-            "         RX Baudrate:",
+        print( "         RX Baudrate:",
             PN532_BAUDRATES[int(data[12 + n * 2 : 14 + n * 2], 16)],
         )
-        print(
-            "         TX Baudrate:",
-            PN532_BAUDRATES[int(data[14 + n * 2 : 16 + n * 2], 16)],
+        print( "         TX Baudrate:", PN532_BAUDRATES[int(data[14 + n * 2 : 16 + n * 2], 16)],
         )
-        print(
-            "          Modulation:",
-            PN532_MODULATION[int(data[16 + n * 2 : 18 + n * 2], 16)],
+        print( "          Modulation:", PN532_MODULATION[int(data[16 + n * 2 : 18 + n * 2], 16)],
         )
         print("      SAM Status:", data[18 + n * 2 : 20 + n * 2])
     print()

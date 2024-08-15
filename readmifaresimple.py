@@ -151,7 +151,7 @@ if len(key) > 12:
 block = startblock
 while block <= endblock and not reset:
     locked = True
-    print("    Block %03i:" % block, end=" ")
+    print("    Block %03i:" % block, end="")
     # ACG requires a login only to the base 'sector', so block number must be divided
     # by BLOCKS_PER_SECT
     if card.readertype == card.READER_ACG:
@@ -173,11 +173,11 @@ while block <= endblock and not reset:
                 card.select()
 
     if loggedin:
-        print(f"OK {goodkey} {goodkeytype}) Data:", end=" ")
+        print(f"OK {goodkey} {goodkeytype}) Data:", end="")
         locked = False
         if card.readMIFAREblock(block):
             blocksread += 1
-            print(card.MIFAREdata, end=" ")
+            print(card.MIFAREdata, end="")
             print(card.ReadablePrint(card.ToBinary(card.MIFAREdata)))
             CloneData += [card.MIFAREdata]
         else:
@@ -233,7 +233,7 @@ while block <= endblock:
         block += 1
         outblock += 1
         continue
-    print("    Block %03i: " % block, end=" ")
+    print("    Block %03i: " % block, end="")
     # ACG requires a login only to the base 'sector', so block number must be divided
     # by BLOCKS_PER_SECT
     if card.readertype == card.READER_ACG:
@@ -274,7 +274,7 @@ while block <= endblock:
                 else:
                     # ACL plus KeyB
                     blockdata = key + CloneData[outblock][12:20] + otherkey
-        print(f"OK ({goodkey}, {goodkeytype}), writing: {blockdata}", end=" ")
+        print(f"OK ({goodkey}, {goodkeytype}), writing: {blockdata}", end="")
         if card.writeblock(block, blockdata):
             print("OK")
         else:

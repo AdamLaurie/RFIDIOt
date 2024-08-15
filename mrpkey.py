@@ -19,6 +19,21 @@
 #    GNU General Public License for more details.
 #
 
+import sys
+import os
+# import subprocess
+# import io
+from tkinter import *
+from operator import *
+from Crypto.Hash import SHA
+from Crypto.Cipher import DES3, DES
+# import string
+from PIL import Image, ImageTk
+# import PIL.Image as Image
+# import PIL.ImageTk as ImageTk
+import rfidiot
+
+
 STRIP_INDEX = True
 DEBUG = False
 Filetype = ""
@@ -31,19 +46,6 @@ FieldKeys = ()
 # this needs fixing - MAX should be able to go up to size supported by device
 MAXCHUNK = 118
 
-import rfidiot
-import sys
-import os
-import subprocess
-from Crypto.Hash import SHA
-from Crypto.Cipher import DES3
-from Crypto.Cipher import DES
-import string
-from operator import *
-import io
-from tkinter import *
-import PIL.Image as Image
-import PIL.ImageTk as ImageTk
 
 DOCUMENT_TYPE = {}
 
@@ -420,35 +422,35 @@ def secure_select_file(keyenc, keymac, file):
     tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
     encdata = tdes.encrypt(data)
     if DEBUG:
-        print("Encrypted data: ", end=" ")
+        print("Encrypted data: ", end="")
         passport.HexPrint(encdata)
     do87 = passport.ToBinary(passport.DO87) + encdata
     m = command + do87
     if DEBUG:
-        print("DO87: ", end=" ")
+        print("DO87: ", end="")
         passport.HexPrint(m)
     SSC = passport.SSCIncrement(SSC)
     n = SSC + m
     cc = passport.DESMAC(n, keymac, "")
     if DEBUG:
-        print("CC: ", end=" ")
+        print("CC: ", end="")
         passport.HexPrint(cc)
     do8e = passport.ToBinary(passport.DO8E) + cc
     if DEBUG:
-        print("DO8E: ", end=" ")
+        print("DO8E: ", end="")
         passport.HexPrint(do8e)
     lc = "%02x" % (len(do87) + len(do8e))
     le = "00"
     data = passport.ToHex(do87 + do8e)
     if DEBUG:
         print()
-        print("Protected APDU: ", end=" ")
+        print("Protected APDU: ", end="")
         print(cla + ins + p1 + p2 + lc + data + le)
     ins = "SELECT_FILE"
     if passport.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le):
         out = passport.data
     if DEBUG:
-        print("Secure Select:", end=" ")
+        print("Secure Select:", end="")
     if passport.errorcode == APDU_OK:
         if DEBUG:
             print("OK")
@@ -480,13 +482,13 @@ def secure_read_binary(keymac, bytes, offset):
     data = passport.ToHex(do97 + do8e)
     if DEBUG:
         print()
-        print("Protected APDU: ", end=" ")
+        print("Protected APDU: ", end="")
         print(cla + ins + p1 + p2 + lc + data + le)
     ins = "READ_BINARY"
     if passport.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le):
         out = passport.data
     if DEBUG:
-        print("Secure Read Binary (%02d bytes): " % bytes, end=" ")
+        print("Secure Read Binary (%02d bytes): " % bytes, end="")
     if passport.errorcode == APDU_OK:
         if DEBUG:
             print("OK:", out)
@@ -528,21 +530,21 @@ def check_cc(key, rapdu):
         k += passport.ToBinary(rapdu[length : length + length2])
 
     if DEBUG:
-        print("K: ", end=" ")
+        print("K: ", end="")
         passport.HexPrint(k)
     cc = passport.DESMAC(k, key, "")
     if DEBUG:
-        print("CC: ", end=" ")
-        print(passport.ToHex(cc), end=" ")
+        print("CC: ", end="")
+        print(passport.ToHex(cc), end="")
     if cc == passport.ToBinary(rapdu[len(rapdu) - len(cc) * 2 :]):
         if DEBUG:
             print("(verified)")
         return True
     else:
         print("Cryptographic Checksum failed!")
-        print("Expected CC: ", end=" ")
+        print("Expected CC: ", end="")
         passport.HexPrint(cc)
-        print("Received CC: ", end=" ")
+        print("Received CC: ", end="")
         print(rapdu[len(rapdu) - len(cc) * 2 :])
         sys.exit(True)
 
@@ -577,12 +579,12 @@ def decode_ef_com(data):
                 # decode tag list (stored objects)
                 if hexdata[pos : pos + length] == EF_TAGS:
                     pos += 2
-                    print("    length: ", end=" ")
+                    print("    length: ", end="")
                     length = asn1datalength(hexdata[pos:])
                     print(length)
                     pos += asn1fieldlength(hexdata[pos:])
                     for n in range(length):
-                        print("      Data Group: ", end=" ")
+                        print("      Data Group: ", end="")
                         print(hexdata[pos : pos + 2] + " (" + TAG_NAME[hexdata[pos : pos + 2]] + ")")
                         ef_groups.append(hexdata[pos : pos + 2])
                         pos += 2
@@ -625,7 +627,7 @@ def read_file(file):
         data += passport.data
         offset += toread
         readlen -= toread
-        print("Reading: %05d\r" % readlen, end=" ")
+        print("Reading: %05d\r" % readlen, end="")
         sys.stdout.flush()
     print()
     return True, data.decode("hex")
@@ -670,7 +672,7 @@ def secure_read_file(keyenc, keymac, file):
     do87 = rapdu[6:22]
     if DEBUG:
         print("DO87: " + do87)
-        print("Decrypted DO87: ", end=" ")
+        print("Decrypted DO87: ", end="")
     tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
     decdo87 = tdes.decrypt(passport.ToBinary(do87))[:readlen]
     if DEBUG:
@@ -698,7 +700,7 @@ def secure_read_file(keyenc, keymac, file):
         decdo87 += tdes.decrypt(passport.ToBinary(do87))[:toread]
         offset += toread
         readlen -= toread
-        print("Reading: %05d\r" % readlen, end=" ")
+        print("Reading: %05d\r" % readlen, end="")
         sys.stdout.flush()
     print()
     return True, decdo87
@@ -713,7 +715,7 @@ def decode_ef_dg1(data):
     global FieldKeys
 
     length = int(passport.ToHex(data[4]), 16)
-    print("Data Length: ", end=" ")
+    print("Data Length: ", end="")
     print(length)
     pointer = 5
     out = ""
@@ -754,7 +756,7 @@ def decode_ef_dg1(data):
         FieldKeys = MRZ_FIELD_KEYS
     pointer = 0
     for n in range(len(FieldNames)):
-        print("    " + FieldNames[n] + ": ", end=" ")
+        print("    " + FieldNames[n] + ": ", end="")
         print(out[pointer : pointer + FieldLengths[n]])
         pointer += FieldLengths[n]
     return out
@@ -782,7 +784,7 @@ def decode_ef_dg2(data):
                     "(" + DG2_ELEMENTS[tag] + ")",
                     "@",
                     position / 2,
-                    end=" ",
+                    end="",
                 )
                 # don't skip TEMPLATE fields as they contain sub-fields
                 # except BDB which is a special case (CBEFF formatted) so for now
@@ -981,7 +983,7 @@ def jmrtd_write_file(file, data):
             chunk = MAXCHUNK
         else:
             chunk = towrite
-        print("\rwriting %d bytes       " % towrite, end=" ")
+        print("\rwriting %d bytes       " % towrite, end="")
         sys.stdout.flush()
         jmrtd_update_binary(offset, data[offset : offset + chunk])
         offset += chunk
@@ -1001,7 +1003,7 @@ def jmrtd_update_binary(offset, data):
         return
     if passport.errorcode == "6D00":
         # vonJeek
-        print("(vonJeek)", end=" ")
+        print("(vonJeek)", end="")
         ins = "VONJEEK_UPDATE_BINARY"
         cla = "10"
         if passport.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, ""):
@@ -1298,13 +1300,13 @@ if not FILES and not TEST:
     else:
         print("ePP doesn't support PACE")
 
-    print("Select Passport Application (AID): ", end=" ")
+    print("Select Passport Application (AID): ", end="")
     if passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"):
         print("OK")
     else:
         passport.iso_7816_fail(passport.errorcode)
 
-    print("Select Master File: ", end=" ")
+    print("Select Master File: ", end="")
     if passport.iso_7816_select_file(TAG_FID[EF_COM], passport.ISO_7816_SELECT_BY_EF, "0C"):
 
         # try forcing BAC by reading a file
@@ -1399,11 +1401,11 @@ if not FILES and BAC:
         # calculate Kenc & Kmac
         Kenc = passport.DESKey(kseed, passport.KENC, 16)
         if DEBUG:
-            print("Kenc: ", end=" ")
+            print("Kenc: ", end="")
             passport.HexPrint(Kenc)
         Kmac = passport.DESKey(kseed, passport.KMAC, 16)
         if DEBUG:
-            print("Kmac: ", end=" ")
+            print("Kmac: ", end="")
             passport.HexPrint(Kmac)
             print()
 
@@ -1413,7 +1415,7 @@ if not FILES and BAC:
             Kifd = TEST_Kifd
         else:
             if DEBUG:
-                print("Get Challenge from Passport (rnd_icc): ", end=" ")
+                print("Get Challenge from Passport (rnd_icc): ", end="")
             if passport.iso_7816_get_challenge(8):
                 rnd_icc = passport.data
             else:
@@ -1431,35 +1433,35 @@ if not FILES and BAC:
         S = passport.ToBinary(rnd_ifd + rnd_icc + Kifd)
 
         if DEBUG or TEST:
-            print("S: ", end=" ")
+            print("S: ", end="")
             passport.HexPrint(S)
 
         if DEBUG or TEST:
-            print("Kenc: ", end=" ")
+            print("Kenc: ", end="")
             passport.HexPrint(Kenc)
 
         tdes = DES3.new(Kenc, DES.MODE_CBC, passport.DES_IV)
         Eifd = tdes.encrypt(S)
         if DEBUG or TEST:
-            print("Eifd: ", end=" ")
+            print("Eifd: ", end="")
             passport.HexPrint(Eifd)
-            print("Kmac: ", end=" ")
+            print("Kmac: ", end="")
             passport.HexPrint(Kmac)
         Mifd = passport.DESMAC(Eifd, Kmac, "")
         if DEBUG or TEST:
-            print("Mifd: ", end=" ")
+            print("Mifd: ", end="")
             passport.HexPrint(Mifd)
 
         cmd_data = Eifd + Mifd
         if DEBUG or TEST:
-            print("cmd_data: ", end=" ")
+            print("cmd_data: ", end="")
             passport.HexPrint(cmd_data)
             print()
 
         if TEST:
             respdata = TEST_respdata
         else:
-            print("Authenticating: ", end=" ")
+            print("Authenticating: ", end="")
             if passport.iso_7816_external_authenticate(passport.ToHex(cmd_data), Kmac):
                 respdata = passport.data
             else:
@@ -1482,7 +1484,7 @@ if not FILES and BAC:
             print("Decrypted rnd_icc: " + decresp[:16])
         recifd = decresp[16:32]
         if DEBUG or TEST:
-            print("Decrypted rnd_ifd: " + recifd, end=" ")
+            print("Decrypted rnd_ifd: " + recifd, end="")
         # check returned rnd_ifd matches our challenge
         if not passport.ToBinary(recifd) == passport.ToBinary(rnd_ifd):
             print("Challenge failed!")
@@ -1510,13 +1512,13 @@ if not FILES and BAC:
     print()
     kseedhex = "%032x" % xor(int(Kifd, 16), int(kicc, 16))
     kseed = passport.ToBinary(kseedhex)
-    print("Kifd XOR Kicc (kseed): ", end=" ")
+    print("Kifd XOR Kicc (kseed): ", end="")
     passport.HexPrint(kseed)
     KSenc = passport.DESKey(kseed, passport.KENC, 16)
-    print("Session Key ENC: ", end=" ")
+    print("Session Key ENC: ", end="")
     passport.HexPrint(KSenc)
     KSmac = passport.DESKey(kseed, passport.KMAC, 16)
-    print("Session Key MAC: ", end=" ")
+    print("Session Key MAC: ", end="")
     passport.HexPrint(KSmac)
 
     print()
@@ -1524,7 +1526,7 @@ if not FILES and BAC:
     print("Calculate Send Sequence Counter: ")
     print()
     SSC = passport.ToBinary(rnd_icc[8:16] + rnd_ifd[8:16])
-    print("SSC: ", end=" ")
+    print("SSC: ", end="")
     passport.HexPrint(SSC)
 
     # secure select master file
@@ -1546,7 +1548,7 @@ if not FILES and BAC:
     #       readlen= 4
     #       rapdu= secure_read_binary(KSmac,readlen,0)
 
-    print("EF.COM: ", end=" ")
+    print("EF.COM: ", end="")
     if DEBUG:
         passport.HexPrint(data)
     eflist = decode_ef_com(data)
@@ -1562,7 +1564,7 @@ if not FILES and not BAC:
     if not status:
         passport.iso_7816_fail(passport.errorcode)
 
-    print("EF.COM: ", end=" ")
+    print("EF.COM: ", end="")
     if DEBUG:
         passport.HexPrint(data)
     eflist = decode_ef_com(data)

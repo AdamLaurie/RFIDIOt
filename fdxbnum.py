@@ -57,7 +57,7 @@ if not arg_help and (len(args) >= 3 or precoded):
     if precoded:
         cid = args[0]
     else:
-        print("Encode: ", end=" ")
+        print("Encode: ", end="")
         cid = card.FDXBIDEncode(args[0], args[1], args[2])
         print(cid)
     out = card.FDXBID128Bit(cid)
@@ -93,24 +93,24 @@ if not arg_help and (len(args) >= 3 or precoded):
     # data inverted
     # biphase
     # maxblock 4
-    print("  Q5 Control Block:  ", end=" ")
+    print("  Q5 Control Block:  ", end="")
     q5control = "6000F0E8"
     print(q5control)
     for x in range(0, len(out), 8):
         outbin += chr(int(out[x : x + 8], 2))
     for x in range(0, len(outbin), 4):
-        print("    Q5 Data Block %02d:" % (x / 4 + 1), end=" ")
+        print("    Q5 Data Block %02d:" % (x / 4 + 1), end="")
         outhex[x / 4 + 1] = card.ToHex(outbin[x : x + 4])
         print(outhex[x / 4 + 1])
     # control block for Hitag2
     # Public Mode B
     # default password
     print()
-    print("  Hitag2 Control Block:  ", end=" ")
+    print("  Hitag2 Control Block:  ", end="")
     h2control = card.HITAG2_PUBLIC_B + card.HITAG2_TRANSPORT_TAG
     print(h2control)
     for x in range(1, 5, 1):
-        print("    Hitag2 Data Block %02d:" % (x + 3), end=" ")
+        print("    Hitag2 Data Block %02d:" % (x + 3), end="")
         print(outhex[x])
     if writetag == True:
         print()
@@ -124,7 +124,7 @@ if not arg_help and (len(args) >= 3 or precoded):
             if card.readertype == card.READER_ACG:
                 card.login("", "", card.HITAG2_TRANSPORT_RWD)
         for x in range(4 + offset, -1 + offset, -1):
-            print("    Writing block %02x:" % x, end=" ")
+            print("    Writing block %02x:" % x, end="")
             if not card.writeblock(x, outhex[x - offset]):
                 # we expect a Q5 to fail after writing the control block as it re-reads
                 # it before trying to verify the write and switches mode so is now no longer in Q5 mode

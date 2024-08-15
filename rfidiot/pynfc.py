@@ -28,10 +28,10 @@
 import sys
 import ctypes
 import ctypes.util
-import binascii
+# import binascii
 import logging
-import time
-import readline
+# import time
+# import readline
 
 # import string
 from . import rfidiotglobals

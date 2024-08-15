@@ -39,7 +39,7 @@ block = 0
 while block < 16:
     for X in ["AA", "BB", "FF"]:
         card.select()
-        print("%02x %s: " % (block, X), end=" ")
+        print("%02x %s: " % (block, X), end="")
         if card.login(block, X, ""):
             print("success!")
         elif card.errorcode:

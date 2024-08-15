@@ -40,7 +40,7 @@ def connect_to(host, port, ctype):
     first = True
     while 42:
         peer.settimeout(random.randint(1, 10))
-        print("  Paging {host} {port}                    \r", end=" ")
+        print("  Paging {host} {port}                    \r", end="")
         sys.stdout.flush()
         time.sleep(1)
         try:
@@ -59,7 +59,7 @@ def connect_to(host, port, ctype):
                 print(exc)
                 sys.exit(True)
         try:
-            print("  Listening for REMOTE on port %s              \r" % port, end=" ")
+            print("  Listening for REMOTE on port %s              \r" % port, end="")
             sys.stdout.flush()
             if first:
                 peer.bind(("0.0.0.0", port))
@@ -213,7 +213,7 @@ else:
     try:
         readernum = int(args[0])
         emulator = rfidiot.RFIDIOt.rfidiot(readernum, card.readertype, "", "", "", "", "", "")
-        print("  Emulator:", end=" ")
+        print("  Emulator:", end="")
         emulator.info("")
         if emulator.readersubtype != card.READER_ACS:
             print("EMULATOR is not an ACS")
@@ -344,7 +344,7 @@ baudrate = mode & 0x70
 print("  Emulator activated:")
 print("         UID: 08%s" % uid[0])
 print("    Baudrate:", PN532_BAUDRATES[baudrate])
-print("        Mode:", end=" ")
+print("        Mode:", end="")
 if mode & 0x08:
     print("ISO/IEC 14443-4 PICC")
 if mode & 0x04:

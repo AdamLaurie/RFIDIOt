@@ -18,9 +18,9 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-import subprocess
 import sys
-import os
+import subprocess
+# import os
 
 x = 0
 if len(sys.argv) > 1:

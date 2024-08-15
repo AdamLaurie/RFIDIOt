@@ -43,7 +43,7 @@ buffer = []
 card.select()
 for x in range(98):
     if card.readblock(x):
-        print(f"    Block {x:02x}: {card.data}\r", end=" ")
+        print(f"    Block {x:02x}: {card.data}\r", end="")
         sys.stdout.flush()
         buffer.append(card.data)
     else:
@@ -65,7 +65,7 @@ if x > 0:
             input("Tag not readable! Hit <CR> to continue...")
             continue
         if len(card.data) != len(buffer[0]):
-            print("Wrong blocksize! ({len(buffer[0])} / {len(card.data)})", end=" ")
+            print("Wrong blocksize! ({len(buffer[0])} / {len(card.data)})", end="")
             input(" Hit <CR> to continue...")
             continue
         if input("*** Warning! Data will be overwritten! Continue (y/n)?").upper() == "Y":
@@ -74,19 +74,19 @@ if x > 0:
             sys.exit(False)
     print("  Writing:")
     for n in range(x):
-        # print("    Block %02x: %s\r" % (n, buffer[n]), end=" ")
-        print(f"    Block {n:02x}: {buffer[n]}\r", end=" ")
+        # print("    Block %02x: %s\r" % (n, buffer[n]), end="")
+        print(f"    Block {n:02x}: {buffer[n]}\r", end="")
         sys.stdout.flush()
         if not card.writeblock(n, buffer[n]):
             print("\nWrite failed!")
     print("\n  Verifying:")
     for n in range(x):
-        # print("    Block %02x: %s" % (n, buffer[n]), end=" ")
-        print(f"    Block {n:02x}: {buffer[n]}\r", end=" ")
+        # print("    Block %02x: %s" % (n, buffer[n]), end="")
+        print(f"    Block {n:02x}: {buffer[n]}\r", end="")
         if not card.readblock(n) or card.data != buffer[n]:
             print("\nVerify failed!")
             sys.exit(True)
-        print(" OK\r", end=" ")
+        print(" OK\r", end="")
         sys.stdout.flush()
     print()
     sys.exit(False)

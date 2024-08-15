@@ -38,7 +38,7 @@ except:
     sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 card.info("unique v0.1l")
 
@@ -47,7 +47,7 @@ Q5CFB = "e601f004"
 # Hitag2 config block
 H2CFB = card.HITAG2_PUBLIC_A + card.HITAG2_TRANSPORT_TAG
 
-if len(args) < 1 or len(args) > 3 or help:
+if len(args) < 1 or len(args) > 3 or chelp:
     print()
     print(sys.argv[0] + " - generate EM4x02 and/or UNIQUE compliant ID data blocks")
     print("\nUsage: " + sys.argv[0] + ' [OPTIONS] <TYPE> <ID> ["WRITE"]')
@@ -68,28 +68,27 @@ if len(args) < 1 or len(args) > 3 or help:
     print("\toverwritten.")
     sys.exit(True)
 
-
-if len(args) == 1 and str.upper(args[0]) == "CLONE":
-    type = "UNIQUE"
+if len(args) == 1 and args[0].upper() == "CLONE":
+    ctype = "UNIQUE"
     clone = True
     card.settagtype(card.EM4x02)
     card.waitfortag("Waiting for Unique tag...")
-    id = card.uid
-    idbin = card.UniqueToEM(card.HexReverse(id))
+    cid = card.uid
+    idbin = card.UniqueToEM(card.HexReverse(cid))
 else:
     clone = False
     if len(args[1]) != 10:
         print("ID must be 10 HEX digits!")
         sys.exit(True)
-    id = args[1]
+    cid = args[1]
 
 if args[0] == "E":
-    type = "EM4x02"
-    idbin = card.UniqueToEM(card.HexReverse(id))
+    ctype = "EM4x02"
+    idbin = card.UniqueToEM(card.HexReverse(cid))
 else:
     if args[0] == "U":
-        type = "UNIQUE"
-        idbin = card.ToBinaryString(card.ToBinary(id))
+        ctype = "UNIQUE"
+        idbin = card.ToBinaryString(card.ToBinary(cid))
     else:
         if not clone:
             print("Unknown TYPE: " + args[0])
@@ -101,12 +100,12 @@ manchester = card.BinaryToManchester(out)
 db1 = "%08x" % int(out[:32], 2)
 db2 = "%08x" % int(out[32:64], 2)
 print()
-print("  " + type + " ID: " + id)
+print("  " + ctype + " ID: " + cid)
 print("  Q5 ID: " + "%08x" % int(idbin[:32], 2))
-if type == "EM4x02":
+if ctype == "EM4x02":
     print("  UNIQUE ID: " + "%10x" % int(idbin, 2))
 else:
-    print("  EM4x02 ID: " + ("%10x" % int(card.UniqueToEM(id), 2))[::-1])
+    print("  EM4x02 ID: " + ("%10x" % int(card.UniqueToEM(cid), 2))[::-1])
 print("  Binary traceablility data: " + out)
 print("  Manchester Encoded:        " + manchester)
 print()
@@ -118,17 +117,17 @@ print("  Hitag2 Config Block (3): " + H2CFB)
 print("  Data Block 4: " + db1)
 print("  Data Block 5: " + db2)
 
-if (len(args) == 3 and str.upper(args[2]) == "WRITE") or clone:
+if (len(args) == 3 and args[2].upper() == "WRITE") or clone:
     # check for Q5 first`
     if card.readertype == card.READER_ACG:
         card.settagtype(card.Q5)
         if not card.select():
             card.settagtype(card.ALL)
-    while not (card.tagtype == card.Q5 or card.tagtype == card.HITAG2):
+    while not (card.tagtype in [card.Q5, card.HITAG2]):
         card.waitfortag("Waiting for blank tag (Q5 or Hitag2)...")
         print("Tag ID: " + card.uid)
     if not clone:
-        x = str.upper(input("  *** Warning! This will overwrite TAG! Proceed (y/n)? "))
+        x = input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ").upper()
         if x != "Y":
             sys.exit(False)
     # allow blank to settle
@@ -150,4 +149,5 @@ if (len(args) == 3 and str.upper(args[2]) == "WRITE") or clone:
     print("  Unique ID: " + card.EMToUnique(card.uid))
     print("Done!")
     card.settagtype(card.ALL)
+
 sys.exit(False)
