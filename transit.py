@@ -22,7 +22,7 @@
 
 import sys
 # import os
-import string
+# import string
 import rfidiot
 
 try:
@@ -39,7 +39,7 @@ card.info("transit v0.1b")
 precoded = False
 
 if not chelp and len(args) > 0 and len(args[0]) == 64:
-    print("\nDecode: ", end=" ")
+    print("\nDecode: ", end="")
     card.TRANSITIDPrint(args[0])
     if len(args) == 2:
         if args[1] == "WRITE":
@@ -55,7 +55,7 @@ if not chelp and ((len(args) > 0 and len(args[0]) == 8) or precoded):
     if precoded:
         out = args[0]
     else:
-        print("\nEncode: ", end=" ")
+        print("\nEncode: ", end="")
         out = card.TRANSITIDEncode(args[0])
     print(out)
     if (len(args) == 2 and args[1] == "WRITE") or precoded:
@@ -90,13 +90,13 @@ if not chelp and ((len(args) > 0 and len(args[0]) == 8) or precoded):
     # data not inverted
     # manchester
     # maxblock 2
-    print("  Q5 Control Block:  ", end=" ")
+    print("  Q5 Control Block:  ", end="")
     q5control = "6000F004"
     print(q5control)
     for x in range(0, len(out), 8):
         outbin += chr(int(out[x : x + 8], 2))
     for x in range(0, len(outbin), 4):
-        print("    Q5 Data Block %02d:" % (x / 4 + 1), end=" ")
+        print("    Q5 Data Block %02d:" % (x / 4 + 1), end="")
         outhex[x / 4 + 1] = card.ToHex(outbin[x : x + 4])
         print(outhex[x / 4 + 1])
     if writetag is True:
@@ -104,7 +104,7 @@ if not chelp and ((len(args) > 0 and len(args[0]) == 8) or precoded):
         outhex[0] = q5control
         for x in range(2, -1, -1):
             if x != 0:
-                print("    Writing block %02x:" % x, end=" ")
+                print("    Writing block %02x:" % x, end="")
             if not card.writeblock(x, outhex[x]):
                 # we expect a Q5 to fail after writing the control block as it re-reads
                 # it before trying to verify the write and switches mode so is now no longer in Q5 mode

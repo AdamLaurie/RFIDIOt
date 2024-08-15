@@ -58,9 +58,9 @@ while 42:
         sys.exit(False)
     else:
         if not pwd % 16:
-            print(PWD + "                        \r", end=" ")
+            print(PWD + "                        \r", end="")
     if not card.select():
-        print("No tag found! Last try: {PWD}\r", end=" ")
+        print("No tag found! Last try: {PWD}\r", end="")
     else:
         pwd = pwd + 1
     sys.stdout.flush()

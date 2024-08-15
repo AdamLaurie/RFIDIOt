@@ -85,9 +85,9 @@ if card.tagtype == card.EM4x02 or card.tagtype == card.Q5 or card.tagtype == car
         print("    Q5 ID: " + Q5ID)
         print()
         card.readblock(0)
-        print("    Config Block: ", end=" ")
+        print("    Config Block: ", end="")
         print(card.ToHex(card.binary))
-        print("    Config Binary: ", end=" ")
+        print("    Config Binary: ", end="")
         configbin = card.ToBinaryString(card.binary)
         print(configbin)
         print("          Reserved: " + configbin[:12])
@@ -121,24 +121,24 @@ if card.tagtype == card.EM4x02 or card.tagtype == card.Q5 or card.tagtype == car
         print("        Terminator: " + configbin[31])
         print()
         # Emulated ID is contained in 'traceability data'
-        print("    Traceability Data 1: ", end=" ")
+        print("    Traceability Data 1: ", end="")
         card.readblock(1)
         td1 = card.binary
         # to test a hardwired number, uncomment following line (and td2 below)
         #               td1= chr(0xff) + chr(0x98) + chr(0xa6) + chr(0x4a)
         print(card.ToHex(td1))
-        print("    Traceability Data 2: ", end=" ")
+        print("    Traceability Data 2: ", end="")
         card.readblock(2)
         td2 = card.binary
         # don't forget to set column parity!
         #               td2= chr(0x98) + chr(0xf8) + chr(0xc8) + chr(0x06)
         print(card.ToHex(td2))
-        print("    Traceability Binary: ", end=" ")
+        print("    Traceability Binary: ", end="")
         tdbin = card.ToBinaryString(td1 + td2)
         print(tdbin)
         # traceability is broken into 4 bit chunks with even parity
         print()
-        print("      Header:", end=" ")
+        print("      Header:", end="")
         print(tdbin[:9])
         print("                    Parity (even)")
         print("      D00-D03: " + tdbin[9:13] + " " + tdbin[13])
@@ -159,7 +159,7 @@ if card.tagtype == card.EM4x02 or card.tagtype == card.Q5 or card.tagtype == car
         d3 = chr(int(tdbin[39:43] + tdbin[44:48], 2))
         d4 = chr(int(tdbin[49:53] + tdbin[54:58], 2))
         print()
-        print("      Reconstructed data D00-D93 (UNIQUE ID): ", end=" ")
+        print("      Reconstructed data D00-D93 (UNIQUE ID): ", end="")
         card.HexPrint(d0 + d1 + d2 + d3 + d4)
         # set ID to Q5ID so block reading works
         ID = Q5ID
@@ -172,9 +172,9 @@ print()
 print(" Writing...")
 print()
 while sector < card.LFXTagBlocks[card.tagtype]:
-    print(" sector %02x: " % sector, end=" ")
+    print(" sector %02x: " % sector, end="")
     if card.readblock(sector):
-        print(card.data, end=" ")
+        print(card.data, end="")
         if not card.writeblock(sector, card.data):
             print("Write failed")
         else:

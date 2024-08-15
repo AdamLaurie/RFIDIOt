@@ -146,7 +146,7 @@ baudrate = mode & 0x70
 print("  Emulator activated:")
 print("         UID: 08%s" % uid[0])
 print("    Baudrate:", PN532_BAUDRATES[baudrate])
-print("        Mode:", end=" ")
+print("        Mode:", end="")
 if mode & 0x08:
     print("ISO/IEC 14443-4 PICC")
 if mode & 0x04:

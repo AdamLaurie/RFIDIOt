@@ -20,10 +20,10 @@
 #
 
 
-import rfidiot
 import sys
-import os
-import string
+# import os
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
@@ -54,7 +54,7 @@ if args[0] == "CONTROL":
         print()
         #               if card.frosch(card.FR_HT2_Read_PublicB):
         #                       print '  Card ID: ' + card.data
-        x = string.upper(input("  *** Warning! This will overwrite TAG! Place card and proceed (y/n)? "))
+        x = input("  *** Warning! This will overwrite TAG! Place card and proceed (y/n)? ").upper()
         if x == "N":
             sys.exit(False)
         if x == "Y":

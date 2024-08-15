@@ -38,8 +38,8 @@ print("  Data:")
 
 card.select()
 for x in range(255):
-    # print("    Block %02x:" % x, end=" ")
-    print(f"    Block {x:02x}:", end=" ")
+    # print("    Block %02x:" % x, end="")
+    print(f"    Block {x:02x}:", end="")
     if card.readblock(x):
         print(card.data, card.ReadablePrint(card.ToBinary(card.data)))
     else:

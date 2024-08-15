@@ -75,7 +75,7 @@ sector = 1
 while sector < 16:
     locked = True
     for ctype in ["AA", "BB", "FF"]:
-        print(f"\n Sector 0x{sector:02X}: Keytype: {ctype}", end=" ")
+        print(f"\n Sector 0x{sector:02X}: Keytype: {ctype}", end="")
         sys.stdout.flush()
         sys.stderr.flush()
         print("1---")
@@ -90,11 +90,11 @@ while sector < 16:
             blocksread += 1
             print("Login OK. Data:\n")
             # print()
-            # print(" ", end=" ")
+            # print(" ", end="")
             for block in range(4):
                 # card.login(sector,type,'')
                 if card.readMIFAREblock((sector * 4) + block):
-                    # print(card.MIFAREdata, end=" ")
+                    # print(card.MIFAREdata, end="")
                     print('    ' + card.MIFAREdata)
                     sys.stdout.flush()
                     sys.stderr.flush()
@@ -132,7 +132,7 @@ while sector < 16:
             print(f"Login Error: {card.errorcode} {card.get_error_str(card.errorcode)}")
         elif ctype == "FF":
             print("Login failed")
-        print("\r", end=" ")
+        print("\r", end="")
         sys.stdout.flush()
         sys.stderr.flush()
 

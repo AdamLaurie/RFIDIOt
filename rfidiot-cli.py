@@ -112,16 +112,16 @@ while args:
     command = args.pop().upper()
     if command == "AID":
         arg = args.pop().upper()
-        if arg == "ANY" or arg == "ALL":
+        if arg in ["ANY", "ALL"]:
             aids = list(card.AIDS.keys())
         else:
             aids = [arg]
         while aids:
             aid = aids.pop()
             print()
-            print("  Selecting AID: %s" % aid, end=" ")
+            print("  Selecting AID: %s" % aid, end="")
             try:
-                print("(%s)" % card.AIDS[aid], end=" ")
+                print("(%s)" % card.AIDS[aid], end="")
             except:
                 pass
             print()
@@ -216,7 +216,7 @@ while args:
         print("  Identiying TAG")
         print()
         if card.select():
-            print("    Tag ID:", card.uid, "   Tag Type:", end=" ")
+            print("    Tag ID:", card.uid, "   Tag Type:", end="")
             if card.readertype == card.READER_ACG and card.readername.find("LFX") == 0:
                 print(card.LFXTags[card.tagtype])
             else:
@@ -224,7 +224,7 @@ while args:
             if card.readertype == card.READER_PCSC:
                 if card.tagtype.find("ISO 15693") >= 0:
                     print()
-                    print("         Manufacturer:", end=" ")
+                    print("         Manufacturer:", end="")
                     try:
                         print(card.ISO7816Manufacturer[card.uid[2:4]])
                     except:
@@ -233,7 +233,7 @@ while args:
                     print()
                     card.PCSCPrintATR(card.pcsc_atr)
         else:
-            print("    No card present", end=" ")
+            print("    No card present", end="")
         continue
     if command == "MF":
         print()
@@ -241,7 +241,7 @@ while args:
         if mfcommand == "AUTH":
             keytype = args.pop().upper()
             sector = int(args.pop(), 16)
-            print("  Authenticating to sector %02X with Mifare Key" % sector, end=" ")
+            print("  Authenticating to sector %02X with Mifare Key" % sector, end="")
             Mifare_KeyType = keytype
             if keytype == "A":
                 Mifare_Key = Mifare_KeyA
@@ -259,7 +259,7 @@ while args:
                 print("    Failed: " + card.get_error_str(card.errorcode))
             continue
         if mfcommand == "CLONE":
-            print("  Cloning Mifare TAG", end=" ")
+            print("  Cloning Mifare TAG", end="")
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
                 sys.exit(True)
@@ -318,7 +318,7 @@ while args:
         if mfcommand == "DUMP":
             start = int(args.pop(), 16)
             end = int(args.pop(), 16)
-            print("  Dumping data blocks %02X to %02X:" % (start, end), end=" ")
+            print("  Dumping data blocks %02X to %02X:" % (start, end), end="")
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
                 sys.exit(True)
@@ -340,7 +340,7 @@ while args:
                 sector += 1
             continue
         if mfcommand == "KEY":
-            print("  Setting Mifare Key", end=" ")
+            print("  Setting Mifare Key", end="")
             keytype = args.pop().upper()
             if keytype == "A":
                 Mifare_KeyA = args.pop().upper()
@@ -352,14 +352,12 @@ while args:
                 print("failed! Invalid keytype:", keytype)
                 sys.exit(True)
             continue
+
         if mfcommand == "READ":
             start = int(args.pop(), 16)
             end = int(args.pop(), 16)
             filename = args.pop()
-            print(
-                "  Reading data blocks %02X to %02X and saving as %s:" % (start, end, filename),
-                end=" ",
-            )
+            print(f"  Reading data blocks {start:02X} to {end:02X} and saving as {filename}:", end="")
             outfile = open(filename, "wb")
             if not outfile:
                 print("failed! Couldn't open output file!")
@@ -379,8 +377,9 @@ while args:
             outfile.close()
             print("    OK")
             continue
+
         if mfcommand == "WIPE":
-            print("  Wiping Mifare TAG", end=" ")
+            print("  Wiping Mifare TAG", end="")
             if not Mifare_KeyA:
                 print("failed! KEY A not set!")
                 sys.exit(True)
@@ -411,13 +410,14 @@ while args:
                 sector += 1
             print("    OK")
             continue
+
         if mfcommand == "WRITE":
             start = int(args.pop(), 16)
             filename = args.pop()
             infile = open(filename, "rb")
             data = infile.read()
             infile.close()
-            print("  Writing data from file", filename, end=" ")
+            print("  Writing data from file", filename, end="")
             if len(data) % 16:
                 print("failed! File length is not divisible by Mifare block length (16)!")
                 sys.exit(True)
@@ -466,6 +466,7 @@ while args:
         if x == "N":
             sys.exit(False)
         continue
+
     if command == "SCRIPT":
         filename = args.pop()
         infile = open(filename, "rb")
@@ -488,12 +489,12 @@ while args:
                 if arg[0] == "#":
                     break
                 # quoted sections
-                if arg[0] == '"' or arg[0] == "'":
+                if arg[0] in ['"', "'"]:
                     quoted = True
                     quote = ""
                     arg = arg[1:]
                 if quoted:
-                    if arg[-1] == '"' or arg[-1] == "'":
+                    if arg[-1] in ['"', "'"]:
                         quote += " " + arg[:-1]
                         quoted = False
                         script.append(quote)
@@ -505,6 +506,7 @@ while args:
         script.reverse()
         args += script
         continue
+
     if command == "SELECT":
         print()
         print("  Selecting TAG")
@@ -519,6 +521,7 @@ while args:
             else:
                 print("    No card present")
         continue
+
     if command == "WAIT":
         message = args.pop()
         print()
@@ -526,16 +529,18 @@ while args:
         card.waitfortag(message)
         print()
         continue
+
     if command == "WRITEHEX":
         block = int(args.pop(), 16)
         data = args.pop().upper()
         print()
-        print("  Writing data %s to block %02x" % (data, block), end=" ")
+        print(f"  Writing data {data} to block {block:02x}", end="")
         if not (card.writeblock(block, data)):
             print("    Failed: " + card.get_error_str(card.errorcode))
             sys.exit(True)
         print("    OK")
         continue
+
     print()
     print("Unrecognised command:", command)
     sys.exit(True)

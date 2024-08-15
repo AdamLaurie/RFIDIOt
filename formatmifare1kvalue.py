@@ -46,19 +46,19 @@ sector = 1
 while sector < 0x10:
     for ctype in ["AA", "BB", "FF"]:
         card.select()
-        print(f" sector {sector:02x}: Keytype: {ctype}", end=" ")
+        print(f" sector {sector:02x}: Keytype: {ctype}", end="")
         if card.login(sector, ctype, ""):
             for block in range(3):
-                print("\n  block %02x: " % ((sector * 4) + block), end=" ")
+                print("\n  block %02x: " % ((sector * 4) + block), end="")
                 data = "00000000"
-                print("Value: " + data, end=" ")
+                print("Value: " + data, end="")
                 if card.writevalueblock((sector * 4) + block, data):
                     print(" OK")
                 elif card.errorcode:
                     print("error code: " + card.errorcode)
         elif ctype == "FF":
             print("login failed")
-        print("\r", end=" ")
+        print("\r", end="")
         sys.stdout.flush()
     sector += 1
     print()

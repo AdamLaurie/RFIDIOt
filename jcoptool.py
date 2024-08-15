@@ -19,15 +19,14 @@
 #    GNU General Public License for more details.
 #
 
-import rfidiot
 import sys
-import os
-import string
-from Crypto.Cipher import DES3
-from Crypto.Cipher import DES
+# import os
+# import string
+from Crypto.Cipher import DES3. DES
 from pyasn1.codec.ber import decoder
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
@@ -204,19 +203,19 @@ def decode_jcop_lifecycle(data, padding):
 
 
 def decode_privileges(data):
-    print("(", end=" ")
+    print("(", end="")
     multiple = False
     try:
         for mask in list(privilege_byte_1.keys()):
             if (int(data[0:2], 16) & int(mask, 16)) == int(mask, 16):
                 if multiple:
-                    print("/", end=" ")
-                print(privilege_byte_1[mask], end=" ")
+                    print("/", end="")
+                print(privilege_byte_1[mask], end="")
                 multiple = True
     except:
-        print(")", end=" ")
+        print(")", end="")
         return
-    print(")", end=" ")
+    print(")", end="")
 
 
 # check privilege byte 0 to see if we're a security domain
@@ -255,15 +254,15 @@ def decode_gp_registry_data(data, padding, filter):
         for item in list(registry_tags.keys()):
             if data[i : i + len(item)] == item:
                 if not item == card.GP_REG_AID:
-                    print(" ", end=" ")
+                    print(" ", end="")
                 itemlength = int(data[i + len(item) : i + len(item) + 2], 16) * 2
                 itemdata = data[i + len(item) + 2 : i + len(item) + 2 + itemlength]
-                print(padding, registry_tags[item] + ":", itemdata, end=" ")
+                print(padding, registry_tags[item] + ":", itemdata, end="")
                 if item == card.GP_REG_LCS:
                     if filter == card.GP_FILTER_ASSD:
                         # mask out application specific bits
                         itemdata = "%02x" % (int(itemdata, 16) & 0x87)
-                    print("( " + states[itemdata] + " )", end=" ")
+                    print("( " + states[itemdata] + " )", end="")
                 if item == card.GP_REG_PRIV:
                     decode_privileges(itemdata)
                 decoded = True
@@ -308,7 +307,7 @@ if not card.hsselect("08"):
     # sys.exit(True)
 
 print()
-print("    JCOP Identity Data:", end=" ")
+print("    JCOP Identity Data:", end="")
 # send pseudo file select command for JCOP IDENTIFY
 card.iso_7816_select_file(card.AID_JCOP_IDENTIFY, "04", "00")
 if card.errorcode == "6A82" and len(card.data) > 0:
@@ -323,7 +322,7 @@ else:
 if not card.hsselect("08"):
     print("    Could not select RFID card for APDU processing")
 print()
-print("    Life Cycle data:", end=" ")
+print("    Life Cycle data:", end="")
 if not card.gp_get_data("9F7F"):
     print(" Failed - ", card.get_error_str(card.errorcode))
 else:
@@ -337,7 +336,7 @@ if not card.hsselect("08"):
     print("    Could not select RFID card for APDU processing")
 if not card.iso_7816_select_file(card.AID_CARD_MANAGER, "04", "00"):
     print()
-    print("  Can't select Card Manager!", end=" ")
+    print("  Can't select Card Manager!", end="")
     card.iso_7816_fail(card.errorcode)
 
 if command == "INFO":
@@ -347,7 +346,7 @@ if command == "INFO":
     # get Card Recognition Data
     if not card.gp_get_data("0066"):
         print()
-        print("  Can't get Card Recognition Data!", end=" ")
+        print("  Can't get Card Recognition Data!", end="")
         card.iso_7816_fail(card.errorcode)
     pointer = 0
     item = card.data[pointer : pointer + 2]
@@ -373,7 +372,7 @@ if command == "INFO":
     while pointer < len(card.data):
         item = card.data[pointer : pointer + 2]
         try:
-            print("        " + tags[item] + ":", end=" ")
+            print("        " + tags[item] + ":", end="")
             pointer += 2
             length = int(card.data[pointer : pointer + 2], 16)
             pointer += 2
@@ -416,7 +415,7 @@ if command == "INFO" or command == "INSTALL":
     print("      *** Warning")
     print("      *** Repeated authentication failures may permanently disable device")
     print()
-    x = string.upper(input("      Attempt to authenticate (y/n)? "))
+    x = input("      Attempt to authenticate (y/n)? ").upper()
     if not x == "Y":
         sys.exit(True)
 
@@ -448,7 +447,7 @@ if command == "INFO" or command == "INSTALL":
         card_cryptogram_source = host_challenge + card_sc_sequence_counter + card_challenge
         host_cryptogram_source = card_sc_sequence_counter + card_challenge + host_challenge
         # check card cryptogram
-        check_cryptogram = string.upper(card.ToHex(card.DES3MAC(card.ToBinary(card_cryptogram_source), enc_s_key, "")))
+        check_cryptogram = card.ToHex(card.DES3MAC(card.ToBinary(card_cryptogram_source), enc_s_key, "")).upper()
         if not check_cryptogram == card_cryptogram:
             print("Key mismatch!")
             print("Card Cryptogram:      ", card_cryptogram)
@@ -485,7 +484,7 @@ for filter in "80", "40", "20", "10":
     if not card.gp_get_status(filter, "02", ""):
         if not card.errorcode == "6A88":
             print()
-            print("  Can't get Card Status!", end=" ")
+            print("  Can't get Card Status!", end="")
             card.iso_7816_fail(card.errorcode)
     print()
     print("     ", card_status[filter] + ":")

@@ -299,7 +299,7 @@ def hexprint(data):
     index = 0
 
     while index < len(data):
-        print("%02x" % data[index], end=" ")
+        print("%02x" % data[index], end="")
         index += 1
     print()
 
@@ -374,17 +374,17 @@ def decode_pse(data):
                 TAGS[tag]
                 taglen = 2
             except:
-                print(indent + "  Unrecognised TAG:", end=" ")
+                print(indent + "  Unrecognised TAG:", end="")
                 hexprint(data[index:])
                 return
-        print(indent + "  %0x:" % tag, TAGS[tag][0], end=" ")
+        print(indent + "  %0x:" % tag, TAGS[tag][0], end="")
         if TAGS[tag][2] == VALUE:
             itemlength = 1
             offset = 0
         else:
             itemlength = data[index + taglen]
             offset = 1
-        print("(%d bytes):" % itemlength, end=" ")
+        print("(%d bytes):" % itemlength, end="")
         # store CDOLs for later use
         if tag == CDOL1:
             Cdol1 = data[index + taglen : index + taglen + itemlength + 1]
@@ -399,7 +399,7 @@ def decode_pse(data):
                 # decode_ber_tlv_field(data[index + taglen + offset:])
             if TAGS[tag][1] == BINARY or TAGS[tag][1] == VALUE:
                 if TAGS[tag][2] != TEMPLATE or Verbose:
-                    print("%02x" % data[index + taglen + offset], end=" ")
+                    print("%02x" % data[index + taglen + offset], end="")
             else:
                 if TAGS[tag][1] == NUMERIC:
                     out += "%02x" % data[index + taglen + offset]
@@ -418,7 +418,7 @@ def decode_pse(data):
         if TAGS[tag][1] == BINARY:
             print()
         if TAGS[tag][1] == TEXT or TAGS[tag][1] == NUMERIC:
-            print(out, end=" ")
+            print(out, end="")
             if tag == 0x9F42 or tag == 0x5F28:
                 print("(" + ISO3166CountryCodes["%03d" % int(out)] + ")")
             else:
@@ -514,10 +514,10 @@ def bruteforce_aids(aid):
                 # aidb= aid + [x]
                 aidb = [x, y, 0x00, 0x00, z]
                 if Verbose:
-                    print("\r  %02x %02x %02x %02x %02x" % (x, y, 0x00, 0x00, z), end=" ")
+                    print("\r  %02x %02x %02x %02x %02x" % (x, y, 0x00, 0x00, z), end="")
                 status, response, sw1, sw2 = select_aid(aidb)
                 if [sw1, sw2] != SW12_NOT_FOUND:
-                    print("\r  Found AID:", end=" ")
+                    print("\r  Found AID:", end="")
                     hexprint(aidb)
                     if status:
                         decode_pse(response)
@@ -606,7 +606,7 @@ def decode_file(sfi, start, end):
                     file.write("%02X" % response[n])
                 file.flush()
                 file.close()
-            print("      record %02X: " % y, end=" ")
+            print("      record %02X: " % y, end="")
             decode_pse(response)
         else:
             print("Read error!")
@@ -632,7 +632,7 @@ def decode_ber_tlv_field(data):
     x = 0
     while x < len(data):
         tag, fieldlen, value = decode_ber_tlv_item(data[x:])
-        print("Tag %04X: " % tag, end=" ")
+        print("Tag %04X: " % tag, end="")
         hexprint(value)
         x += fieldlen
 
@@ -673,7 +673,7 @@ def get_challenge(bytes):
     apdu = GET_CHALLENGE + [lc, le]
     response, sw1, sw2 = send_apdu(apdu)
     if check_return(sw1, sw2):
-        print("Random number: ", end=" ")
+        print("Random number: ", end="")
         hexprint(response)
     # print 'GET CHAL: %02x%02x %d' % (sw1,sw2,len(response))
 
@@ -712,7 +712,7 @@ def verify_pin(pin):
             if [sw1, sw2] == SW12_NOT_SUPORTED:
                 print("Function not supported")
             else:
-                print("command failed!", end=" ")
+                print("command failed!", end="")
                 hexprint([sw1, sw2])
     return False
 
@@ -757,7 +757,7 @@ try:
         if o == "-A":
             print()
             for x in range(len(aidlist)):
-                print("% 20s: " % aidlist[x][0], end=" ")
+                print("% 20s: " % aidlist[x][0], end="")
                 hexprint(aidlist[x][1:])
             print()
             sys.exit(False)
@@ -829,7 +829,7 @@ try:
         if not status:
             print("No PSD found!")
         else:
-            print("  Checking for records:", end=" ")
+            print("  Checking for records:", end="")
             if BruteforcePrimitives:
                 psd = list(range(31))
                 print("(bruteforce all files)")
@@ -847,7 +847,7 @@ try:
                         le = sw2
                         apdu = READ_RECORD + [p1] + [p2, le]
                         response, sw1, sw2 = cardservice.connection.transmit(apdu)
-                        print("  ", end=" ")
+                        print("  ", end="")
                         aid = ""
                         if Verbose:
                             hexprint(response)
@@ -859,7 +859,7 @@ try:
                                 aidlen = response[i + 1]
                                 aid = response[i + 2 : i + 2 + aidlen]
                             i += 1
-                        print("   AID found:", end=" ")
+                        print("   AID found:", end="")
                         hexprint(aid)
                         aidlist.append(["PSD Entry"] + aid)
     if BruteforceAID:
@@ -869,7 +869,7 @@ try:
         current = 0
         while current < len(aidlist):
             if Verbose:
-                print("Trying AID: %s -" % aidlist[current][0], end=" ")
+                print("Trying AID: %s -" % aidlist[current][0], end="")
                 hexprint(aidlist[current][1:])
             selected, response, sw1, sw2 = select_aid(aidlist[current][1:])
             if selected:
@@ -877,11 +877,11 @@ try:
                 for n in range(len(aidlist[current][1:])):
                     CurrentAID += "%02X" % aidlist[current][1:][n]
                 if Verbose:
-                    print("  Selected: ", end=" ")
+                    print("  Selected: ", end="")
                     hexprint(response)
                     textprint(response)
                 else:
-                    print("  Found AID: %s -" % aidlist[current][0], end=" ")
+                    print("  Found AID: %s -" % aidlist[current][0], end="")
                     hexprint(aidlist[current][1:])
                 decode_pse(response)
                 if BruteforcePrimitives:
@@ -893,7 +893,7 @@ try:
                     bruteforce_files()
                 ret, response = get_processing_options()
                 if ret:
-                    print("  Processing Options:", end=" ")
+                    print("  Processing Options:", end="")
                     decode_pse(response)
                     decode_processing_options(response)
                 else:
@@ -926,7 +926,7 @@ try:
                     print("  Last ATC:", latcval)
                 ret, length, logf = get_primitive(LOG_FORMAT)
                 if ret:
-                    print("Log Format: ", end=" ")
+                    print("Log Format: ", end="")
                     hexprint(logf)
                 current += 1
             else:

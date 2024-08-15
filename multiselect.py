@@ -20,11 +20,11 @@
 #
 
 
-import rfidiot
 import sys
-import os
+# import os
 import time
-import string
+# import string
+import rfidiot
 
 try:
     card = rfidiot.card
@@ -45,15 +45,15 @@ else:
 
 while 42:
     if card.select("A") or card.select("B"):
-        print("    Tag ID: " + card.uid, end=" ")
+        print("    Tag ID: " + card.uid, end="")
         if card.readertype == card.READER_FROSCH and card.tagtype == card.HITAG2 and card.tagmode == card.HITAG2_PASSWORD:
             print("    Tag Type: Hitag2 (Password mode)")
         if card.readertype == card.READER_FROSCH and card.tagtype == card.HITAG2 and card.tagmode == card.HITAG2_CRYPTO:
             print("    Tag Type: Hitag2 (Crypto mode)")
-        if card.readertype == card.READER_ACG and string.find(card.readername, "LFX") == 0:
+        if card.readertype == card.READER_ACG and card.readername.find("LFX") == 0:
             print("    Tag Type:" + card.LFXTags[card.tagtype])
         else:
             print()
     else:
-        print("    No card present\r", end=" ")
+        print("    No card present\r", end="")
         sys.stdout.flush()
