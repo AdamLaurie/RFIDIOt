@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-
-
 #  mifarekeys.py - calculate 3DES key for Mifare access on JCOP cards
 #  as per Philips Application Note AN02105
 #  http://www.nxp.com/acrobat_download/other/identification/067512.pdf
@@ -27,63 +25,45 @@
 # 24/07/08 - version 1.2 - Add some usage text
 
 import sys
-from Crypto.Cipher import DES3
-from Crypto.Cipher import DES
-
-
-def HexArray(data):
-    # first check array is all hex digits
-    try:
-        int(data, 16)
-    except:
-        return False, []
-    # check array is 4 hex digit pairs
-    if len(data) != 12:
-        return False, []
-    # now break into array of hex pairs
-    out = []
-    for x in range(0, len(data), 2):
-        out.append(data[x : x + 2])
-    return True, out
-
+from Crypto.Cipher import DES3, DES
 
 ### main ###
-print("mifarekeys v0.1b")
+print("mifarekeys v0.1c")
 
 if len(sys.argv) != 3:
-    print()
-    print("Usage:")
-    print("\t%s <KeyA> <KeyB>" % sys.argv[0])
-    print()
-    print(
-        "\tCreate MifarePWD for access to Mifare protected memory on Dual Interface IC"
-    )
-    print(
-        "\t(JCOP) cards. Output is DKeyA, DKeyB and MifarePWD. DKeyA and DKeyB are used as"
-    )
-    print("\tthe DES3 keys to generate MifarePWD with an IV of (binary) '00000000', a")
-    print("\tChallenge of (also binary) '00000000', and a key of DKeyA+DKeyB+DKeyA.")
-    print()
-    print("\tExample:")
-    print()
-    print(
-        "\tUsing KeyA of A0A1A2A3A4A5 and KeyB of B0B1B2B3B4B5 should give the result:"
-    )
-    print()
-    print("\t\tDKeyA:        40424446484A7E00")
-    print("\t\tDKeyB:        007E60626466686A")
-    print()
-    print("\t\tMifarePWD:    8C7F46D76CE01266")
-    print()
+    print(f"""
+    Usage:
+    \t{sys.argv[0]} <KeyA> <KeyB>" % sys.argv[0]
+    
+    \tCreate MifarePWD for access to Mifare protected memory on Dual Interface IC
+    \t(JCOP cards. Output is DKeyA, DKeyB and MifarePWD. DKeyA and DKeyB are used as)
+    \tthe DES3 keys to generate MifarePWD with an IV of (binary '00000000', a)
+    \tChallenge of (also binary '00000000', and a key of DKeyA+DKeyB+DKeyA.)
+    
+    \tExample:
+    
+    \tUsing KeyA of A0A1A2A3A4A5 and KeyB of B0B1B2B3B4B5 should give the result:
+    
+    \t\tDKeyA:        40424446484A7E00
+    \t\tDKeyB:        007E60626466686A
+    
+    \t\tMifarePWD:    8C7F46D76CE01266
+    """)
+
     sys.exit(True)
 
-# break keyA and keyB into 2 digit hex arrays
-ret, keyA = HexArray(sys.argv[1])
-if not ret:
+# break keyA and keyB into bytearrays
+
+try:
+    keyA = bytearray.fromhex(sys.argv[1])
+except ValueError:
     print("A Invalid HEX string:", sys.argv[1])
     sys.exit(True)
-ret, keyB = HexArray(sys.argv[2])
-if not ret:
+
+
+try:
+    keyB = bytearray.fromhex(sys.argv[2])
+except ValueError:
     print("B Invalid HEX string:", sys.argv[2])
     sys.exit(True)
 
@@ -92,45 +72,46 @@ if not ret:
 
 ### KeyA ###
 # first left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
-newkeyA = ""
-for n in range(6):
-    newkeyA += "%02X" % ((int(keyA[n], 16) << 1) & 0xFF)
+newkeyA = bytearray()
+for n in keyA:
+    newkeyA.append((n << 1) & 0xFF)
 # now create byte 6 from bit 7 of original bytes 0-5, shifted to the correct bit position
 newkeyAbyte6 = 0x00
-for n in range(6):
-    newkeyAbyte6 |= (int(keyA[n], 16) >> n + 1) & pow(2, 7 - (n + 1))
-newkeyA += "%02X" % newkeyAbyte6
+for n, b in enumerate(keyA):
+    newkeyAbyte6 |= (b >> n + 1) & (pow(2, 7 - (n + 1)))
+newkeyA.append(newkeyAbyte6)
 # and finally add a 0x00 to the end
-newkeyA += "00"
+newkeyA.append(0)
 print()
-print("  DKeyA:       ", newkeyA)
+print("  DKeyA:       ", newkeyA.hex().upper())
 
 ### KeyB ###
 # now do keyB, which is basically the same but starting at byte 2 and prepending new bytes
-newkeyB = "00"
+newkeyB = bytearray([0])
 # now create byte 1 from bit 7 of original bytes 0-5, shifted to the correct bit position, which is
 # the reverse of byte6 in KeyA
 newkeyBbyte1 = 0x00
-for n in range(6):
-    newkeyBbyte1 |= (int(keyB[n], 16) >> 7 - (n + 1)) & pow(2, n + 1)
-newkeyB += "%02X" % newkeyBbyte1
+for n, b in enumerate(keyB):
+    newkeyBbyte1 |= b >> 7 - (n + 1) & pow(2, n + 1)
+newkeyB.append(newkeyBbyte1)
 # left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
-for n in range(6):
-    newkeyB += "%02X" % ((int(keyB[n], 16) << 1) & 0xFF)
-print("  DKeyB:       ", newkeyB)
+for b in keyB:
+    newkeyB.append((b << 1) & 0xFF)
+
+print("  DKeyB:       ", newkeyB.hex().upper())
 
 # now create triple-DES key
 deskeyABA = ""
 # build key MSB first
-for n in range(len(newkeyA + newkeyB + newkeyA) - 2, -2, -2):
-    deskeyABA += chr(int((newkeyA + newkeyB + newkeyA)[n : n + 2], 16))
+keyABA = newkeyA + newkeyB + newkeyA
+deskeyABA = keyABA[::-1]
+
 des3 = DES3.new(deskeyABA, DES.MODE_CBC, b"\0\0\0\0\0\0\0\0")
 mifarePWD = des3.encrypt(b"\0\0\0\0\0\0\0\0")
+
 # reverse LSB/MSB for final output
-mifarePWDout = ""
-for n in range(len(mifarePWD) - 1, -1, -1):
-    # mifarePWDout += "%02X" % int(ord(mifarePWD[n]))
-    mifarePWDout += "%02X" % n
+mifarePWDout = mifarePWD[::-1].hex().upper()
+
 print()
 print("  MifarePWD:   ", mifarePWDout)
 print()
