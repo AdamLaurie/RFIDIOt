@@ -374,9 +374,7 @@ class NFC(object):
         self.LIBNFC_VER = self.initlibnfc().decode("utf-8")
         if rfidiotglobals.Debug:
             self.log.debug("libnfc %s" % self.LIBNFC_VER)
-        print("call self.configure") ## PMS
         self.configure(nfcreader)
-        print("end __init__") ## PMS
         sys.stdout.flush()
 
 
@@ -476,9 +474,7 @@ class NFC(object):
             target = None
         if target:
             target = ctypes.byref(target)
-        print("target", target)  ### PMS
         self.device = self.libnfc.nfc_open(self.context, target)
-        print("device", self.device)  ### PMS
 
         if self.device is None:
             raise ConnectionAbortedError("Error opening NFC reader")

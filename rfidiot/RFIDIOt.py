@@ -1836,6 +1836,8 @@ class rfidiot:
         if self.readertype == self.READER_LIBNFC:
             print("not implemented!")
             self.errorcode = "----"
+            # raise RuntimeError ?
+            # raise NotImplementedError("READ_BLOCK")
             return False
             apdu += self.PCSC_APDU["READ_BLOCK"]
             apdu = []
