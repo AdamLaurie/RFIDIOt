@@ -34,19 +34,19 @@ if len(sys.argv) != 3:
     print(f"""
     Usage:
     \t{sys.argv[0]} <KeyA> <KeyB>" % sys.argv[0]
-    
+
     \tCreate MifarePWD for access to Mifare protected memory on Dual Interface IC
     \t(JCOP cards. Output is DKeyA, DKeyB and MifarePWD. DKeyA and DKeyB are used as)
     \tthe DES3 keys to generate MifarePWD with an IV of (binary '00000000', a)
     \tChallenge of (also binary '00000000', and a key of DKeyA+DKeyB+DKeyA.)
-    
+
     \tExample:
-    
+
     \tUsing KeyA of A0A1A2A3A4A5 and KeyB of B0B1B2B3B4B5 should give the result:
-    
+
     \t\tDKeyA:        40424446484A7E00
     \t\tDKeyB:        007E60626466686A
-    
+
     \t\tMifarePWD:    8C7F46D76CE01266
     """)
 

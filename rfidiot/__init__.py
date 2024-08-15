@@ -21,13 +21,14 @@
 #    GNU General Public License for more details.
 #
 
-from . import rfidiotglobals
 
-from . import RFIDIOt
 import getopt
 import sys
 import os
-import string
+# import string
+
+from . import rfidiotglobals
+from . import RFIDIOt
 
 # help flag (-h) set?
 help = False
@@ -167,7 +168,7 @@ try:
         if o == "-g":
             nogui = True
         if o == "-h":
-            help = True
+            chelp = True
             printoptions()
         if o == "-n":
             noinit = True

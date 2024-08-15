@@ -1,9 +1,43 @@
 
-** Bug TODO:   Need to do more to fix with segfault when no readers are found
+# Notes
+
+
+NOTE:   temp debug code marked with ## PMS
+	these lines can/will be DELETED
+
+?? libnfc bug?
+    getting a lot of messages 
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+	n: Invalid argument(s)
+
+## BUGs & TODO
+
+** Bug :   Need to do more to fix with segfault when no readers are found
 	added ConnectionAbortedError exceptions if nfc_open returns false
 	** This will be a work in progress
 
-NOTE:   temp debug code marked with ## PMS
+### Todo
+
+
+Fix "Redefining name 'x' from outer scope" lint errors
+
+Fix Catching general Exception (broad-exception-caught)
+Fix Bare Exceptions 
+
+Track down Unused arguments and Vars
+
+Address lots of pylint warnings
+
+run pycodestyle
+
+
+
+## General Changes:
 
 piped code though expand(1) to get rid of tabs
 
