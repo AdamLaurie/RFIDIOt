@@ -27,7 +27,7 @@
 import sys
 from Crypto.Cipher import DES3, DES
 
-### main ###
+# main
 print("mifarekeys v0.1c")
 
 if len(sys.argv) != 3:
@@ -70,29 +70,35 @@ except ValueError:
 # now expand 48 bit Mifare keys to 64 bits for DES by adding 2 bytes
 # one is all zeros and the other is derived from the 48 Mifare key bits
 
-### KeyA ###
+# KeyA
 # first left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
 newkeyA = bytearray()
 for n in keyA:
     newkeyA.append((n << 1) & 0xFF)
 # now create byte 6 from bit 7 of original bytes 0-5, shifted to the correct bit position
 newkeyAbyte6 = 0x00
+m = 0b01000000
 for n, b in enumerate(keyA):
-    newkeyAbyte6 |= (b >> n + 1) & (pow(2, 7 - (n + 1)))
+    # newkeyAbyte6 |= (b >> n + 1) & (pow(2, 7 - (n + 1)))
+    newkeyAbyte6 |= (b >> n + 1) & m
+    m >>= 1
 newkeyA.append(newkeyAbyte6)
 # and finally add a 0x00 to the end
 newkeyA.append(0)
 print()
 print("  DKeyA:       ", newkeyA.hex().upper())
 
-### KeyB ###
+# KeyB
 # now do keyB, which is basically the same but starting at byte 2 and prepending new bytes
 newkeyB = bytearray([0])
 # now create byte 1 from bit 7 of original bytes 0-5, shifted to the correct bit position, which is
 # the reverse of byte6 in KeyA
 newkeyBbyte1 = 0x00
+m = 0b00000010
 for n, b in enumerate(keyB):
-    newkeyBbyte1 |= b >> 7 - (n + 1) & pow(2, n + 1)
+    # newkeyBbyte1 |= b >> 7 - (n + 1) & pow(2, n + 1)
+    newkeyBbyte1 |= b >> 7 - (n + 1) & m
+    m <<= 1
 newkeyB.append(newkeyBbyte1)
 # left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
 for b in keyB:
