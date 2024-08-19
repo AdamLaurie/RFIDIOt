@@ -22,19 +22,19 @@
 #
 
 
-import rfidiot
 import sys
-import os
+# import os
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-help = rfidiot.help
+rf_help = rfidiot.help
 
-if help:
+if rf_help:
     print(sys.argv[0] + " - read mifare ultralight tags")
     print("Usage: " + sys.argv[0])
     print()

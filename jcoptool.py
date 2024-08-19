@@ -22,7 +22,7 @@
 import sys
 # import os
 # import string
-from Crypto.Cipher import DES3. DES
+from Crypto.Cipher import DES3  # , DES
 from pyasn1.codec.ber import decoder
 
 try:
@@ -220,53 +220,53 @@ def decode_privileges(data):
 
 # check privilege byte 0 to see if we're a security domain
 def check_security_domain(data):
-    length = int(data[2:4], 16) * 2
+    data_len = int(data[2:4], 16) * 2
     i = 4
-    while i < length + 4:
-        for item in list(registry_tags.keys()):
-            if data[i : i + len(item)] == item:
-                itemlength = int(data[i + len(item) : i + len(item) + 2], 16) * 2
-                if item == card.GP_REG_PRIV:
-                    itemdata = data[i + len(item) + 2 : i + len(item) + 2 + itemlength]
+    while i < data_len + 4:
+        for k_item in list(registry_tags.keys()):
+            if data[i : i + len(k_item)] == k_item:
+                itemlength = int(data[i + len(k_item) : i + len(k_item) + 2], 16) * 2
+                if k_item == card.GP_REG_PRIV:
+                    itemdata = data[i + len(k_item) + 2 : i + len(k_item) + 2 + itemlength]
                     if (int(itemdata[0:2], 16) & 0x80) == 0x80:
                         return True
-                i += itemlength + len(item) + 2
+                i += itemlength + len(k_item) + 2
     return False
 
 
-def decode_gp_registry_data(data, padding, filter):
+def decode_gp_registry_data(data, padding, dat_filter):
     if not data[0:2] == card.GP_REG_DATA:
         return False, ""
     states = application_life_cycle_states
-    if filter == card.GP_FILTER_ISD:
+    if dat_filter == card.GP_FILTER_ISD:
         states = card_life_cycle_states
-    if filter == card.GP_FILTER_ASSD:
+    if dat_filter == card.GP_FILTER_ASSD:
         states = application_life_cycle_states
-    if filter == card.GP_FILTER_ELF:
+    if dat_filter == card.GP_FILTER_ELF:
         states = executable_life_cycle_states
     # check if this is a security domain (not set up right, so disabled!)
     # if check_security_domain(data):
     #       states= security_domain_life_cycle_states
-    length = int(data[2:4], 16) * 2
+    d_length = int(data[2:4], 16) * 2
     i = 4
-    while i < length + 4:
+    while i < d_length + 4:
         decoded = False
-        for item in list(registry_tags.keys()):
-            if data[i : i + len(item)] == item:
-                if not item == card.GP_REG_AID:
+        for k_item in list(registry_tags.keys()):
+            if data[i : i + len(k_item)] == k_item:
+                if not k_item == card.GP_REG_AID:
                     print(" ", end="")
-                itemlength = int(data[i + len(item) : i + len(item) + 2], 16) * 2
-                itemdata = data[i + len(item) + 2 : i + len(item) + 2 + itemlength]
-                print(padding, registry_tags[item] + ":", itemdata, end="")
-                if item == card.GP_REG_LCS:
-                    if filter == card.GP_FILTER_ASSD:
+                itemlength = int(data[i + len(k_item) : i + len(k_item) + 2], 16) * 2
+                itemdata = data[i + len(k_item) + 2 : i + len(k_item) + 2 + itemlength]
+                print(padding, registry_tags[k_item] + ":", itemdata, end="")
+                if k_item == card.GP_REG_LCS:
+                    if dat_filter == card.GP_FILTER_ASSD:
                         # mask out application specific bits
                         itemdata = "%02x" % (int(itemdata, 16) & 0x87)
                     print("( " + states[itemdata] + " )", end="")
-                if item == card.GP_REG_PRIV:
+                if k_item == card.GP_REG_PRIV:
                     decode_privileges(itemdata)
                 decoded = True
-                i += itemlength + len(item) + 2
+                i += itemlength + len(k_item) + 2
                 print()
         if not decoded:
             return False
@@ -355,10 +355,10 @@ if command == "INFO":
         sys.exit(True)
     pointer += 2
     item = card.data[pointer : pointer + 2]
-    length = int(item, 16)
+    i_length = int(item, 16)
 
     print()
-    print("    Card Data length:", length)
+    print("    Card Data length:", i_length)
     pointer += 2
     item = card.data[pointer : pointer + 2]
     if item != "73":
@@ -366,27 +366,27 @@ if command == "INFO":
         sys.exit(True)
     pointer += 2
     item = card.data[pointer : pointer + 2]
-    length = int(item, 16)
-    print("      Card Recognition Data length:", length)
+    i_length = int(item, 16)
+    print("      Card Recognition Data length:", i_length)
     pointer += 2
     while pointer < len(card.data):
         item = card.data[pointer : pointer + 2]
         try:
             print("        " + tags[item] + ":", end="")
             pointer += 2
-            length = int(card.data[pointer : pointer + 2], 16)
+            i_length = int(card.data[pointer : pointer + 2], 16)
             pointer += 2
             if tags[item] == "OID":
-                decodedOID, dummy = decoder.decode(card.ToBinary(item + ("%02x" % length) + card.data[pointer : pointer + length * 2]))
+                decodedOID, dummy = decoder.decode(card.ToBinary(item + ("%02x" % i_length) + card.data[pointer : pointer + i_length * 2]))
                 print(decodedOID.prettyPrint())
             else:
                 if (card.data[pointer : pointer + 2]) == "06":
-                    decodedOID, dummy = decoder.decode(card.ToBinary(card.data[pointer : pointer + length * 2]))
+                    decodedOID, dummy = decoder.decode(card.ToBinary(card.data[pointer : pointer + i_length * 2]))
                     print()
                     print("          OID:", decodedOID.prettyPrint())
                 else:
-                    print(card.data[pointer : pointer + length * 2])
-            pointer += length * 2
+                    print(card.data[pointer : pointer + i_length * 2])
+            pointer += i_length * 2
         except:
             print("Unrecognised tag", item)
             sys.exit(True)
@@ -408,7 +408,7 @@ if command == "INSTALL":
         enc_key = card.GP_ENC_KEY
         mac_key = card.GP_MAC_KEY
 
-if command == "INFO" or command == "INSTALL":
+if command in ["INFO",  "INSTALL"]:
     # authenticate to card
     # initialise secure channel
     print()
@@ -480,18 +480,18 @@ print("      Authentication succeeded")
 #               print '    Could not select RFID card for APDU processing'
 print()
 print("    Card contents:")
-for filter in "80", "40", "20", "10":
-    if not card.gp_get_status(filter, "02", ""):
+for stat_filter in "80", "40", "20", "10":
+    if not card.gp_get_status(stat_filter, "02", ""):
         if not card.errorcode == "6A88":
             print()
             print("  Can't get Card Status!", end="")
             card.iso_7816_fail(card.errorcode)
     print()
-    print("     ", card_status[filter] + ":")
+    print("     ", card_status[stat_filter] + ":")
     if card.errorcode == "6A88":
         print("        None!")
     else:
-        if not decode_gp_registry_data(card.data, "       ", filter):
+        if not decode_gp_registry_data(card.data, "       ", stat_filter):
             print("  Can't decode Registry!")
             print(card.data)
             sys.exit(True)

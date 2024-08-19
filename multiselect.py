@@ -22,13 +22,14 @@
 
 import sys
 # import os
-import time
+# import time
 # import string
-import rfidiot
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
+    print("Couldn't open reader!")
     sys.exit(True)
 
 args = rfidiot.args

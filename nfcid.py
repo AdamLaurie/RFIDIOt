@@ -23,10 +23,10 @@
 #
 
 # import RFIDIOtconfig
-import sys
-import os
-import pyandroid
+# import sys
+# import os
 import datetime
+import pyandroid
 
 Verbose = True
 Quiet = True

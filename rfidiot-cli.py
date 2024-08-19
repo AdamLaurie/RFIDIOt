@@ -163,7 +163,7 @@ while args:
         print()
         current = card.uid
         card.waitfortag(message)
-        while card.uid == current or card.uid == "":
+        while card.uid == current or card.uid == '':
             card.waitfortag("")
         print()
         continue
@@ -414,9 +414,8 @@ while args:
         if mfcommand == "WRITE":
             start = int(args.pop(), 16)
             filename = args.pop()
-            infile = open(filename, "rb")
-            data = infile.read()
-            infile.close()
+            with open(filename, "rb") as infile:
+                data = infile.read()
             print("  Writing data from file", filename, end="")
             if len(data) % 16:
                 print("failed! File length is not divisible by Mifare block length (16)!")
@@ -535,7 +534,7 @@ while args:
         data = args.pop().upper()
         print()
         print(f"  Writing data {data} to block {block:02x}", end="")
-        if not (card.writeblock(block, data)):
+        if not card.writeblock(block, data):
             print("    Failed: " + card.get_error_str(card.errorcode))
             sys.exit(True)
         print("    OK")

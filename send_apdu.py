@@ -22,11 +22,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import rfidiot
 import sys
-import os
+# import os
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")

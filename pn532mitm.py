@@ -21,33 +21,32 @@
 
 
 import sys
-
-# import os
+import os
 # import string
 import socket
 import time
 import random
-import operator
+# import operator
 import rfidiot
 from rfidiot.pn532 import *
 
 
 # try to connect to remote host. if that fails, alternately listen and connect.
-def connect_to(host, port, ctype):
-    print("host", host, "port", port, "type", ctype)
+def connect_to(chost, cport, ctype):
+    print("host", chost, "port", cport, "type", ctype)
     peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     random.seed()
     first = True
     while 42:
         peer.settimeout(random.randint(1, 10))
-        print("  Paging {host} {port}                    \r", end="")
+        print("  Paging {chost} {cport}                    \r", end="")
         sys.stdout.flush()
         time.sleep(1)
         try:
-            if peer.connect((host, port)) == 0:
-                print("  Connected to {host}s port {port}                  ")
+            if peer.connect((chost, cport)) == 0:
+                print("  Connected to {chost}s cport {port}                  ")
                 send_data(peer, ctype)
-                data = recv_data(peer)
+                cdata = recv_data(peer)
                 connection = peer
                 break
         except Exception as exc:
@@ -59,59 +58,62 @@ def connect_to(host, port, ctype):
                 print(exc)
                 sys.exit(True)
         try:
-            print("  Listening for REMOTE on port %s              \r" % port, end="")
+            print("  Listening for REMOTE on cport %s              \r" % port, end="")
             sys.stdout.flush()
             if first:
-                peer.bind(("0.0.0.0", port))
+                peer.bind(("0.0.0.0", cport))
                 peer.listen(1)
                 first = False
             conn, addr = peer.accept()
             if conn:
-                print("  Connected to %s port %d                  " % (addr[0], addr[1]))
-                data = recv_data(conn)
+                print("  Connected to %s cport %d                  " % (addr[0], addr[1]))
+                cdata = recv_data(conn)
                 send_data(conn, ctype)
                 connection = conn
                 break
         except socket.timeout:
             pass
-    if data == ctype:
+    if cdata == ctype:
         print("  Handshake failed - both ends are set to", ctype)
         time.sleep(1)
         connection.close()
         sys.exit(True)
-    print("  Remote is", data)
+    print("  Remote is", cdata)
     print()
     return connection
 
 
 # send data with 3 digit length and 2 digit CRC
-def send_data(host, data):
+def send_data(chost, cdata):
     lrc = 0
-    length = "%03x" % (len(data) + 2)
-    for x in length + data:
-        lrc = operator.xor(lrc, ord(x))
-    host.send(length)
-    host.send(data)
-    host.send("%02x" % lrc)
+    length = "%03x" % (len(cdata) + 2)
+    for i in length + data:
+        lrc ^=  ord(i)
+        # lrc = operator.xor(lrc, ord(x))
+    chost.send(length)
+    chost.send(cdata)
+    chost.send("%02x" % lrc)
 
 
 # receive data of specified length and check CRC
-def recv_data(host):
+def recv_data(chost):
     out = ""
     while len(out) < 3:
-        out += host.recv(3 - len(out))
+        out += chost.recv(3 - len(out))
     length = int(out, 16)
     lrc = 0
     for x in out:
-        lrc = operator.xor(lrc, ord(x))
+        # lrc = operator.xor(lrc, ord(x))
+        lrc ^=  ord(x)
     out = ""
     while len(out) < length:
-        out += host.recv(length - len(out))
+        out += chost.recv(length - len(out))
     for x in out[:-2]:
-        lrc = operator.xor(lrc, ord(x))
+        # lrc = operator.xor(lrc, ord(x))
+        lrc ^=  ord(x)
     if lrc != int(out[-2:], 16):
         print("  Remote socket CRC failed!")
-        host.close()
+        chost.close()
         sys.exit(True)
     return out[:-2]
 
@@ -167,7 +169,7 @@ if len(args) > 1:
             sys.exit(True)
 
     try:
-        logfile = open(args[1], "w")
+        logfile = open(args[1], "w", encoding="utf-8" )
         # logging = True
     except Exception as _e:
         print("  Couldn't create logfile:", args[1])
@@ -321,7 +323,7 @@ if not remote or remote_type == "READER":
     status = emulator.acs_send_apdu(
         PN532_APDU["TG_INIT_AS_TARGET"] + mode + sens_res + uid + sel_res + felica + nfcid + lengt + gt + lentk + tk
     )
-    if not status or not emulator.data[:4] == "D58D":
+    if not status or emulator.data[:4] != "D58D":
         print(
             "Target Init failed:",
             emulator.errorcode,

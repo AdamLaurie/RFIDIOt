@@ -25,8 +25,12 @@ along with scard-python; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
+# pylint: disable=too-many-nested-blocks,too-many-branches,too-many-statements
+
 import getopt
 import sys
+from operator import xor
+# from operator import *
 
 from smartcard.CardType import AnyCardType
 from smartcard.CardRequest import CardRequest
@@ -34,7 +38,6 @@ from smartcard.CardConnection import CardConnection
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.Exceptions import CardRequestTimeoutException
 
-from operator import *
 
 # local imports
 from rfidiot.iso3166 import ISO3166CountryCodes
@@ -304,6 +307,21 @@ def hexprint(data):
     print()
 
 
+#        try:
+#            # try 1-byte tags
+#            tag = data[index]
+#            TAGS[tag]
+#            taglen = 1
+#        except:
+#            try:
+#                # try 2-byte tags
+#                tag = data[index] * 256 + data[index + 1]
+#                TAGS[tag]
+#                taglen = 2
+#            except:
+#                # tag not found
+#                index += 1
+#                continue
 def get_tag(data, req):
     "return a tag's data if present"
 
@@ -311,27 +329,26 @@ def get_tag(data, req):
 
     # walk the tag chain to ensure no false positives
     while index < len(data):
-        try:
-            # try 1-byte tags
-            tag = data[index]
-            TAGS[tag]
+        # try 1-byte tags
+        tag = data[index]
+        if tag in TAGS:
             taglen = 1
-        except:
-            try:
-                # try 2-byte tags
-                tag = data[index] * 256 + data[index + 1]
-                TAGS[tag]
+        else:
+            # try 2-byte tags
+            tag = data[index] * 256 + data[index + 1]
+            if tag in TAGS:
                 taglen = 2
-            except:
+            else:
                 # tag not found
                 index += 1
                 continue
+
         if tag == req:
             itemlength = data[index + taglen]
             index += taglen + 1
             return True, itemlength, data[index : index + itemlength]
-        else:
-            index += taglen + 1
+        # else:
+        index += taglen + 1
     return False, 0, ""
 
 
@@ -352,11 +369,10 @@ def decode_pse(data):
     indent = ""
 
     if OutputFiles:
-        file = open("%s-PSE.HEX" % CurrentAID, "w")
-        for n in range(len(data)):
-            file.write("%02X" % data[n])
-        file.flush()
-        file.close()
+        # file = open("%s-PSE.HEX" % CurrentAID, "w")
+        with open(f"{CurrentAID}-PSE.HEX", "w", encoding="utf-8") as file:
+            for n in data:
+                file.write(f"{n:02X}")
 
     if RawOutput:
         hexprint(data)
@@ -364,32 +380,30 @@ def decode_pse(data):
         return
 
     while index < len(data):
-        try:
-            tag = data[index]
-            TAGS[tag]
+        tag = data[index]
+        if tag in TAGS:
             taglen = 1
-        except:
-            try:
-                tag = data[index] * 256 + data[index + 1]
-                TAGS[tag]
+        else:
+            tag = data[index] * 256 + data[index + 1]
+            if tag in TAGS:
                 taglen = 2
-            except:
+            else:
                 print(indent + "  Unrecognised TAG:", end="")
                 hexprint(data[index:])
                 return
-        print(indent + "  %0x:" % tag, TAGS[tag][0], end="")
+        print(f"{indent}  {tag:0x}: {TAGS[tag][0]}", end="")
         if TAGS[tag][2] == VALUE:
             itemlength = 1
             offset = 0
         else:
             itemlength = data[index + taglen]
             offset = 1
-        print("(%d bytes):" % itemlength, end="")
+        print(f"({itemlength} bytes):", end="")
         # store CDOLs for later use
         if tag == CDOL1:
-            Cdol1 = data[index + taglen : index + taglen + itemlength + 1]
+            Cdol1 = data[index + taglen : index + taglen + itemlength + 1] # pylint unused-variable
         if tag == CDOL2:
-            Cdol2 = data[index + taglen : index + taglen + itemlength + 1]
+            Cdol2 = data[index + taglen : index + taglen + itemlength + 1] # pylint unused-variable
         out = ""
         mixedout = []
         while itemlength > 0:
@@ -419,7 +433,7 @@ def decode_pse(data):
             print()
         if TAGS[tag][1] == TEXT or TAGS[tag][1] == NUMERIC:
             print(out, end="")
-            if tag == 0x9F42 or tag == 0x5F28:
+            if tag in (0x9F42, 0x5F28):
                 print("(" + ISO3166CountryCodes["%03d" % int(out)] + ")")
             else:
                 print()
@@ -448,9 +462,9 @@ def textprint(data):
 def bruteforce_primitives():
     for x in range(256):
         for y in range(256):
-            status, length, response = get_primitive([x, y])
+            status, _length, response = get_primitive([x, y]) # pylint unused-variable
             if status:
-                print("Primitive %02x%02x: " % (x, y))
+                print("Primitive {x:02x} {y:02x}: ")
                 if response:
                     hexprint(response)
                     textprint(response)
@@ -460,12 +474,12 @@ def get_primitive(tag):
     # get primitive data object - return status, length, data
     le = 0x00
     apdu = GET_DATA + tag + [le]
-    response, sw1, sw2 = send_apdu(apdu)
+    response, _sw1, _sw2 = send_apdu(apdu)
     if response[0:2] == tag:
         length = response[2]
         return True, length, response[3:]
-    else:
-        return False, 0, ""
+    # else:
+    return False, 0, ""
 
 
 def check_return(sw1, sw2):
@@ -488,7 +502,7 @@ def send_apdu(apdu):
     return response, sw1, sw2
 
 
-def select_aid(aid):
+def select_aid(aid):  # pylint unused-argument
     # select an AID and return True/False plus additional data
     apdu = SELECT + [len(aid)] + aid + [0x00]
     response, sw1, sw2 = send_apdu(apdu)
@@ -496,11 +510,11 @@ def select_aid(aid):
         if Verbose:
             decode_pse(response)
         return True, response, sw1, sw2
-    else:
-        return False, [], sw1, sw2
+    # else:
+    return False, [], sw1, sw2
 
 
-def bruteforce_aids(aid):
+def bruteforce_aids(aid): # pylint unused-argument
     # brute force two digits of AID
     print("Bruteforcing AIDs")
     y = z = 0
@@ -534,8 +548,8 @@ def read_record(sfi, record):
     response, sw1, sw2 = send_apdu(apdu)
     if check_return(sw1, sw2):
         return True, response
-    else:
-        return False, ""
+    # else:
+    return False, ""
 
 
 def bruteforce_files():
@@ -557,8 +571,8 @@ def get_processing_options():
     response, sw1, sw2 = send_apdu(apdu)
     if check_return(sw1, sw2):
         return True, response
-    else:
-        return False, "%02x%02x" % (sw1, sw2)
+    # else:
+    return False, "%02x%02x" % (sw1, sw2)
 
 
 def decode_processing_options(data):
@@ -601,12 +615,13 @@ def decode_file(sfi, start, end):
         ret, response = read_record(sfi, y)
         if ret:
             if OutputFiles:
-                file = open("%s-FILE%02XRECORD%02X.HEX" % (CurrentAID, sfi, y), "w")
-                for n in range(len(response)):
-                    file.write("%02X" % response[n])
-                file.flush()
-                file.close()
-            print("      record %02X: " % y, end="")
+                # file = open("%s-FILE%02XRECORD%02X.HEX" % (CurrentAID, sfi, y), "w")
+                # for n in range(len(response)):
+                #     file.write("%02X" % response[n])
+                with open(f"{CurrentAID}-FILE{sfi:02X}XRECORD{y:02X}.HEX", "w", encoding="utf-8") as file:
+                    for n in response:
+                        file.write(f"{n:02X}")
+            print(f"      record {y:02X}: ", end="")
             decode_pse(response)
         else:
             print("Read error!")
@@ -645,9 +660,11 @@ def decode_ber_tlv_item(data):
         tag = ""
         while data[i] & TLV_TAG_MASK:
             # another tag byte follows
-            tag.append(xor(data[i], TLV_TAG_MASK))
+            # tag.append(xor(data[i], TLV_TAG_MASK))
+            tag = tag + xor(data[i], TLV_TAG_MASK)
             i += 1
-        tag.append(data[i])
+        # tag.append(data[i])
+        tag = tag + data[i]
         i += 1
     if data[i] & TLV_LENGTH_MASK:
         # this byte tells us the number of subsequent bytes that describe the length
@@ -667,8 +684,8 @@ def decode_ber_tlv_item(data):
     return tag, i + length, data[i : i + length]
 
 
-def get_challenge(bytes):
-    lc = bytes
+def get_challenge(d_bytes):
+    lc = d_bytes
     le = 0x00
     apdu = GET_CHALLENGE + [lc, le]
     response, sw1, sw2 = send_apdu(apdu)
@@ -699,50 +716,51 @@ def verify_pin(pin):
         block.append(0xFF)
     lc = len(block)
     apdu = VERIFY + [lc] + block
-    response, sw1, sw2 = send_apdu(apdu)
+    _response, sw1, sw2 = send_apdu(apdu)
     if check_return(sw1, sw2):
         print("PIN verified")
         return True
+    # else:
+    if [sw1, sw2] == PIN_BLOCKED or [sw1, sw2] == PIN_BLOCKED2:
+        print("PIN blocked!")
     else:
-        if [sw1, sw2] == PIN_BLOCKED or [sw1, sw2] == PIN_BLOCKED2:
-            print("PIN blocked!")
+        if sw1 == PIN_WRONG:
+            print("wrong PIN - %d tries left" % (int(sw2) & 0x0F))
+        if [sw1, sw2] == SW12_NOT_SUPORTED:
+            print("Function not supported")
         else:
-            if sw1 == PIN_WRONG:
-                print("wrong PIN - %d tries left" % (int(sw2) & 0x0F))
-            if [sw1, sw2] == SW12_NOT_SUPORTED:
-                print("Function not supported")
-            else:
-                print("command failed!", end="")
-                hexprint([sw1, sw2])
+            print("command failed!", end="")
+            hexprint([sw1, sw2])
+
     return False
 
 
-def update_pin_try_counter(tries):
-    # try to set Pin Try Counter by sending Card Status Update
-    if tries > 0x0F:
-        return False, "PTC max value exceeded"
-    csu = []
-    csu.append(tries)
-    csu.append(0x10)
-    csu.append(0x00)
-    csu.append(0x00)
-    tag = 0x91  # Issuer Authentication Data
-    lc = len(csu) + 1
+# def update_pin_try_counter(tries):
+#     # try to set Pin Try Counter by sending Card Status Update
+#     if tries > 0x0F:
+#         return False, "PTC max value exceeded"
+#     csu = []
+#     csu.append(tries)
+#     csu.append(0x10)
+#     csu.append(0x00)
+#     csu.append(0x00)
+#     tag = 0x91  # Issuer Authentication Data
+#     lc = len(csu) + 1
 
 
-def generate_ac(type):
-    # generate an application Cryptogram
-    if type == TC:
-        # populate data with CDOL1
-        print()
-    apdu = GENERATE_AC + [lc, type] + data + [le]
-    le = 0x00
-    response, sw1, sw2 = send_apdu(apdu)
-    if check_return(sw1, sw2):
-        print("AC generated!")
-        return True
-    else:
-        hexprint([sw1, sw2])
+# def generate_ac(d_type):
+#     # generate an application Cryptogram
+#     if d_type == TC:
+#         # populate data with CDOL1
+#         print()
+#     apdu = GENERATE_AC + [lc, d_type] + data + [le]
+#     le = 0x00
+#     response, sw1, sw2 = send_apdu(apdu) # pylint: disable=unused-variable
+#     if check_return(sw1, sw2):
+#         print("AC generated!")
+#         return True
+#     #else:
+#     hexprint([sw1, sw2])
 
 
 # main loop
@@ -756,9 +774,12 @@ try:
             BruteforceAID = True
         if o == "-A":
             print()
-            for x in range(len(aidlist)):
-                print("% 20s: " % aidlist[x][0], end="")
-                hexprint(aidlist[x][1:])
+            # for x in range(len(aidlist)):
+            #     print("% 20s: " % aidlist[x][0], end="")
+            #     hexprint(aidlist[x][1:])
+            for x in aidlist:
+                print("{x[0]:20s}: ", end="")
+                hexprint(x[1:])
             print()
             sys.exit(False)
         if o == "-d":
@@ -843,7 +864,7 @@ try:
                     apdu = READ_RECORD + [p1] + [p2, le]
                     response, sw1, sw2 = cardservice.connection.transmit(apdu)
                     if sw1 == 0x6C:
-                        print("  Record %02x, File %02x: length %d" % (x, y, sw2))
+                        print(f"  Record {x:02x}, File {y:02x}: length {sw2}")
                         le = sw2
                         apdu = READ_RECORD + [p1] + [p2, le]
                         response, sw1, sw2 = cardservice.connection.transmit(apdu)
@@ -869,7 +890,7 @@ try:
         current = 0
         while current < len(aidlist):
             if Verbose:
-                print("Trying AID: %s -" % aidlist[current][0], end="")
+                print(f"Trying AID: {aidlist[current][0]} -",  end="")
                 hexprint(aidlist[current][1:])
             selected, response, sw1, sw2 = select_aid(aidlist[current][1:])
             if selected:
@@ -881,7 +902,7 @@ try:
                     hexprint(response)
                     textprint(response)
                 else:
-                    print("  Found AID: %s -" % aidlist[current][0], end="")
+                    print(f"  Found AID: {aidlist[current][0]} -", end="")
                     hexprint(aidlist[current][1:])
                 decode_pse(response)
                 if BruteforcePrimitives:

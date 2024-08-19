@@ -20,11 +20,11 @@
 #
 
 
-import rfidiot
 import sys
-import os
+# import os
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")

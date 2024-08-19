@@ -19,9 +19,9 @@
 #    GNU General Public License for more details.
 #
 
-import rfidiot
 import sys
-import os
+# import os
+import rfidiot
 
 try:
     card = rfidiot.card
@@ -30,7 +30,7 @@ except:
     sys.exit(True)
 
 args = rfidiot.args
-help = rfidiot.help
+chelp = rfidiot.help
 
 Q5Mod = {
     "000": "Manchester",
@@ -76,7 +76,7 @@ if card.tagtype == card.EM4x05:
     card.FDXBIDPrint(ID)
 
 # Q5 cards can emulate other cards, so check if this one responds as Q5
-if card.tagtype == card.EM4x02 or card.tagtype == card.Q5 or card.tagtype == card.EM4x05:
+if card.tagtype in (card.EM4x02, card.Q5, card.EM4x05):
     print("  Checking for Q5")
     card.settagtype(card.Q5)
     card.select()

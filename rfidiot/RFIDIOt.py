@@ -19,6 +19,9 @@
 #    GNU General Public License for more details.
 #
 
+# pylint: disable=attribute-defined-outside-init,too-many-statements,too-many-branches,too-many-instance-attributes,too-few-public-methods,too-many-lines,too-many-public-methods,too-many-return-statements
+
+
 # use Psyco compiler to speed things up if available
 try:
     import psyco
@@ -28,24 +31,25 @@ try:
 except ImportError:
     pass
 
-import os
+# import os
 import sys
 import random
 
 # import string
 import time
-import signal
-import socket
-from typing import Union, Tuple
+# import signal
+# import socket
+from typing import Tuple # Union
+from operator import xor
 from Crypto.Hash import SHA
-from Crypto.Cipher import DES3
-from Crypto.Cipher import DES
-from operator import *
+from Crypto.Cipher import DES3, DES
+# from Crypto.Cipher import DES
 from . import pynfc
 from . import pyandroid
 
 try:
-    import smartcard, smartcard.CardRequest
+    import smartcard
+    import smartcard.CardRequest
 
     IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE = smartcard.scard.SCARD_CTL_CODE(1)
 except:
@@ -66,6 +70,7 @@ MASK_CRC16 = 0xA001  # CRC16 mask (used in ARC files)
 
 
 class rfidiot:
+    # pylint: disable=import-outside-toplevel
     DEBUG = False
     readertype = None
     readersubtype = None
@@ -172,7 +177,6 @@ class rfidiot:
                                 print("Did you set DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED in ifdDriverOptions in libccid_Info.plist?")
                             sys.exit(True)
                     self.pcsc_atr = self.ListToHex(newstates[0][2])
-                    pass
                 if self.readersubtype == self.READER_ACS:
                     self.acs_set_retry(to)
             # libnfc device
@@ -834,7 +838,7 @@ class rfidiot:
                 if self.readersubtype == self.READER_ACS and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T0:
                     # get ATR to see if we have a SAM
                     self.select()
-                    if not self.pcsc_atr[:4] == self.ACS_NO_SAM:
+                    if self.pcsc_atr[:4] != self.ACS_NO_SAM:
                         if self.acs_get_firmware_revision():
                             print(
                                 "          (Firmware: %s, " % self.ToBinary(self.data),
@@ -900,9 +904,9 @@ class rfidiot:
         if self.readertype == self.READER_FROSCH:
             if self.frosch(self.FR_RWD_HF_Reset, ""):
                 return True
-            else:
-                print(self.FROSCH_Errors[self.errorcode])
-                sys.exit(True)
+            # else:
+            print(self.FROSCH_Errors[self.errorcode])
+            sys.exit(True)
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 self.acs_power_off()
@@ -931,11 +935,12 @@ class rfidiot:
         if self.readertype == self.READER_FROSCH:
             if self.frosch(self.FR_RWD_Get_Version, ""):
                 return True
-            else:
-                print(self.FROSCH_Errors[self.errorcode])
-                sys.exit(True)
+            # else:
+            print(self.FROSCH_Errors[self.errorcode])
+            sys.exit(True)
         if self.readertype == self.READER_ANDROID:
             print("Android version: ", self.android.VERSION)
+        return None # pylint fix inconsistent-return-statements
 
     def id(self) -> str:
         return self.readEEPROM(0)[:2] + self.readEEPROM(1)[:2] + self.readEEPROM(2)[:2] + self.readEEPROM(3)[:2]
@@ -1032,7 +1037,8 @@ class rfidiot:
             print(message, end=" ")
             sys.stdout.flush()
         # we need a way to interrupt infinite loop
-        if self.readersubtype == self.READER_OMNIKEY or self.readersubtype == self.READER_SCM:
+        # if self.readersubtype == self.READER_OMNIKEY or self.readersubtype == self.READER_SCM:
+        if self.readersubtype in [self.READER_OMNIKEY, self.READER_SCM]:
             wait = True
             while wait:
                 try:
@@ -1123,8 +1129,8 @@ class rfidiot:
                 if str.find(self.tagtype, "ISO 15693") >= 0:
                     self.data = self.uid = self.HexByteReverse(self.data)
                 return True
-            else:
-                return False
+            # else:
+            return False
         if self.readertype == self.READER_LIBNFC:
             try:
                 if self.DEBUG:
@@ -1137,10 +1143,10 @@ class rfidiot:
                         if self.DEBUG:
                             print("UID: " + self.uid)
                         return True
-                    else:
-                        if self.DEBUG:
-                            print("Error selecting card")
-                        return False
+                    # else:
+                    if self.DEBUG:
+                        print("Error selecting card")
+                    return False
                 elif cardtype == "B":
                     result = self.nfc.selectISO14443B()
                     if result:
@@ -1158,10 +1164,10 @@ class rfidiot:
                             print("PROTOCOL: " + self.protocol)
                             print("CID: " + self.cid)
                         return True
-                    else:
-                        if self.DEBUG:
-                            print("Error selecting card")
-                        return False
+                    # else:
+                    if self.DEBUG:
+                        print("Error selecting card")
+                    return False
                 elif cardtype == "ICLASS":
                     result = self.nfc.selectICLASS()
                     if result:
@@ -1169,10 +1175,10 @@ class rfidiot:
                         if self.DEBUG:
                             print("ID: " + self.uid)
                         return True
-                    else:
-                        if self.DEBUG:
-                            print("Error selecting card")
-                        return False
+                    # else:
+                    if self.DEBUG:
+                        print("Error selecting card")
+                    return False
                 elif cardtype == "JEWEL":
                     result = self.nfc.selectJEWEL()
                     if result:
@@ -1183,10 +1189,10 @@ class rfidiot:
                             print("SENSRES: " + self.btsensres)
                             print("ID: " + self.btid)
                         return True
-                    else:
-                        if self.DEBUG:
-                            print("Error selecting card")
-                        return False
+                    # else:
+                    if self.DEBUG:
+                        print("Error selecting card")
+                    return False
                 else:
                     if self.DEBUG:
                         print("Error: Unknown card type specified: %s" % cardtype)
@@ -1204,12 +1210,12 @@ class rfidiot:
                     if self.DEBUG:
                         print("\tUID: " + self.uid)
                     return True
-                else:
-                    if self.DEBUG:
-                        print("Error selecting card")
-                    return False
-            except ValueError:
-                self.errorcode = "Error reading card using Android" + e
+                # else:
+                if self.DEBUG:
+                    print("Error selecting card")
+                return False
+            except ValueError as _e:
+                self.errorcode = "Error reading card using Android" + _e
         return False
 
     def h2publicselect(self) -> bool:
@@ -1241,9 +1247,9 @@ class rfidiot:
                 self.speed = "04"
                 self.framesize = "08"
                 return True
-            else:
-                return False
-        "high speed select - 106 (speed= 01), 212 (speed= 02), 424 (speed= 04) or 848 (speed= 08) kBaud"
+            # else:
+            return False
+        # "high speed select - 106 (speed= 01), 212 (speed= 02), 424 (speed= 04) or 848 (speed= 08) kBaud"
         self.ser.write("h" + speed)
         ret = self.ser.readline()[:-2]
         if ret == self.ACG_FAIL:
@@ -1272,7 +1278,7 @@ class rfidiot:
             lc = "%02x" % len(myapdu)
             apduout = self.HexArrayToList(self.PCSC_APDU["ACS_DIRECT_TRANSMIT"] + [lc] + myapdu)
         else:
-            if myapdu[0] == "ff" or myapdu[0] == "80":
+            if myapdu[0] in ["ff", "80"]:
                 apduout = self.HexArrayToList(myapdu)
             else:
                 # build pseudo command for ACS 14443-A
@@ -1291,11 +1297,11 @@ class rfidiot:
                     # strip last 4 to remove errorcode
                     self.data = self.data[:-4]
                     return True
-                else:
-                    self.errorcode = self.data[-4:]
-                    # strip ACS status and errorcode in case there is some data expected despite error
-                    self.data = self.data[6:-4]
-                    return False
+                # else:
+                self.errorcode = self.data[-4:]
+                # strip ACS status and errorcode in case there is some data expected despite error
+                self.data = self.data[6:-4]
+                return False
             return True
         self.data = ""
         return False
@@ -1309,24 +1315,24 @@ class rfidiot:
                 apduout = self.HexArrayToList(self.PCSC_APDU["ACS_GET_RESPONSE"] + [("%02x" % sw2)])
                 result, sw1, sw2 = self.pcsc_connection.transmit(apduout, protocol=self.pcsc_protocol)
             return result, sw1, sw2
-        else:
-            hresult, response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
-            if hresult != smartcard.scard.SCARD_S_SUCCESS:
-                return "", 0x63, 0x00
-                # print 'Failed to control: ' + smartcard.scard.SCardGetErrorMessage(hresult)
-                # sys.exit(True)
-            # evil hacky bodge as ACS returns only one byte for this APDU (ACS_DISABLE_AUTO_POLL)
-            # and we ignore failure of we're running on firmware V1 as it doesn't support this command
-            if apdu == [0xFF, 0x00, 0x51, 0x3F, 0x00]:
-                # print 'here!!!'
-                if response == [0x3F] or self.hcard is not None:
-                    return "", 0x90, 0x00
-                else:
-                    return "", 0x63, 0x00
-            result = response[:-2]
-            sw1 = response[-2]
-            sw2 = response[-1]
-            return result, sw1, sw2
+        # else:
+        hresult, response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
+        if hresult != smartcard.scard.SCARD_S_SUCCESS:
+            return "", 0x63, 0x00
+            # print 'Failed to control: ' + smartcard.scard.SCardGetErrorMessage(hresult)
+            # sys.exit(True)
+        # evil hacky bodge as ACS returns only one byte for this APDU (ACS_DISABLE_AUTO_POLL)
+        # and we ignore failure of we're running on firmware V1 as it doesn't support this command
+        if apdu == [0xFF, 0x00, 0x51, 0x3F, 0x00]:
+            # print 'here!!!'
+            if response == [0x3F] or self.hcard is not None:
+                return "", 0x90, 0x00
+            # else:
+            return "", 0x63, 0x00
+        result = response[:-2]
+        sw1 = response[-2]
+        sw2 = response[-1]
+        return result, sw1, sw2
 
     def acs_send_reader_apdu(self, apdu) -> bool:
         "ACS send APDU to reader"
@@ -1352,22 +1358,21 @@ class rfidiot:
                 self.data = self.data[6:]
                 self.data = self.data[:-4]
                 return True
-            else:
-                self.errorcode = self.data[-4:]
-                # strip ACS status and errorcode in case there is some data expected despite error
-                self.data = self.data[6:-4]
-                return False
-            return True
-        else:
-            self.data = ""
+            # else:
+            self.errorcode = self.data[-4:]
+            # strip ACS status and errorcode in case there is some data expected despite error
+            self.data = self.data[6:-4]
             return False
+        #else:
+        self.data = ""
+        return False
 
     def acs_rats(self, control) -> bool:
         "ACS RATS on/off"
         if control:
             return self.acs_send_apdu(self.PCSC_APDU["ACS_RATS_14443_4_ON"])
-        else:
-            return self.acs_send_apdu(self.PCSC_APDU["ACS_RATS_14443_4_OFF"])
+        # else:
+        return self.acs_send_apdu(self.PCSC_APDU["ACS_RATS_14443_4_OFF"])
 
     def acs_mifare_login(self, block, key, keytype) -> bool:
         "ACS Mifare Login"
@@ -1391,7 +1396,8 @@ class rfidiot:
         "ACS READ Block"
         readblock = "%02x" % block
         read = False
-        if self.tagtype == self.ACS_TAG_MIFARE_ULTRA or self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
+        # if self.tagtype == self.ACS_TAG_MIFARE_ULTRA or self.tagtype == self.ACS_TAG_MIFARE_1K or self.tagtype == self.ACS_TAG_MIFARE_4K:
+        if self.tagtype in [self.ACS_TAG_MIFARE_ULTRA, self.ACS_TAG_MIFARE_1K, self.ACS_TAG_MIFARE_4K]:
             status = self.acs_send_apdu(self.PCSC_APDU["ACS_READ_MIFARE"] + [readblock])
             read = True
         if read:
@@ -1426,7 +1432,7 @@ class rfidiot:
         # power antenna off and on to reset ISO14443-4 tags
         self.reset()
         self.acs_send_apdu(self.PCSC_APDU["ACS_POLL_MIFARE"])
-        if not self.data[:4] == self.ACS_TAG_FOUND:
+        if self.data[:4] != self.ACS_TAG_FOUND:
             # this shouldn't happen as the command should return number of tags to be 0 instead
             return False
         tags = int(self.data[4:6])
@@ -1522,12 +1528,12 @@ class rfidiot:
         derivation += hostchallenge[8:16]
         return derivation
 
-    def gp_get_data(self, object):
+    def gp_get_data(self, d_object):
         "Global Platform get data"
         cla = self.CLA_GLOBAL_PLATFORM
         ins = "GET_DATA"
-        p1 = object[0:2]
-        p2 = object[2:4]
+        p1 = d_object[0:2]
+        p2 = d_object[2:4]
         le = "00"
         return self.send_apdu("", "", "", "", cla, ins, p1, p2, "", "", le)
 
@@ -1584,13 +1590,13 @@ class rfidiot:
             print("DEBUG: requesting %d byte challenge" % length)
         return self.send_apdu("", "", "", "", "", ins, "", "", "", "", le)
 
-    def iso_7816_read_binary(self, bytes, offset) -> bool:
+    def iso_7816_read_binary(self, d_bytes, offset) -> bool:
         "7816 read binary - data read will be in .data"
         ins = "READ_BINARY"
         hexoffset = "%04x" % offset
         p1 = hexoffset[0:2]
         p2 = hexoffset[2:4]
-        le = "%02x" % bytes
+        le = "%02x" % d_bytes
         return self.send_apdu("", "", "", "", "", ins, p1, p2, "", "", le)
 
     def iso_7816_select_file(self, file, control, options) -> bool:
@@ -1783,7 +1789,7 @@ class rfidiot:
         block = "%04x" % sector
         apdu.append(block[0:2])  # p1 sector msb
         apdu.append(block[2:4])  # p1 sector lsb
-        if keytype == "AA" or keytype == "FF":
+        if keytype in ["AA", "FF"]:
             apdu.append("60")  # keytype
         elif keytype == "BB":
             apdu.append("61")  # keytype
@@ -1791,7 +1797,7 @@ class rfidiot:
             apdu.append(keytype)
         apdu.append("%02x" % keynum)  # key number
         ret = self.pcsc_send_apdu(apdu)
-        if ret == False:
+        if ret is False:
             # let PCSC get over it!
             time.sleep(0.5)
         return ret
@@ -1801,7 +1807,7 @@ class rfidiot:
         keytype = keytype.upper()
         apdu = []
         apdu += self.PCSC_APDU["VERIFY"]
-        if keytype == "AA" or keytype == "FF":
+        if keytype in ["AA","FF"]:
             apdu.append("60")  # keytype
         elif keytype == "BB":
             apdu.append("61")  # keytype
@@ -1809,7 +1815,7 @@ class rfidiot:
         apdu.append("%02x" % (len(key) / 2))
         apdu.append(key)
         ret = self.pcsc_send_apdu(apdu)
-        if ret == False:
+        if ret is False:
             # let PCSC get over it!
             time.sleep(0.5)
         return ret
@@ -1864,16 +1870,16 @@ class rfidiot:
             if self.errorcode.upper()[0:2] == "6C":
                 apdu[-1] = self.errorcode[2:4]
                 return self.pcsc_send_apdu(apdu)
-            else:
-                return ret
+            # else:
+            return ret
 
     def readMIFAREblock(self, block) -> bool:
         if self.readertype == self.READER_LIBNFC:
             if self.libnfc_mifare_read_block(block):
                 self.MIFAREdata = self.data
-            else:
-                return False
-        elif self.readblock(block):
+            # else:
+            return False
+        if self.readblock(block):
             self.MIFAREdata = self.data
         else:
             return False
@@ -1944,7 +1950,7 @@ class rfidiot:
         ret += self.ser.read(1)
         # if read times out, reset may be required for normal read mode
         if len(ret) == 0:
-            if command == self.FR_HT2_Read_PublicB or command == self.FR_HT2_Read_Miro:
+            if command in [self.FR_HT2_Read_PublicB, self.FR_HT2_Read_Miro]:
                 self.frosch(self.FR_RWD_Stop_Cmd, "")
             self.errorcode = self.FR_TIMEOUT
             return False
@@ -1971,24 +1977,26 @@ class rfidiot:
             # for consistency with ACG, data is converted to printable hex before return
             self.data = self.ToHex(ret[2 : len(ret) - 1])
             return True
-        else:
-            self.errorcode = self.ToHex(status)
-            self.data = ""
-            if self.DEBUG:
-                print("Frosch error:", int(self.errorcode, 16) - 256)
-            # reader may need resetting to normal read mode
-            if command == self.FR_HT2_Read_PublicB or command == self.FR_HT2_Read_Miro:
-                self.frosch(self.FR_RWD_Stop_Cmd, "")
-            return False
+        # else:
+        self.errorcode = self.ToHex(status)
+        self.data = ""
+        if self.DEBUG:
+            print("Frosch error:", int(self.errorcode, 16) - 256)
+        # reader may need resetting to normal read mode
+        if command in [self.FR_HT2_Read_PublicBa, self.FR_HT2_Read_Miro]:
+            self.frosch(self.FR_RWD_Stop_Cmd, "")
+        return False
 
     def frosch_bcc(self, data, seed) -> int:
         bcc = seed
         if self.FR_BCC_Mode == self.FR_COMMAND_MODE:
-            for x in range(len(data)):
-                bcc = xor(bcc, ord(data[x]))
+            # for x in range(len(data)):
+            #     bcc = xor(bcc, ord(data[x]))
+            for x in data:
+                bcc = xor(bcc, ord(x))
         else:
-            for x in range(len(data)):
-                bcc += ord(data[x])
+            for x in data:
+                bcc += ord(x)
             bcc = int(bcc & 0xFF)
         return bcc
 
@@ -2420,10 +2428,11 @@ class rfidiot:
 
     def HexReverse(self, data) -> str:
         "Reverse HEX characters"
-        output = ""
-        for y in reversed(list(range(len(data)))):
-            output += data[y]
-        return output
+        return data[::-1]
+        # output = ""
+        # for y in reversed(list(range(len(data)))):
+        #     output += data[y]
+        # return output
 
     def HexBitReverse(self, data) -> str:
         "Convert HEX to Binary then bit reverse and convert back"
@@ -2441,13 +2450,13 @@ class rfidiot:
     def NibbleReverse(self, data) -> str:
         "Reverse Nibbles"
         output = ""
-        for y in range(len(data)):
+        for d in data:
             leftnibble = ""
             rightnibble = ""
             for x in range(4):
-                leftnibble += str(ord(data[y]) >> x & 1)
+                leftnibble += str(ord(d) >> x & 1)
             for x in range(4, 8):
-                rightnibble += str(ord(data[y]) >> x & 1)
+                rightnibble += str(ord(d) >> x & 1)
             output += str(chr(int(rightnibble + leftnibble, 2)))
         return output
 
@@ -2457,10 +2466,13 @@ class rfidiot:
 
     def ToHex(self, data) -> str:
         "convert binary data to hex printable"
-        string = ""
-        for x in range(len(data)):
-            string += "%02x" % ord(data[x])
-        return string
+        if isinstance(data, str):
+            data = bytes(data.encode())
+        return data.hex()
+        # string = ""
+        # for x in range(len(data)):
+        #     string += "%02x" % ord(data[x])
+        # return string
 
     def HexPrint(self, data) -> None:
         print(self.ToHex(data))
@@ -2475,17 +2487,19 @@ class rfidiot:
         return out
 
     def ListToHex(self, data) -> str:
-        string = ""
-        for d in data:
-            string += "%02X" % d
-        return string
+        return ''.join(f"{x:02X}" for x in data)
+        # string = ""
+        # for d in data:
+        #     string += "%02X" % d
+        # return string
 
     def HexArrayToString(self, array) -> str:
         # translate array of strings to single string
-        out = ""
-        for n in array:
-            out += n
-        return out
+        return ''.join(array)
+        # out = ""
+        # for n in array:
+        #     out += n
+        # return out
 
     def HexArraysToArray(self, array) -> list:
         # translate an array of strings to an array of 2 character strings
@@ -2507,22 +2521,24 @@ class rfidiot:
         return out
 
     def HexToList(self, string) -> list:
+        return list(bytearray.fromhex(string))
         # translate string of 2 char HEX to int list
-        n = 0
-        out = []
-        while n < len(string):
-            out.append(int(string[n : n + 2], 16))
-            n += 2
-        return out
+        # n = 0
+        # out = []
+        # while n < len(string):
+        #     out.append(int(string[n : n + 2], 16))
+        #     n += 2
+        # return out
 
     def ToBinary(self, string) -> str:
         "convert hex string to binary characters"
-        output = ""
-        x = 0
-        while x < len(string):
-            output += chr(int(string[x : x + 2], 16))
-            x += 2
-        return output
+        return bytearray.fromhex(string).decode()
+        # output = ""
+        # x = 0
+        # while x < len(string):
+        #     output += chr(int(string[x : x + 2], 16))
+        #     x += 2
+        # return output
 
     def BinaryPrint(self, data) -> None:
         "print binary representation"
@@ -2531,11 +2547,16 @@ class rfidiot:
     def ToBinaryString(self, data) -> str:
         "convert binary data to printable binary ('01101011')"
         output = ""
-        string = self.ToHex(data)
-        for x in range(0, len(string), 2):
-            for y in range(7, -1, -1):
-                output += "%s" % (int(string[x : x + 2], 16) >> y & 1)
+        for b in bytearray(data,  encoding='utf8'):
+            # output += bin(b)[2:].zfill(8) # .removepreffix('0b')
+            output += '{:08b}'.format(b)
         return output
+        # output = ""
+        # string = self.ToHex(data)
+        # for x in range(0, len(string), 2):
+        #     for y in range(7, -1, -1):
+        #         output += "%s" % (int(string[x : x + 2], 16) >> y & 1)
+        # return output
 
     def BinaryToManchester(self, data) -> str:
         "convert binary string to manchester encoded string"
@@ -2557,8 +2578,8 @@ class rfidiot:
             adjusted += chr(y + (not parity % 2))
         return adjusted
 
-    def DESKey(self, seed, type, length) -> str:
-        d = seed + type
+    def DESKey(self, seed, d_type, length) -> str:
+        d = seed + d_type
         kencsha = SHA.new(d)
         k = kencsha.digest()
         kp = self.DESParity(k)
@@ -2584,8 +2605,8 @@ class rfidiot:
             current = message[y * 8 : (y * 8) + 8]
             left = ""
             right = ""
-            for x in range(len(mac)):
-                left += "%02x" % ord(mac[x])
+            for x, v in enumerate(mac):
+                left += "%02x" % ord(v)
                 right += "%02x" % ord(current[x])
             machex = "%016x" % xor(int(left, 16), int(right, 16))
             mac = tdes.encrypt(self.ToBinary(machex))
@@ -2609,8 +2630,9 @@ class rfidiot:
         for y in range(len(message) / 8):
             current = message[y * 8 : (y * 8) + 8]
             left = right = ""
-            for x in range(len(mac)):
-                left += "%02x" % ord(mac[x])
+            # for x in range(len(mac)):
+            for x, v in enumerate(mac):
+                left += "%02x" % ord(v)
                 right += "%02x" % ord(current[x])
             machex = "%016x" % xor(int(left, 16), int(right, 16))
             mac = tdesa.encrypt(self.ToBinary(machex))
@@ -2761,8 +2783,8 @@ class rfidiot:
         if atr[8:12] == self.PCSC_CSC:
             ss = atr[24:26]
             return self.PCSC_SS[ss]
-        else:
-            return "SMARTCARD"
+        # else:
+        return "SMARTCARD"
 
     def PCSCPrintATR(self, data) -> bool:
         "print breakdown of HEX ATR"
@@ -2839,9 +2861,9 @@ class rfidiot:
         if int(data[-2:], 16) == tck:
             print("(OK)")
             return True
-        else:
-            print("(Checksum error: %02x)" % tck)
-            return False
+        # else:
+        print("(Checksum error: %02x)" % tck)
+        return False
 
     def shutdown(self) -> None:
         if self.readertype == self.READER_LIBNFC:

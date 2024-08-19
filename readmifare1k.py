@@ -128,7 +128,8 @@ while sector < 16:
             print("\t    " + card.MIFAREACKB[card.MIFAREblock3AC])
             print()
             continue
-        elif card.errorcode != "":
+        # elif card.errorcode != "":
+        if card.errorcode != "":
             print(f"Login Error: {card.errorcode} {card.get_error_str(card.errorcode)}")
         elif ctype == "FF":
             print("Login failed")

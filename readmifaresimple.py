@@ -168,9 +168,9 @@ while block <= endblock and not reset:
                 goodkey = y
                 goodkeytype = x
                 break
-            else:
-                # clear the error
-                card.select()
+            # else:
+            # clear the error
+            card.select()
 
     if loggedin:
         print(f"OK {goodkey} {goodkeytype}) Data:", end="")
@@ -254,9 +254,9 @@ while block <= endblock:
                 goodkey = y
                 goodkeytype = x
                 break
-            else:
-                # clear the error
-                card.select()
+            # else:
+            # clear the error
+            card.select()
 
     if loggedin:
         if (block + 1) % 4:

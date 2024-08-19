@@ -24,11 +24,12 @@ import sys
 
 # import os
 # import string
-import rfidiot
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
+    print("Couldn't open reader!")
     sys.exit(True)
 
 args = rfidiot.args
@@ -72,7 +73,7 @@ if not arg_help and (len(args) >= 3 or precoded):
                     card.settagtype(card.ALL)
             card.waitfortag("Waiting for blank tag...")
             print("  Tag ID: " + card.data)
-            if card.tagtype == card.Q5 or card.tagtype == card.HITAG2:
+            if card.tagtype in (card.Q5, card.HITAG2):
                 x = input("  *** Warning! This will overwrite TAG! Proceed (y/n)? ").upper()
                 if x == "N":
                     sys.exit(False)
@@ -112,7 +113,7 @@ if not arg_help and (len(args) >= 3 or precoded):
     for x in range(1, 5, 1):
         print("    Hitag2 Data Block %02d:" % (x + 3), end="")
         print(outhex[x])
-    if writetag == True:
+    if writetag is True:
         print()
         print("  Writing to tag type: " + card.LFXTags[card.tagtype])
         if card.tagtype == card.Q5:

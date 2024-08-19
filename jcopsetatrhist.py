@@ -53,12 +53,12 @@ if Help or len(args) < 2:
     sys.exit(True)
 
 
-def jcop_set_atr_hist(bytes):
+def jcop_set_atr_hist(d_bytes):
     cla = CLA
     ins = "ATR_HIST"
     p1 = P1
     p2 = P2
-    data = "%02X" % (len(bytes) / 2) + bytes
+    data = "%02X" % (len(d_bytes) / 2) + d_bytes
     lc = "%02X" % (len(data) / 2)
     if card.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, ""):
         return True, card.data
@@ -73,10 +73,11 @@ def select_atrhist_app():
     data = JCOP_ATR_AID
     lc = "%02X" % (len(data) / 2)
     card.send_apdu("", "", "", "", "", ins, p1, p2, lc, data, "")
-    if card.errorcode == card.ISO_OK:
-        return True
-    else:
-        return False
+    return bool(card.errorcode == card.ISO_OK)
+    # if card.errorcode == card.ISO_OK:
+    #     return True
+    # else:
+    #     return False
 
 
 def error_exit(message, error):

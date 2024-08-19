@@ -19,12 +19,17 @@
 #    GNU General Public License for more details.
 #
 
+# pylint: disable=global-statement,global-variable-not-assigned,too-many-nested-blocks,too-many-branches,too-many-statements,too-many-lines
+
 import sys
 import os
 # import subprocess
 # import io
-from tkinter import *
-from operator import *
+from tkinter import (
+    Frame, Canvas, Checkbutton, Radiobutton, Button, Label,
+    Tk, W, NW, NE, E
+)
+from operator import xor, and_
 from Crypto.Hash import SHA
 from Crypto.Cipher import DES3, DES
 # import string
@@ -355,19 +360,26 @@ MRZ_FIELD_KEYS_ID = (5, 30, 38)
 SSC = ""
 
 # Global bruteforce vars
-num = []
-map = []
+br_num = []
+br_map = []
 brnum = 0
 
 
 def mrzspaces(data, fill):
     out = ""
-    for x in range(len(data)):
-        if data[x] == "<":
+    for x in data:
+        if x == "<":
             out += fill
         else:
-            out += data[x]
+            out += x
     return out
+
+#    for x in range(len(data)):
+#        if data[x] == "<":
+#            out += fill
+#        else:
+#            out += data[x]
+#    return out
 
 
 Displayed = False
@@ -375,8 +387,8 @@ Display_DG7 = False
 
 
 def drawfeatures(face, features):
-    global Displayed
-    global Style
+    global Displayed # global
+    global Style # global
 
     face.delete("feature")
     if Displayed:
@@ -456,11 +468,11 @@ def secure_select_file(keyenc, keymac, file):
             print("OK")
         check_cc(keymac, out)
         return True, out
-    else:
-        return False, passport.errorcode
+    # else:
+    return False, passport.errorcode
 
 
-def secure_read_binary(keymac, bytes, offset):
+def secure_read_binary(keymac, d_bytes, offset):
     "secure read binary data"
     global SSC
 
@@ -469,7 +481,7 @@ def secure_read_binary(keymac, bytes, offset):
     hexoffset = "%04x" % offset
     p1 = hexoffset[0:2]
     p2 = hexoffset[2:4]
-    le = "%02x" % bytes
+    le = "%02x" % d_bytes
     command = passport.PADBlock(passport.ToBinary(cla + ins + p1 + p2))
     do97 = passport.ToBinary(passport.DO97 + le)
     m = command + do97
@@ -488,14 +500,14 @@ def secure_read_binary(keymac, bytes, offset):
     if passport.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le):
         out = passport.data
     if DEBUG:
-        print("Secure Read Binary (%02d bytes): " % bytes, end="")
+        print("Secure Read Binary (%02d bytes): " % d_bytes, end="")
     if passport.errorcode == APDU_OK:
         if DEBUG:
             print("OK:", out)
         check_cc(keymac, out)
         return True, out
-    else:
-        return False, passport.errorcode
+    # else:
+    return False, passport.errorcode
 
 
 def calculate_check_digit(data):
@@ -540,22 +552,22 @@ def check_cc(key, rapdu):
         if DEBUG:
             print("(verified)")
         return True
-    else:
-        print("Cryptographic Checksum failed!")
-        print("Expected CC: ", end="")
-        passport.HexPrint(cc)
-        print("Received CC: ", end="")
-        print(rapdu[len(rapdu) - len(cc) * 2 :])
-        sys.exit(True)
+    # else:
+    print("Cryptographic Checksum failed!")
+    print("Expected CC: ", end="")
+    passport.HexPrint(cc)
+    print("Received CC: ", end="")
+    print(rapdu[len(rapdu) - len(cc) * 2 :])
+    sys.exit(True)
 
 
-def decode_ef_com(data):
+def decode_ef_com(data):  # inconsistent-return-statements
+    "display contents of EF.COM"
     TAG_PAD = "80"
 
     # set up array for Data Groups to be read
     ef_groups = []
 
-    "display contents of EF.COM"
     hexdata = passport.ToHex(data)
     # skip header
     pos = 2
@@ -565,7 +577,7 @@ def decode_ef_com(data):
     while pos < len(hexdata):
         # end of data
         if hexdata[pos : pos + 2] == TAG_PAD:
-            return
+            return None # fix pylint inconsistent-return-statements
         # LDS & Unicode Versions
         decoded = False
         for length in 2, 4:
@@ -583,7 +595,7 @@ def decode_ef_com(data):
                     length = asn1datalength(hexdata[pos:])
                     print(length)
                     pos += asn1fieldlength(hexdata[pos:])
-                    for n in range(length):
+                    for n in range(length): # Unused variable 'n'
                         print("      Data Group: ", end="")
                         print(hexdata[pos : pos + 2] + " (" + TAG_NAME[hexdata[pos : pos + 2]] + ")")
                         ef_groups.append(hexdata[pos : pos + 2])
@@ -610,7 +622,7 @@ def read_file(file):
         return False, ""
     data = passport.data
     # get file length
-    tag = data[:2]
+    tag = data[:2] # pylint tag unused-variable
     datalen = asn1datalength(data[2:])
     print("File Length:", datalen)
     # deduct length field and header from what we've already read
@@ -643,9 +655,10 @@ def asn1fieldlength(data):
         return 6
     if int(data[:2], 16) == 0x83:
         return 8
+    return None # to fix inconsistent-return-statements
 
 
-def asn1datalength(data):
+def asn1datalength(data):   # inconsistent-return-statements
     # return actual length represented by asn.1 field
     if int(data[:2], 16) <= 0x7F:
         return int(data[:2], 16)
@@ -655,6 +668,7 @@ def asn1datalength(data):
         return int(data[2:6], 16)
     if int(data[:2], 16) == 0x83:
         return int(data[2:8], 16)
+    return 0 # should not happen
 
 
 def secure_read_file(keyenc, keymac, file):
@@ -680,7 +694,7 @@ def secure_read_file(keyenc, keymac, file):
 
     # get file length
     do87hex = passport.ToHex(decdo87)
-    tag = do87hex[:2]
+    # tag = do87hex[:2]  # unused-variable
     datalen = asn1datalength(do87hex[2:])
     print("File Length:", datalen)
     # deduct length field and header from what we've already read
@@ -755,10 +769,14 @@ def decode_ef_dg1(data):
         FieldLengths = MRZ_FIELD_LENGTHS
         FieldKeys = MRZ_FIELD_KEYS
     pointer = 0
-    for n in range(len(FieldNames)):
-        print("    " + FieldNames[n] + ": ", end="")
-        print(out[pointer : pointer + FieldLengths[n]])
-        pointer += FieldLengths[n]
+    for n in FieldNames:
+        print("    " + n + ": ", end="")
+        print(out[pointer : pointer + n])
+        pointer += n
+#    for n in range(len(FieldNames)):
+#        print("    " + FieldNames[n] + ": ", end="")
+#        print(out[pointer : pointer + FieldLengths[n]])
+#        pointer += FieldLengths[n]
     return out
 
 
@@ -793,14 +811,14 @@ def decode_ef_dg2(data):
                     position += length
                     fieldlength = asn1datalength(datahex[position:])
                     print("     length:", fieldlength)
-                    if tag == BDB or tag == BDB1:
+                    if tag in (BDB, BDB1):
                         # process CBEFF block
                         position += asn1fieldlength(datahex[position:])
                         startposition = position / 2
                         # FACE header
                         length = len(FAC)
                         tag = datahex[position : position + length]
-                        if not tag == FAC:
+                        if tag != FAC:
                             print("Missing FAC in CBEFF block: %s" % tag)
                             sys.exit(True)
                         position += length
@@ -809,7 +827,7 @@ def decode_ef_dg2(data):
                         position += 8
                         # Image length
                         print("      Record Length: %d" % int(datahex[position : position + 8], 16))
-                        imagelength = int(datahex[position : position + 8], 16)
+                        # imagelength = int(datahex[position : position + 8], 16) @ unused
                         position += 8
                         # Number of Images
                         images = int(datahex[position : position + 4], 16)
@@ -872,10 +890,8 @@ def decode_ef_dg2(data):
                             instance += 1
                         else:
                             filename = "%sEF_DG2.%s" % (tempfiles, Filetype)
-                        img = open(filename, "wb+")
-                        img.write(data[position / 2 : startposition + fieldlength])
-                        img.flush()
-                        img.close()
+                        with open(filename, "wb+") as img:
+                            img.write(data[position / 2 : startposition + fieldlength])
                         print("     JPEG image stored in %s" % filename)
                         position = (startposition + fieldlength) * 2
                     else:
@@ -926,17 +942,15 @@ def decode_ef_dg7(data):
                     position += fieldlength * 2
                 elif tag == "5f43":
                     position += asn1fieldlength(datahex[position:])
-                    img = open(tempfiles + "EF_DG7." + Filetype, "wb+")
-                    img.write(data[position / 2 : position + fieldlength])
-                    img.flush()
-                    img.close()
+                    with open(tempfiles + "EF_DG7." + Filetype, "wb+") as img:
+                        img.write(data[position / 2 : position + fieldlength])
                     print("     JPEG image stored in %sEF_DG7.%s" % (tempfiles, Filetype))
                     Display_DG7 = True
                     position += fieldlength * 2
         if not decoded:
             print("Unrecognised element:", datahex[position : position + 4])
             sys.exit(True)
-    return
+    return # pylint  useless-return ?
 
 
 def jmrtd_create_file(file, length):
@@ -1063,9 +1077,9 @@ def vonjeek_setBAC():
     print("Forcing BAC mode to ENABLED")
     if passport.send_apdu("", "", "", "", "10", "VONJEEK_SET_BAC", "00", "01", "00", "", ""):
         return
-    else:
-        print("ERROR Could not enable BAC, make sure you are using a recent vonJeek emulator")
-        sys.exit(True)
+    # else:
+    print("ERROR Could not enable BAC, make sure you are using a recent vonJeek emulator")
+    sys.exit(True)
 
 
 def vonjeek_unsetBAC():
@@ -1073,9 +1087,9 @@ def vonjeek_unsetBAC():
     print("Forcing BAC mode to DISABLED")
     if passport.send_apdu("", "", "", "", "10", "VONJEEK_SET_BAC", "00", "00", "00", "", ""):
         return
-    else:
-        print("ERROR Could not disable BAC, make sure you are using a recent vonJeek emulator")
-        sys.exit(True)
+    # else:
+    print("ERROR Could not disable BAC, make sure you are using a recent vonJeek emulator")
+    sys.exit(True)
 
 
 def jmrtd_lock():
@@ -1090,37 +1104,38 @@ def jmrtd_lock():
 
 
 def bruteno(init):
-    global num
-    global map
-    global brnum
-    global width
+    global br_num # global
+    global br_map # global
+    global brnum # global
+    global width # global
 
     if init:
         # set up brute force and return number of iterations required
         width = 0
-        for x in range(len(init)):
-            if init[x] == "?":
+        # for x in range(len(init)):
+        for x, init_dat in enumerate(init):
+            if init_dat == "?":
                 width += 1
-                num.append(0)
-                map.append(True)
+                br_num.append(0)
+                br_map.append(True)
             else:
-                num.append(init[x])
-                map.append(False)
+                br_num.append(init_dat)
+                br_map.append(False)
         return pow(10, width)
-    else:
-        out = ""
-        bruted = False
-        for x in range(len(num)):
-            if map[x]:
-                if bruted:
-                    continue
-                else:
-                    bruted = True
-                    out += "%0*d" % (width, brnum)
-                    brnum += 1
-            else:
-                out += num[x]
-        return out
+    # else:
+    out = ""
+    bruted = False
+    for x in range(len(br_num)):  # pylint: disable=consider-using-enumerate
+        if br_map[x]:
+            if bruted:
+                continue
+            # else:
+            bruted = True
+            out += "%0*d" % (width, brnum)
+            brnum += 1
+        else:
+            out += br_num[x]
+    return out
 
 
 try:
@@ -1150,7 +1165,7 @@ UNSETBAC = False
 PACE = False
 
 
-def help():
+def print_help():
     print()
     print("Usage:")
     print("\t" + sys.argv[0] + " [OPTIONS] <MRZ (Lower)|PLAIN|CHECK|[PATH]> [WRITE|WRITELOCK|SLOWBRUTE]")
@@ -1176,7 +1191,7 @@ def help():
 
 
 if len(args) == 0 or Help:
-    help()
+    print_help()
 
 arg0 = args[0].upper()
 
@@ -1198,7 +1213,7 @@ if (
 
 if len(args) == 2:
     arg1 = args[1].upper()
-    if not (arg1 == "WRITE" or arg1 == "WRITELOCK" or arg1 == "SLOWBRUTE"):
+    if arg1 in ('WRITE', 'WRITELOCK', 'SLOWBRUTE'):
         help()
 
 print()
@@ -1210,14 +1225,23 @@ if os.access(args[0], os.F_OK):
     if not filespath[len(filespath) - 1] == "/":
         filespath += "/"
     try:
-        passfile = open(filespath + "EF_COM.BIN", "rb")
+        with open(filespath + "EF_COM.BIN", "rb") as passfile:
+            data = passfile.read()
+        eflist = decode_ef_com(data)
+        raw_efcom = data
     except:
         print("Can't open %s" % (filespath + "EF_COM.BIN"))
         sys.exit(True)
-    data = passfile.read()
-    eflist = decode_ef_com(data)
-    raw_efcom = data
-    passfile.close()
+
+#    try:
+#        passfile = open(filespath + "EF_COM.BIN", "rb")
+#    except:
+#        print("Can't open %s" % (filespath + "EF_COM.BIN"))
+#        sys.exit(True)
+#    data = passfile.read()
+#    eflist = decode_ef_com(data)
+#    raw_efcom = data
+#    passfile.close()
 
 if arg0 == "PLAIN" or len(arg0) == 44 or len(arg0) == 21 or FILES:
     if len(args) == 2:
@@ -1291,10 +1315,10 @@ if not FILES and not TEST:
     if status:
         # TODO CardAccess parsing
         print("  Stored in", tempfiles + TAG_FILE[EF_CardAccess])
-        outfile = open(tempfiles + TAG_FILE[EF_CardAccess], "wb+")
-        outfile.write(data)
-        outfile.flush()
-        outfile.close()
+
+        with open(tempfiles + TAG_FILE[EF_CardAccess], "wb+") as outfile:
+            outfile.write(data)
+            outfile.flush()
         print("ePP supports PACE! (but we don't :p)")
         PACE = True
     else:
@@ -1472,7 +1496,7 @@ if not FILES and BAC:
                     passport.iso_7816_fail(passport.errorcode)
         if DEBUG or TEST:
             print("Auth Response: " + respdata)
-        resp = respdata[:64]
+        resp = respdata[:64]  # pylint respdata possibly-used-before-assignment
         respmac = respdata[64:80]
         if DEBUG or TEST:
             print("Auth message: " + resp)
@@ -1486,7 +1510,7 @@ if not FILES and BAC:
         if DEBUG or TEST:
             print("Decrypted rnd_ifd: " + recifd, end="")
         # check returned rnd_ifd matches our challenge
-        if not passport.ToBinary(recifd) == passport.ToBinary(rnd_ifd):
+        if passport.ToBinary(recifd) != passport.ToBinary(rnd_ifd):
             print("Challenge failed!")
             print("Expected rnd_ifd: ", rnd_ifd)
             print("Received rnd_ifd: ", recifd)
@@ -1553,10 +1577,9 @@ if not FILES and BAC:
         passport.HexPrint(data)
     eflist = decode_ef_com(data)
     raw_efcom = data
-    efcom = open(tempfiles + TAG_FILE[EF_COM], "wb+")
-    efcom.write(data)
-    efcom.flush()
-    efcom.close()
+    with open(tempfiles + TAG_FILE[EF_COM], "wb+") as efcom:
+        efcom.write(data)
+        # efcom.flush()
     print("EF.COM stored in", tempfiles + TAG_FILE[EF_COM])
 
 if not FILES and not BAC:
@@ -1569,12 +1592,14 @@ if not FILES and not BAC:
         passport.HexPrint(data)
     eflist = decode_ef_com(data)
     raw_efcom = data
+
+    # ??
     bacfile = open(tempfiles + NOBAC_FILE, "wb+")
     bacfile.close()
-    efcom = open(tempfiles + TAG_FILE[EF_COM], "wb+")
-    efcom.write(data)
-    efcom.flush()
-    efcom.close()
+
+    with open(tempfiles + TAG_FILE[EF_COM], "wb+") as efcom:
+        efcom.write(data)
+        efcom.flush()
     print("EF.COM stored in", tempfiles + TAG_FILE[EF_COM])
 
 # get SOD
@@ -1605,22 +1630,30 @@ for tag in eflist:
         else:
             status, data = read_file(TAG_FID[tag])
         if not status:
-            print("skipping (%s)" % passport.get_error_str(card.errorcode))
+            print("skipping (%s)" % passport.get_error_str(data))
             continue
     else:
         try:
-            passfile = open(filespath + TAG_FILE[tag], "rb")
+            with open(filespath + TAG_FILE[tag], "rb") as passfile:
+                data = passfile.read()
         except:
             print("*** Warning! Can't open %s" % filespath + TAG_FILE[tag])
             continue
-        data = passfile.read()
+
+
+# Orig code never closed file ??
+#        try:
+#            passfile = open(filespath + TAG_FILE[tag], "rb")
+#        except:
+#            print("*** Warning! Can't open %s" % filespath + TAG_FILE[tag])
+#            continue
+#        data = passfile.read()
 
     if DEBUG:
         passport.HexPrint(data)
-    outfile = open(tempfiles + TAG_FILE[tag], "wb+")
-    outfile.write(data)
-    outfile.flush()
-    outfile.close()
+    with open(tempfiles + TAG_FILE[tag], "wb+") as outfile:
+        outfile.write(data)
+
     print("  Stored in", tempfiles + TAG_FILE[tag])
     # special cases
     if tag == EF_SOD:
@@ -1628,10 +1661,10 @@ for tag in eflist:
         sodhex = passport.ToHex(data)
         tag = sodhex[:2]
         fieldlength = asn1fieldlength(sodhex[2:])
-        outfile = open(tempfiles + "EF_SOD.TMP", "wb+")
-        outfile.write(data[1 + fieldlength / 2 :])
-        outfile.flush()
-        outfile.close()
+
+        with open(tempfiles + "EF_SOD.TMP", "wb+") as outfile:
+            outfile.write(data[1 + fieldlength / 2 :])
+
         exitstatus = os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)
         if not exitstatus:
             exitstatus = os.system("openssl pkcs7 -in %sEF_SOD.TMP -out %sEF_SOD.PEM -inform DER" % (tempfiles, tempfiles))
@@ -1651,10 +1684,8 @@ for tag in eflist:
         dg15hex = passport.ToHex(data)
         tag = dg15hex[:2]
         fieldlength = asn1fieldlength(dg15hex[2:])
-        outfile = open(tempfiles + "EF_DG15.TMP", "wb+")
-        outfile.write(data[1 + fieldlength / 2 :])
-        outfile.flush()
-        outfile.close()
+        with open(tempfiles + "EF_DG15.TMP", "wb+") as outfile:
+            outfile.write(data[1 + fieldlength / 2 :])
         exitstatus = os.system("openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
         if not exitstatus:
             os.system("openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles, tempfiles))
@@ -1722,18 +1753,19 @@ if Jmrtd:
             data = raw_efcom
         else:
             try:
-                passfile = open(filespath + TAG_FILE[tag], "rb")
+                # passfile = open(filespath + TAG_FILE[tag], "rb")
+                with open(filespath + TAG_FILE[tag], "rb") as passfile:
+                    data = passfile.read()
             except:
                 print("*** Warning! Can't open %s" % filespath + TAG_FILE[tag])
                 continue
-            data = passfile.read()
         print("Creating JMRTD", TAG_NAME[tag], "Length", len(data))
         jmrtd_create_file(TAG_FID[tag], len(data))
         print("Writing JMRTD", TAG_NAME[tag])
         jmrtd_write_file(TAG_FID[tag], data)
     # set private key
     # second line of MRZ is second half of decoded mrz from DG1
-    passport.MRPmrzl(mrz[len(mrz) / 2 :])
+    passport.MRPmrzl(mrz[len(mrz) / 2 :])  # pylint mrz possibly-used-before-assignment
     print("Setting 3DES key")
     jmrtd_personalise(
         mrz[FieldKeys[0] : FieldKeys[0] + 9],
@@ -1771,7 +1803,7 @@ if not Nogui:
     fonta = "courier 22"
 
     frame = Frame(root, colormap="new", visual="truecolor").grid()
-    root.title("%s (RFIDIOt v%s)" % (myver, passport.VERSION))
+    root.title(f"{myver} (RFIDIOt v{passport.VERSION})")
     if Filetype == "JP2":
         # nasty hack to deal with JPEG 2000 until PIL support comes along
         exitstatus = os.system("convert %sJP2 %sJPG" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
@@ -1873,5 +1905,6 @@ if not Nogui:
     row += 1
     Label(frame, text="http://rfidiot.org").grid(row=row, sticky=W, column=1)
     root.mainloop()
+
 passport.shutdown()
 sys.exit(False)

@@ -24,10 +24,10 @@ import sys
 import random
 
 # import string
-import os
-import rfidiot
+# import os
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")

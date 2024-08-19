@@ -21,14 +21,14 @@
 
 
 import sys
-
 # import os
-import rfidiot
-from rfidiot.pn532 import *
 
 try:
+    import rfidiot
+    from rfidiot.pn532 import *
     card = rfidiot.card
 except:
+    print("Couldn't open reader!")
     sys.exit(True)
 
 args = rfidiot.args

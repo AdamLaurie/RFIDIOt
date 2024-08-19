@@ -26,11 +26,11 @@
 #       15/11/08 - ver 0.1a - first cut, seems to work. :)
 #       13/01/09 - ver 0.1b - add RANDOM UID mode
 
-import rfidiot
 import sys
-import os
+# import os
 
 try:
+    import rfidiot
     card = rfidiot.card
 except:
     print("Couldn't open reader!")
@@ -125,10 +125,11 @@ def select_mifare_app():
     data = MIFARE_AID
     lc = "%02X" % (len(data) / 2)
     card.send_apdu("", "", "", "", "", ins, p1, p2, lc, data, "")
-    if card.errorcode == card.ISO_OK:
-        return True
-    else:
-        return False
+    return bool(card.errorcode == card.ISO_OK)
+    # if card.errorcode == card.ISO_OK:
+    #     return True
+    # else:
+    #     return False
 
 
 def error_exit(message, error):

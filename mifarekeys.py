@@ -79,7 +79,6 @@ for n in keyA:
 newkeyAbyte6 = 0x00
 m = 0b01000000
 for n, b in enumerate(keyA):
-    # newkeyAbyte6 |= (b >> n + 1) & (pow(2, 7 - (n + 1)))
     newkeyAbyte6 |= (b >> n + 1) & m
     m >>= 1
 newkeyA.append(newkeyAbyte6)
@@ -96,7 +95,6 @@ newkeyB = bytearray([0])
 newkeyBbyte1 = 0x00
 m = 0b00000010
 for n, b in enumerate(keyB):
-    # newkeyBbyte1 |= b >> 7 - (n + 1) & pow(2, n + 1)
     newkeyBbyte1 |= b >> 7 - (n + 1) & m
     m <<= 1
 newkeyB.append(newkeyBbyte1)
