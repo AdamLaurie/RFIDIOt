@@ -116,7 +116,8 @@ def pn532_print_firmware(data):
         print("  Support:", end=" ")
         support = int(data[10:12], 16)
         spacing = ""
-        for n in list(PN532_FUNCTIONS.keys()):
+        # for n in list(PN532_FUNCTIONS.keys()):
+        for n in PN532_FUNCTIONS:
             if support & n:
                 print(spacing + PN532_FUNCTIONS[n])
                 spacing = "           "

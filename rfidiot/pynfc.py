@@ -25,6 +25,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods,too-few-public-methods,attribute-defined-outside-init
+
 import sys
 import ctypes
 import ctypes.util
@@ -304,53 +306,55 @@ class NFC_TARGET(ctypes.Structure):
 NFC_DEVICE_LIST = NFC_CONNSTRING * MAX_DEVICES
 
 
-class ISO14443A(object):
+class ISO14443A():
     def __init__(self, ti):
-        self.uid = "".join(["%02X" % x for x in ti.abtUid[: ti.uiUidLen]])
+        self.uid = "".join([f"{x:02X}" for x in ti.abtUid[: ti.uiUidLen]])
         if ti.uiAtsLen:
-            self.atr = "".join(["%02X" % x for x in ti.abtAts[: ti.uiAtsLen]])
+            self.atr = "".join([f"{x:02X}" for x in ti.abtAts[: ti.uiAtsLen]])
         else:
             self.atr = ""
-        self.atqa = "".join(["%02X" % x for x in ti.abtAtqa])
-        self.sak = "%02X" % ti.btSak
+        self.atqa = "".join([f"{x:02X}" for x in ti.abtAtqa])
+        self.sak = f"{ti.btSak:02X}"
 
     def __str__(self):
-        rv = "ISO14443A(uid='%s', atr='%s', atqa='%s', sak='%s')" % (
-            self.uid,
-            self.atr,
-            self.atqa,
-            self.sak,
-        )
+        rv = "ISO14443A(uid='{0.uid}', atr='{0.atr}', atqa='{0.atqa}', sak='{0.sak}')".format(self)
+        # rv = "ISO14443A(uid='%s', atr='%s', atqa='%s', sak='%s')" % (
+        #     self.uid,
+        #     self.atr,
+        #     self.atqa,
+        #     self.sak,
+       #  )
+
         return rv
 
 
-class ISO14443B(object):
+class ISO14443B():
     def __init__(self, ti):
-        self.pupi = "".join(["%02X" % x for x in ti.abtPupi[:4]])
+        self.pupi = "".join([f"{x:02X}" for x in ti.abtPupi[:4]])
         self.uid = self.pupi  # for sake of compatibility with apps written for typeA
-        self.appdata = "".join(["%02X" % x for x in ti.abtApplicationData[:4]])
-        self.protocol = "".join(["%02X" % x for x in ti.abtProtocolInfo[:3]])
+        self.appdata = "".join([f"{x:02X}" for x in ti.abtApplicationData[:4]])
+        self.protocol = "".join([f"{x:02X}" for x in ti.abtProtocolInfo[:3]])
         self.cid = "%02x" % ti.ui8CardIdentifier
         self.atr = ""  # idem
 
     def __str__(self):
-        rv = "ISO14443B(pupi='%s')" % (self.pupi)
+        rv = f"ISO14443B(pupi='{self.pupi}')"
         return rv
 
 
-class ICLASS(object):
+class ICLASS():
     def __init__(self, ti):
-        self.uid = "".join(["%02X" % x for x in ti.abtUID])
+        self.uid = "".join([f"{x:02X}" for x in ti.abtUID])
 
     def __str__(self):
-        rv = "ICLASS(uid='%s')" % (self.uid)
+        rv = "ICLASS(uid='self.uid')"
         return rv
 
 
-class JEWEL(object):
+class JEWEL():
     def __init__(self, ti):
-        self.btSensRes = "".join(["%02X" % x for x in ti.btSensRes[:2]])
-        self.btId = "".join(["%02X" % x for x in ti.btId[:4]])
+        self.btSensRes = "".join([f"{x:02X}" for x in ti.btSensRes[:2]])
+        self.btId = "".join([f"{x:02X}" for x in ti.btId[:4]])
         self.uid = self.btId
         self.atr = ""  # idem
         self.atqa = self.btSensRes
@@ -361,7 +365,7 @@ class JEWEL(object):
         return rv
 
 
-class NFC(object):
+class NFC():
     tag = (NFC_TARGET * MAX_TARGET_COUNT)()
 
     def __init__(self, nfcreader):
@@ -373,7 +377,7 @@ class NFC(object):
         self.initLog()
         self.LIBNFC_VER = self.initlibnfc().decode("utf-8")
         if rfidiotglobals.Debug:
-            self.log.debug("libnfc %s" % self.LIBNFC_VER)
+            self.log.debug(f"libnfc {self.LIBNFC_VER}")
         self.configure(nfcreader)
         sys.stdout.flush()
 
@@ -393,7 +397,7 @@ class NFC(object):
 
     def initlibnfc(self):
         if rfidiotglobals.Debug:
-            self.log.debug("Loading %s" % self.LIB)
+            self.log.debug(f"Loading {self.LIB}")
         self.libnfc = ctypes.CDLL(self.LIB)
         self.libnfc.nfc_version.restype = ctypes.c_char_p
         self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
@@ -434,9 +438,9 @@ class NFC(object):
         nfc_num_devices = self.libnfc.nfc_list_devices(
             self.context, ctypes.byref(devices), MAX_DEVICES
         )
-        if target != None:
+        if not target is None:
             if target > nfc_num_devices - 1:
-                print("Reader number %d not found!" % target)
+                print(f"Reader number {target} not found!")
                 return None
             return devices[target]
         print(
@@ -453,7 +457,7 @@ class NFC(object):
                 )
                 dev = self.libnfc.nfc_open(self.context, ctypes.byref(devices[i]))
                 devname = self.libnfc.nfc_device_get_name(dev)
-                print("    No: %d\t\t%s" % (i, devname))
+                print(f"    No: {i}\t\t{devname}")
                 self.libnfc.nfc_close(dev)
                 # print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
                 # print '    \t\t\t\tDriver:',devices[i].pcDriver
@@ -468,7 +472,7 @@ class NFC(object):
             self.log.debug(
                 "Connecting to NFC reader number: %s" % repr(nfcreader)
             )  # nfcreader may be none
-        if nfcreader != None:
+        if not nfcreader is None:
             target = self.listreaders(nfcreader)
         else:
             target = None
@@ -478,9 +482,9 @@ class NFC(object):
 
         if self.device is None:
             raise ConnectionAbortedError("Error opening NFC reader")
-        else:
-            # Segmentation fault if self.device is None *pnd->nam
-            self.LIBNFC_READER = self.libnfc.nfc_device_get_name(self.device).decode("utf-8")
+        # else:
+        # Segmentation fault if self.device is None *pnd->nam
+        self.LIBNFC_READER = self.libnfc.nfc_device_get_name(self.device).decode("utf-8")
 
         if rfidiotglobals.Debug:
             # if self.device == None:
@@ -508,7 +512,7 @@ class NFC(object):
         self.libnfc.nfc_device_set_property_bool(self.device, NP_ACTIVATE_FIELD, True)
 
     def deconfigure(self):
-        if self.device != None:
+        if not self.device is None:
             if rfidiotglobals.Debug:
                 self.log.debug("Deconfiguring NFC reader")
             # self.powerOff()
@@ -600,7 +604,7 @@ class NFC(object):
         self.selectISO14443A()
 
     def sendAPDU(self, apdu, timeout=None):
-        apdu = "".join([x for x in apdu])
+        apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
         txData = []
         for i in range(0, len(apdu), 2):
             txData.append(int(apdu[i : i + 2], 16))
@@ -614,7 +618,7 @@ class NFC(object):
         if rfidiotglobals.Debug:
             self.log.debug(
                 "Sending %d byte APDU: %s"
-                % (len(tx), "".join(["%02x" % x for x in tx]))
+                % (len(tx), "".join([f"{x:02x}" for x in tx]))
             )
         rxlen = self.libnfc.nfc_initiator_transceive_bytes(
             self.device,
@@ -632,9 +636,9 @@ class NFC(object):
                 self.log.error("Error sending/receiving APDU")
             return False, rxlen
         else:
-            rxAPDU = "".join(["%02x" % x for x in rx[:rxlen]])
+            rxAPDU = "".join([f"{x:02x}" for x in rx[:rxlen]])
             if rfidiotglobals.Debug:
-                self.log.debug("Received %d byte APDU: %s" % (rxlen, rxAPDU))
+                self.log.debug(f"Received {rxlen} byte APDU: {rxAPDU}")
             return True, rxAPDU.upper()
 
 

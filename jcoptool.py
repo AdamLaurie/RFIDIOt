@@ -206,7 +206,8 @@ def decode_privileges(data):
     print("(", end="")
     multiple = False
     try:
-        for mask in list(privilege_byte_1.keys()):
+        # for mask in list(privilege_byte_1.keys()):
+        for mask in privilege_byte_1:
             if (int(data[0:2], 16) & int(mask, 16)) == int(mask, 16):
                 if multiple:
                     print("/", end="")
@@ -223,7 +224,8 @@ def check_security_domain(data):
     data_len = int(data[2:4], 16) * 2
     i = 4
     while i < data_len + 4:
-        for k_item in list(registry_tags.keys()):
+        # for k_item in list(registry_tags.keys()):
+        for k_item in registry_tags:
             if data[i : i + len(k_item)] == k_item:
                 itemlength = int(data[i + len(k_item) : i + len(k_item) + 2], 16) * 2
                 if k_item == card.GP_REG_PRIV:
@@ -251,7 +253,8 @@ def decode_gp_registry_data(data, padding, dat_filter):
     i = 4
     while i < d_length + 4:
         decoded = False
-        for k_item in list(registry_tags.keys()):
+        # for k_item in list(registry_tags.keys()):
+        for k_item in registry_tags:
             if data[i : i + len(k_item)] == k_item:
                 if not k_item == card.GP_REG_AID:
                     print(" ", end="")
