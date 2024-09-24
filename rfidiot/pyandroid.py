@@ -23,9 +23,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import binascii
+# pylint: disable=logging-not-lazy
+
+# import binascii
 import logging
-import time
+# import time
 
 # import readline
 import socket
@@ -77,7 +79,7 @@ class Android(object):
             self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.s.bind(("0.0.0.0", PORT))  # Bind to the port
             self.s.listen(5)  # Listen for connections
-        except Exception as e:
+        except (OSError, TimeoutError) as e:
             print("pyandroid: Could not open port: %s" % PORT)
             print(e)
 

@@ -26,6 +26,7 @@
 #
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods,too-few-public-methods,attribute-defined-outside-init
+# pylint: disable=logging-not-lazy,logging-fstring-interpolation
 
 import sys
 import ctypes
@@ -368,7 +369,7 @@ class JEWEL():
 class NFC():
     tag = (NFC_TARGET * MAX_TARGET_COUNT)()
 
-    def __init__(self, nfcreader):
+    def __init__(self, nfcreader=None):  # IS THIS RIGHT ?
         self.LIB = ctypes.util.find_library("nfc")
         self.device = None
         self.context = ctypes.POINTER(ctypes.c_int)()
@@ -380,7 +381,6 @@ class NFC():
             self.log.debug(f"libnfc {self.LIBNFC_VER}")
         self.configure(nfcreader)
         sys.stdout.flush()
-
 
     def __del__(self):
         self.deconfigure()
@@ -448,7 +448,7 @@ class NFC():
         )
         if nfc_num_devices == 0:
             print("\t", "no supported devices!")
-            return
+            return None   # ???  Missing return VAl
         for i in range(nfc_num_devices):
             if devices[i]:
                 self.log.debug(
@@ -464,6 +464,7 @@ class NFC():
                 # if devices[i].pcPort != None:
                 #       print '    \t\t\t\tPort:', devices[i].pcPort
                 #       print '    \t\t\t\tSpeed:', devices[i].uiSpeed
+        return None   # ???  Missing return VAl
 
     def configure(self, nfcreader):
         if rfidiotglobals.Debug:
@@ -604,7 +605,8 @@ class NFC():
         self.selectISO14443A()
 
     def sendAPDU(self, apdu, timeout=None):
-        apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
+        # apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
+        apdu = "".join(list(apdu))
         txData = []
         for i in range(0, len(apdu), 2):
             txData.append(int(apdu[i : i + 2], 16))
@@ -635,11 +637,11 @@ class NFC():
             if rfidiotglobals.Debug:
                 self.log.error("Error sending/receiving APDU")
             return False, rxlen
-        else:
-            rxAPDU = "".join([f"{x:02x}" for x in rx[:rxlen]])
-            if rfidiotglobals.Debug:
-                self.log.debug(f"Received {rxlen} byte APDU: {rxAPDU}")
-            return True, rxAPDU.upper()
+        # else:
+        rxAPDU = "".join([f"{x:02x}" for x in rx[:rxlen]])
+        if rfidiotglobals.Debug:
+            self.log.debug(f"Received {rxlen} byte APDU: {rxAPDU}")
+        return True, rxAPDU.upper()
 
 
 def target_is_present(self):

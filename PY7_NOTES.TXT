@@ -73,3 +73,8 @@ adding python type hint / annotations as
 	https://docs.python.org/3/library/typing.html
 
 refactored mifarekeys.py to use bytearrays instead of strings
+
+the helper func like HexToList ToString (etc...) Are gonna be a pain until
+we get all the binary strings to bytes/bytearrays
+
+lots of Python3 Code modernization based on suggestions from pylint

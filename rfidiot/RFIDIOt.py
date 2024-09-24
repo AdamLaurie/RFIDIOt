@@ -1,5 +1,5 @@
 #  RFIDIOt.py - RFID IO tools for python
-# -*- coding: iso-8859-15 -*-
+# -*- coding: utf-8 -*-
 #
 #  Adam Laurie <adam@algroup.co.uk>
 #  http://rfidiot.org/
@@ -18,6 +18,7 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
+
 
 # pylint: disable=attribute-defined-outside-init,too-many-statements,too-many-branches,too-many-instance-attributes,too-few-public-methods,too-many-lines,too-many-public-methods,too-many-return-statements
 
@@ -109,7 +110,8 @@ class rfidiot:
                     print("There is no such reader #%i, PCSC sees only %i reader(s)" % (readernum, len(self.pcsc)))
                     sys.exit(True)
                 try:
-                    self.readername = self.pcsc[readernum].name.decode("utf-8")
+                    #self.readername = self.pcsc[readernum].name.decode("utf-8")
+                    self.readername = self.pcsc[readernum].name
                     self.pcsc_connection = self.pcsc[readernum].createConnection()
                     # debug option will show APDU traffic
                     if self.DEBUG:
@@ -155,13 +157,13 @@ class rfidiot:
                     # card may be something like a HID PROX which only returns ATR and does not allow connect
                     hresult, hcontext = smartcard.scard.SCardEstablishContext(smartcard.scard.SCARD_SCOPE_USER)
                     if hresult != 0:
-                        raise error("Failed to establish context: " + smartcard.scard.SCardGetErrorMessage(hresult))
+                        raise  RuntimeError("Failed to establish context: " + smartcard.scard.SCardGetErrorMessage(hresult))
                     hresult, readers = smartcard.scard.SCardListReaders(hcontext, [])
                     readerstates = [(readers[readernum], smartcard.scard.SCARD_STATE_UNAWARE)]
                     hresult, newstates = smartcard.scard.SCardGetStatusChange(hcontext, 0, readerstates)
                     if self.readersubtype == self.READER_ACS and self.pcsc_protocol == smartcard.scard.SCARD_PROTOCOL_T1:
                         # SCARD_SHARE_SHARED if there is a PICC otherwise SCARD_SHARE_DIRECT
-                        hresult, hcard, dwActiveProtocol = smartcard.scard.SCardConnect(
+                        hresult, hcard, _dwActiveProtocol = smartcard.scard.SCardConnect(
                             hcontext,
                             readers[readernum],
                             smartcard.scard.SCARD_SHARE_DIRECT,
@@ -170,7 +172,7 @@ class rfidiot:
                         self.hcard = hcard
                         # Let's test if we can really use SCardControl, e.g. by sending a get_firmware_version APDU
                         apdu = [0xFF, 0x00, 0x48, 0x00, 0x00]
-                        hresult, response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
+                        hresult, _response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
                         if hresult != smartcard.scard.SCARD_S_SUCCESS:
                             print("Failed to control: " + smartcard.scard.SCardGetErrorMessage(hresult))
                             if hresult == smartcard.scard.SCARD_E_NOT_TRANSACTED:
@@ -335,6 +337,7 @@ class rfidiot:
     }
     ISOTagsA = {"t": "All Supported Tags"}
     ISO15693 = "v"
+
     # Manufacturer codes (Listed in ISO/IEC 7816-6)
     ISO7816Manufacturer = {
         "00": "Not Specified",
@@ -354,9 +357,61 @@ class rfidiot:
         "0e": "Samsung Electronics Co. Ltd",
         "0f": "Hyundai Electronics Industries Co. Ltd",
         "10": "LG-Semiconductors Co. Ltd",
-        "12": "HID Corporation",
+        "11": "Emosyn-EM Microelectronics [USA]",
+        # "12": "HID Corporation",
+        "12": "INSIDE Technology [France]",
+        "13": "ORGA Kartensysteme GmbH [Germany]",
+        "14": "SHARP Corporation [Japan]",
+        "15": "ATMEL [France]",
         "16": "EM Microelectronic-Marin SA",
+        "17": "KSW Microtec GmbH [Germany]",
+        "18": "ZMD AG [Germany]",
+        "19": "XICOR, Inc. [USA]",
+        "1a": "Sony Corporation [Japan]",
+        "1b": "Malaysia Microelectronic Solutions Sdn. Bhd [Malaysia]",
+        "1c": "Emosyn [USA]",
+        "1d": "Shanghai Fudan Microelectronics Co. Ltd. P.R. [China]",
+        "1e": "Magellan Technology Pty Limited [Australia]",
+        "1f": "Melexis NV BO [Switzerland]",
+        "20": "Renesas Technology Corp. [Japan]",
+        "21": "TAGSYS [France]",
+        "22": "Transcore [USA]",
+        "23": "Shanghai belling corp., ltd. [China]",
+        "24": "Masktech Germany Gmbh [Germany]",
+        "25": "Innovision Research and Technology Plc [UK]",
+        "26": "Hitachi ULSI Systems Co., Ltd. [Japan]",
+        "27": "Cypak AB [Sweden]",
+        "28": "Ricoh [Japan]",
+        "29": "ASK [France]",
+        "2a": "Unicore Microsystems, LLC [RussianFederation]",
+        "2b": "Dallas Semiconductor/Maxim [USA]",
+        "2c": "Impinj, Inc. [USA]",
+        "2d": "RightPlug Alliance [USA]",
+        "2e": "Broadcom Corporation [USA]",
+        "2f": "MStar Semiconductor, Inc Taiwan, [ROC]",
+        "30": "BeeDar Technology Inc. [USA]",
+        "31": "RFIDsec [Denmark]",
+        "32": "Schweizer Electronic AG [Germany]",
+        "33": "AMIC Technology Corp [Taiwan]",
+        "34": "Mikron JSC [Russia]",
+        "35": "Fraunhofer Institute for Photonic Microsystems [Germany]",
+        "36": "IDS Microchip AG [Switzerland]",
+        "37": "Kovio [USA]",
+        "38": "HMT Microelectronic Ltd [Switzerland]",
+        "39": "Silicon Craft Technology [Thailand]",
+        "3a": "Advanced Film Device Inc. [Japan]",
+        "3b": "Nitecrest Ltd [UK]",
+        "3c": "Verayo Inc. [USA]",
+        "3d": "HID Global [USA]",
+        "3e": "Productivity Engineering Gmbh [Germany]",
+        "3f": "Austriamicrosystems AG (reserved) [Austria]",
+        "40": "Gemalto SA [France]",
+        "41": "Renesas Electronics Corporation [Japan]",
+        "42": "3Alogics Inc [Korea]",
+        "43": "Top TroniQ Asia Limited Hong [Kong]",
+        "44": "Gentag Inc (USA) [USA]",
     }
+
     ISOAPDU = {
         "ERASE BINARY": "0E",
         "VERIFY": "20",
@@ -1147,7 +1202,7 @@ class rfidiot:
                     if self.DEBUG:
                         print("Error selecting card")
                     return False
-                elif cardtype == "B":
+                if cardtype == "B": # elif
                     result = self.nfc.selectISO14443B()
                     if result:
                         self.pupi = result.pupi
@@ -1168,7 +1223,7 @@ class rfidiot:
                     if self.DEBUG:
                         print("Error selecting card")
                     return False
-                elif cardtype == "ICLASS":
+                if cardtype == "ICLASS": # elif
                     result = self.nfc.selectICLASS()
                     if result:
                         self.uid = result.uid
@@ -1193,10 +1248,10 @@ class rfidiot:
                     if self.DEBUG:
                         print("Error selecting card")
                     return False
-                else:
-                    if self.DEBUG:
-                        print("Error: Unknown card type specified: %s" % cardtype)
-                    return False
+                # else:
+                if self.DEBUG:
+                    print("Error: Unknown card type specified: %s" % cardtype)
+                return False
             except ValueError:
                 self.errorcode = "Error selecting card using LIBNFC" + e
 
@@ -2479,12 +2534,18 @@ class rfidiot:
 
     def ReadablePrint(self, data) -> str:
         out = ""
-        for x in range(len(data)):
-            if data[x] >= " " and data[x] <= "~":
-                out += data[x]
+        for dat in data:
+            if dat >= " " and dat <= "~":
+                out += dat
             else:
                 out += "."
         return out
+        # for x in range(len(data)):
+        #     if data[x] >= " " and data[x] <= "~":
+        #         out += data[x]
+        #     else:
+        #         out += "."
+        # return out
 
     def ListToHex(self, data) -> str:
         return ''.join(f"{x:02X}" for x in data)
