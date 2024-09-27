@@ -1417,7 +1417,8 @@ if not FILES and BAC:
             )
         print("Key MRZ Info (kmrz): " + kmrz)
         print()
-        kseedhash = SHA.new(kmrz)
+        kseedhash = SHA.new(kmrz.encode('utf-8'))
+        #kseed = kseedhash.digest()[:16].decode('iso-8859-15')
         kseed = kseedhash.digest()[:16]
         if DEBUG:
             print("Kseed (SHA1 hash digest of kmrz): " + kseedhash.hexdigest()[:32])
@@ -1464,14 +1465,15 @@ if not FILES and BAC:
             print("Kenc: ", end="")
             passport.HexPrint(Kenc)
 
-        tdes = DES3.new(Kenc, DES.MODE_CBC, passport.DES_IV)
-        Eifd = tdes.encrypt(S)
+        tdes = DES3.new(Kenc, DES.MODE_CBC, passport.DES_IV.encode())
+        print("S length %d" % len(S))
+        Eifd = tdes.encrypt(S.encode())
         if DEBUG or TEST:
             print("Eifd: ", end="")
             passport.HexPrint(Eifd)
             print("Kmac: ", end="")
             passport.HexPrint(Kmac)
-        Mifd = passport.DESMAC(Eifd, Kmac, "")
+        Mifd = passport.DESMAC(Eifd, Kmac.encode(), "")
         if DEBUG or TEST:
             print("Mifd: ", end="")
             passport.HexPrint(Mifd)

@@ -1657,7 +1657,7 @@ class rfidiot:
     def iso_7816_select_file(self, file, control, options) -> bool:
         "7816 select file"
         ins = "SELECT_FILE"
-        lc = "%02x" % (len(file) / 2)
+        lc = "%02x" % (int) (len(file) / 2)
         p1 = control
         p2 = options
         data = file
@@ -2593,7 +2593,7 @@ class rfidiot:
 
     def ToBinary(self, string) -> str:
         "convert hex string to binary characters"
-        return bytearray.fromhex(string).decode()
+        return bytearray.fromhex(string).decode('iso-8859-15')
         # output = ""
         # x = 0
         # while x < len(string):
@@ -2631,6 +2631,7 @@ class rfidiot:
 
     def DESParity(self, data) -> str:
         adjusted = ""
+        data= data.decode('iso-8859-15')
         for x in range(len(data)):
             y = ord(data[x]) & 0xFE
             parity = 0
@@ -2640,7 +2641,7 @@ class rfidiot:
         return adjusted
 
     def DESKey(self, seed, d_type, length) -> str:
-        d = seed + d_type
+        d = seed + d_type.encode('iso-8859-15')
         kencsha = SHA.new(d)
         k = kencsha.digest()
         kp = self.DESParity(k)
