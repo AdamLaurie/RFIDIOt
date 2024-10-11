@@ -1,5 +1,4 @@
-#!/usr/bin/python
-
+#!/usr/bin/python3
 #
 # send_apdu.py - Python code for Sending raw APDU commands
 # version 0.1
@@ -23,29 +22,28 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import rfidiot
 import sys
-import os
+# import os
 
 try:
-        card= rfidiot.card
+    import rfidiot
+    card = rfidiot.card
 except:
-	print "Couldn't open reader!"
-        os._exit(True)
+    print("Couldn't open reader!")
+    sys.exit(True)
 
-card.info('send_apdu v0.1a')
+card.info("send_apdu v0.1a")
 card.select()
-print '\nID: ' + card.uid
-print '  Data:'
+print("\nID: " + card.uid)
+print("  Data:")
 
 cont = True
 while cont:
-	apdu = raw_input("enter the apdu to send now, send \'close\' to finish :")
-	if apdu == 'close':
-		cont = False
-	else:
-		r = card.pcsc_send_apdu(apdu)
-		print card.data + card.errorcode
-				
-print 'Ending now ...'
+    apdu = input("enter the apdu to send now, send 'close' to finish :")
+    if apdu == "close":
+        cont = False
+    else:
+        r = card.pcsc_send_apdu(apdu)
+        print(card.data + card.errorcode)
 
+print("Ending now ...")

@@ -1,10 +1,9 @@
-#!/usr/bin/python
-
+#!/usr/bin/python3
 #  loginall.py - attempt to login to each sector with transport keys
-# 
+#
 #  Adam Laurie <adam@algroup.co.uk>
 #  http://rfidiot.org/
-# 
+#
 #  This code is copyright (c) Adam Laurie, 2006, All rights reserved.
 #  For non-commercial use only, the following terms apply - for all other
 #  uses, please contact the author:
@@ -21,30 +20,31 @@
 #
 
 
+import sys
 import rfidiot
 
 try:
-        card= rfidiot.card
+    card = rfidiot.card
 except:
-	print "Couldn't open reader!"
-        os._exit(True)
+    print("Couldn't open reader!")
+    sys.exit(True)
 
-card.info('loginall v0.1h')
+card.info("loginall v0.1h")
 
 card.select()
-print '\ncard id: ' + card.uid
+print("\ncard id: " + card.uid)
 
 block = 0
 
 while block < 16:
-	for X in [ 'AA', 'BB', 'FF' ]:
-		card.select()
-		print '%02x %s: ' % (block, X),
-		if card.login(block, X, ''):
-			print "success!"
-		elif card.errorcode:
-			print "error: " + card.errorcode
-		else:
-			print "failed"
-	block += 1
-os._exit(False)
+    for X in ["AA", "BB", "FF"]:
+        card.select()
+        print("%02x %s: " % (block, X), end="")
+        if card.login(block, X, ""):
+            print("success!")
+        elif card.errorcode:
+            print("error: " + card.errorcode)
+        else:
+            print("failed")
+    block += 1
+sys.exit(False)
