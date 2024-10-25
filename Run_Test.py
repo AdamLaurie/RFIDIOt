@@ -90,7 +90,6 @@ def test_conversion_functions() -> bool:
         print(f"\t{dat} != {out_val}")
         return_val = False
 
-
     in_val = b'\x01\x03\x07\x0F\x1F\x3F\x7F\xFF'
     out_val = '0000000100000011000001110000111100011111001111110111111111111111'
     dat = rfi.ToBinaryString(in_val)
@@ -213,17 +212,29 @@ def test_crypto_functions() -> bool:
         print(f"\t{dat} != {out_val}")
         return_val = False
 
+    message = "The quick brown fox jumps over the lazy dog"
+    key = b'\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef'
+    ssc = ''
+    out_val = '9be9c94b596eff37'
+    dat = rfi.DESMAC(message, key, ssc).hex()
+    if dat != out_val:
+        print("DESMAC: str Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+    else:
+        print("DESMAC: str Test Pass")
+
     message = b"The quick brown fox jumps over the lazy dog"
     key = b'\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef'
     ssc = ''
     out_val = '9be9c94b596eff37'
     dat = rfi.DESMAC(message, key, ssc).hex()
     if dat != out_val:
-        print("DESMAC: Test Fail")
+        print("DESMAC: byte Test Fail")
         print(f"\t{dat} != {out_val}")
         return_val = False
     else:
-        print("DESMAC: Test Pass")
+        print("DESMAC: byte Test Pass")
 
     message = b"The quick brown fox jumps over the lazy dog"
     key = b'\xa1\x10n\x08L=uv&vR\x85\xec\xcbp)\xe6Tu\xd0y\xb3*\x07'
