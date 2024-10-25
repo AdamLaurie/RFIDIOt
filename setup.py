@@ -44,6 +44,11 @@ scripts = [
     "testlahf.sh",
 ]
 
+install_requires = [
+    "pycryptodome",
+]
+
+
 setup(
     name="rfidiot",
     version="1.0",
@@ -51,5 +56,6 @@ setup(
     author="Adam Laurie",
     author_email="adam@algroup.co.uk",
     packages=packages,
+    install_requires=install_requires,
     scripts=scripts,
 )

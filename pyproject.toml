@@ -1,0 +1,100 @@
+# Pete Shipley peter.shipley@gmail.com
+
+[project]
+name = "rfidiot"  
+requires-python = ">=3.8"
+version = "1.0.1"
+
+
+readme = "README.TXT"
+
+description = "rfidiot is a collection of tools and libraries for exploring RFID technology, written in python."
+
+authors = [
+    {name = "Adam Laurie", email = "adam@algroup.co.uk" }
+]
+
+maintainers = [
+    {name = "Adam Laurie", email = "adam@algroup.co.uk" }
+]
+
+dependencies = [
+    "pycryptodome>=3.20.0"
+]
+
+lint = [
+    "validate-pyproject[all]",
+    "pylint",
+    "pycodestyle"
+]
+
+
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3"
+]
+
+
+[project.urls]
+"Homepage" = "http://rfidiot.org/"
+"Source" = "https://github.com/AdamLaurie/RFIDIOt"
+
+[project.optional-dependencies]
+dev = [
+    "pylint",
+    "pycodestyle",
+    "black",
+    "BeautifulSoup",
+    "pandas"
+]
+
+[tool.pycodestyle]
+max-line-length = 140
+ignore = "E722,W391,E203"
+
+[tool.pylint]
+max-line-length = 140
+extension-pkg-allow-list = ["numpy", "pandas", "scipy", "BeautifulSoup"]
+jobs = 0
+
+[tool.pylint.format]
+max-module-lines = 1200
+
+[tool.pylint.messages_control]
+disable =  [
+    "broad-exception-caught",
+    "invalid-name",
+    "missing-docstring",
+    "too-many-arguments",
+    "too-many-locals",
+    "line-too-long",
+    "consider-using-f-string",
+    "redefined-outer-name",
+    "bare-except",
+    "duplicate-code"
+]
+
+
+
+# [tool.setuptools]
+# script-files = [
+#    "cardselect.py", "ChAP.py", "copytag.py", "demotag.py", "eeprom.py", "fdxbnum.py",
+#    "formatmifare1kvalue.py", "froschtest.py", "hidprox.py", "hitag2brute.py", "hitag2reset.py",
+#    "isotype.py", "jcopmifare.py", "jcopsetatrhist.py", "jcoptool.py", "lfxtype.py",
+#    "loginall.py", "mifarekeys.py", "mrpkey.py", "multiselect.py", "pn532emulate.py",
+#    "pn532mitm.py", "q5reset.py", "readlfx.py", "readmifare1k.py", "readmifaresimple.py",
+#    "readmifareultra.py", "readtag.py", "rfidiot-cli.py", "send_apdu.py", "sod.py",
+#    "transit.py", "unique.py", "writelfx.py", "writemifare1k.py", "testacg.sh",
+#    "testlahf.sh",
+#]
+
+[tool.black]
+line-length = 140
+target-version = ["py38", "py39", "py310", "py311"]
+skip-source-first-line = true
+skip-string-normalization = true

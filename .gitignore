@@ -1,2 +1,4 @@
 *.pyc
 build/
+__pycache__/
+PYLINT.txt

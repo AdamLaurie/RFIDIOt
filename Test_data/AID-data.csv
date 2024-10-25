@@ -1,0 +1,325 @@
+AID (Application Identifier)	Vendor	Country	Name	Description	Type
+315041592E5359532E4444463031	Visa International	United States	Visa Payment System Environment – PSE (1PAY.SYS.DDF01)		
+325041592E5359532E4444463031	Visa International	United States	Visa Proximity Payment System Environment – PPSE (2PAY.SYS.DDF01)	Visa payWave for Mobile	
+44464D46412E44466172653234313031	DeviceFidelity	United States	DeviceFidelity In2Pay DFare applet	https://www.nfcworld.com/2010/11/24/35207/devicefidelity-adds-nfc-support-for-android-and-mifare/	
+504F4B455231			GP PokerDemo		
+534B542E4D454D4245523031			SKT		
+534C4243525950544F			SLB PKI		
+6D6966617265			MiFare		
+A00000000101	PBS Danmønt A/S	Denmark	MUSCLE Card Applet	(Unlicensed use of this RID. Proposal to use A000000323 instead)	
+A00000000201	Mondex International Ltd.	United Kingdom	MONDEX		
+A0000000030000	Visa International	United States	Global Platform CardManager (VSDC)		
+A000000003000000	Visa International	United States	(VISA) Card Manager	Used by most GP2.1.1 cards / Oberthur OP201 cards. Visa Proprietary Card Manager AID for OpenPlatform cards (visa.openplatform).	GP
+A00000000300037561	Visa International	United States	Bonuscard		
+A00000000305076010	Visa International	United States	VISA ELO Credit		EMV
+A0000000031010	Visa International	United States	VISA Debit/Credit (Classic)	Standard/Gold VISA credit card	EMV
+A000000003101001	Visa International	United States	VISA Credit		EMV
+A000000003101002	Visa International	United States	VISA Debit		EMV
+A0000000031111	Visa International	United States	Visa ????		
+A0000000032010	Visa International	United States	VISA Electron	VISA Electron (Debit)	EMV
+A0000000032020	Visa International	United States	VISA	V PAY	EMV
+A0000000033010	Visa International	United States	VISA Interlink	VISA Interlink	EMV
+A0000000033060	Visa International	United States	Visa PreAutorized?		
+A0000000034010	Visa International	United States	VISA Specific	Visa Specific	EMV
+A0000000035010	Visa International	United States	VISA Specific	Visa Specific	EMV
+A000000003534441	Visa International	United States	Schlumberger Security Domain		GP
+A0000000035350	Visa International	United States	Security Domain	OCS Oberthur Card System Security Domain Package AID / VGP Card Manager (for ISD and ASD)	GP
+A000000003535041	Visa International	United States	Security Domain	OCS Oberthur Card System Security Domain Applet AID / VGP Card Manager (for ISD and ASD)	GP
+A0000000036000	Visa International	United States	ATM card?		
+A0000000036010	Visa International	United States	Domestic Visa Cash Stored Value		EMV
+A0000000036020	Visa International	United States	International Visa Cash Stored Value		EMV
+A0000000038002	Visa International	United States	VISA Auth, VisaRemAuthen EMV-CAP (DPA)	VISA Auth dynamic passcode authentication (DPA). Used by Barclays/HBOS	EMV
+A0000000038010	Visa International	United States	VISA Plus	VISA plus	EMV
+A0000000039010	Visa International	United States	VISA Loyalty		EMV
+A000000003999910	Visa International	United States	VISA Proprietary ATM		EMV
+A0000000040000	Mastercard International	United States	MasterCard Card Manager	Security Domain	GP
+A00000000401	Mastercard International	United States	MasterCard PayPass	AEPM (Association Européenne Payez Mobile)	EMV
+A0000000041010	Mastercard International	United States	MasterCard Credit/Debit (Global)	Standard MasterCard	EMV
+A00000000410101213	Mastercard International	United States	MasterCard Credit	Standard MasterCard	EMV
+A00000000410101215	Mastercard International	United States	MasterCard Credit	Standard MasterCard	EMV
+A0000000041010BB5449435301	Mastercard International	United States	[UNKNOWN]	Some co-branded card?	
+A0000000041010C0000301	Mastercard International	United States	Comptant (CarreFour Banque)		
+A0000000041010C0000302	Mastercard International	United States	Credit Pass (CarreFour Banque)		
+A0000000042010	Mastercard International	United States	MasterCard Specific	MasterCard Specific	EMV
+A0000000042203	Mastercard International	United States	MasterCard Specific	MasterCard U.S. Maestro	
+A0000000043010	Mastercard International	United States	MasterCard Specific	MasterCard Specific	EMV
+A0000000043060	Mastercard International	United States	Maestro (Debit)	Maestro (Debit) Card	EMV
+A000000004306001	Mastercard International	United States	Maestro (Debit)	Maestro (Debit) Card	EMV
+A0000000044010	Mastercard International	United States	MasterCard Specific	MasterCard Specific	EMV
+A0000000045000	Mastercard International	United States	MODS		
+A0000000045010	Mastercard International	United States	MasterCard Specific	MasterCard Specific	EMV
+A0000000045555	Mastercard International	United States	APDULogger	AID on Cirrus Test Card	
+A0000000046000	Mastercard International	United States	Cirrus	Mastercard Cirrus (Interbank Network) ATM card only	EMV
+A0000000046010	Mastercard International	United States	Cirrus		
+A0000000048002	Mastercard International	United States	SecureCode Auth EMV-CAP	Chip Authentication Protocol (CAP). Works with NatWest or SecureCode Aut	EMV
+A0000000049999	Mastercard International	United States	MasterCard PayPass??		EMV
+A0000000050001	Switch Card Services Ltd.	United Kingdom	Maestro UK	UK Domestic Maestro – Switch (debit card)	EMV
+A0000000050002	Switch Card Services Ltd.	United Kingdom	Solo	UK Domestic Maestro – Switch (debit card)	EMV
+A0000000090001FF44FF1289	ETSI	France	Orange	Orange UK	
+A0000000101030	Europay International	Belgium	Maestro-CH		
+A00000001800	GEMPLUS	France	Gemplus ?		
+A0000000180F00000167	GEMPLUS	France	Gemclub Loyalty		
+A0000000181001	GEMPLUS	France	com.gemplus.javacard.util packages		
+A000000018434D	GEMPLUS	France	Gemplus card manager	434D = CM (ascii). Security domain for some GCX/GXP cards (GemXpresso Pro) (Gemalto)	GP
+A000000018434D00	GEMPLUS	France	Gemplus Security Domain	(Gemalto)	GP
+A00000002401	Midland Bank Plc	United Kingdom	Self Service		EMV
+A000000025	American Express	United Kingdom	American Express		EMV
+A0000000250000	American Express	United Kingdom	American Express	American Express (Credit/Debit)	EMV
+A00000002501	American Express	United Kingdom	American Express	AEIPS-compliant (A-E contact EMV) payment application	EMV
+A000000025010104	American Express	United Kingdom	American Express		
+A000000025010402	American Express	United Kingdom	American Express		EMV
+A000000025010701	American Express	United Kingdom	ExpressPay		EMV
+A000000025010801	American Express	United Kingdom	American Express		EMV
+A00000002504	American Express	United Kingdom	American Express	American Express U.S. Multi-Network Debit Acceptance Implementation Manual (April 2023)	EMV
+A0000000291010	LINK Interchange Network Ltd	United Kingdom	Link / American Express	Link (UK) ATM Network, or AMEX (Portugal?)	EMV
+A00000002945087510100000	LINK Interchange Network Ltd	United Kingdom	CO-OP		
+A00000002949034010100001	LINK Interchange Network Ltd	United Kingdom	HSBC		
+A00000002949282010100000	LINK Interchange Network Ltd	United Kingdom	Barclay		
+A000000029564182	LINK Interchange Network Ltd	United Kingdom	HAFX		
+A000000030000090078141100000	Schlumberger Industries Identif d’Encarteur PR050	France	SLB PIN Manager		
+A00000003029057000AD13100101FF	Schlumberger Industries Identif d’Encarteur PR050	France	BelPIC (Belgian Personal Identity Card) JavaCard Applet	Schlumberger (Gemalto) RID	
+A0000000308000000000280101	Schlumberger Industries Identif d’Encarteur PR050	France	Gemalto .NET Card AID		
+A0000000421010	Groupement des Cartes Bancaires “CB”	France	Cartes Bancaire EMV Card	Groupement des Cartes Bancaires (France)	EMV
+A0000000422010	Groupement des Cartes Bancaires “CB”	France			EMV
+A0000000423010	Groupement des Cartes Bancaires “CB”	France			EMV
+A0000000424010	Groupement des Cartes Bancaires “CB”	France			EMV
+A0000000425010	Groupement des Cartes Bancaires “CB”	France			EMV
+A0000000426010	Groupement des Cartes Bancaires “CB”	France	Contactless payment using Apple Pay		EMV
+A00000005945430100	Zentraler Kreditausschuss (ZKA)	Germany	Girocard Electronic Cash		
+A000000059504143450100	Zentraler Kreditausschuss (ZKA)	Germany	Geldkarte (DF_BOERSE EUR)		
+A0000000634B4559	RSA Laboratories	United States	KPKI		
+A000000063504B43532D3135	RSA Laboratories	United States	PKCS-15	RSA PKCS-15 PKI application (Predecessor to ISO7816-15) / ID-card in Finland	
+A0000000635741502D57494D	RSA Laboratories	United States	WAP-WIM	WAP (Wireless Application Protocol) Identity Module / Wireless Identification Module	
+A00000006510	JCB CO., LTD.	Japan	JCB	Japan Credit Bureau	EMV
+A0000000651010	JCB CO., LTD.	Japan	JCB J Smart Credit	Japan Credit Bureau	EMV
+A00000006900	Société Européenne de Monnaie Electronique SEME	France	Moneo		EMV
+A000000077010000021000000000003B	Oberthur Technologies	France	Visa AEPN		EMV
+A0000000790100	Activcard Europe S.A.	France	CACv2 PKI ID	Identity Key	
+A0000000790101	Activcard Europe S.A.	France	CACv2 PKI Sign	Digital Signature Key	
+A0000000790102	Activcard Europe S.A.	France	CACv2 PKI Enc	Key Management Key	
+A00000007901F0	Activcard Europe S.A.	France	CACv1 PKI Identity Key	Re-directs to CACv2 PKI Identity key	
+A00000007901F1	Activcard Europe S.A.	France	CACv1 PKI Digital Signature Key	Re-directs to CACv2 Digital Signature key	
+A00000007901F2	Activcard Europe S.A.	France	CACv1 PKI Key Management Key	Re-directs to CACv2 Key Management key	
+A0000000790200	Activcard Europe S.A.	France	CACv2 DoD Person	DoD Demographic	
+A0000000790201	Activcard Europe S.A.	France	CACv2 DoD Personnel	DoD Demographic	
+A00000007902FB	Activcard Europe S.A.	France	CACv1 BC	General Configuration	
+A00000007902FD	Activcard Europe S.A.	France	CACv1 BC	PKI Certificate Attributes	
+A00000007902FE	Activcard Europe S.A.	France	CACv1 BC	PKI Cert	
+A0000000790300	Activcard Europe S.A.	France	CACv2 Access Control Applet	CAC PIN / ID PIN Management Applet	
+A0000000791201	Activcard Europe S.A.	France	CAC JDM	Joint Data Model. BCAdmin	
+A0000000791202	Activcard Europe S.A.	France	CAC JDM	Joint Data Model. BCMedical	
+A0000000871002FF49FF0589	Third Generation Partnership Project (3GPP)	France	Telenor USIM		USIM
+A00000008810200105C100	Buypass AS	Norway	BuyPass BIDA	Used by norwegian public betting company Norsk-Tipping?	BuyPass
+A000000088102201034221	Buypass AS	Norway	BuyPass BEID (BuyPass Electronic ID?)		BuyPass
+A000000088102201034321	Buypass AS	Norway	BuyPass BEID (BuyPass Electronic ID?)		BuyPass
+A0000000960200	Sa Proton World International N.V.	Belgium	Proton World International Security Domain	Proton, which is owned in part by Visa International and American Express Co., is in three other European countries: the original Proton program in Belgium, Chipknip in the Netherlands, and Cash in Switzerland	GP
+A000000098	Visa USA	United States	Debit Card	Bank of America Debit Card	EMV
+A0000000980840	Visa USA	United States	Visa Common Debit		
+A0000000980848	Visa USA	United States	Debit Card	Schwab Bank Debit Card	EMV
+A0000001110101	Die Post Postfinance	Switzerland	Postcard		
+A0000001110201	Die Post Postfinance	Switzerland	Postcard		
+A0000001160300	GSA – TFCS	United States	PIV CHUID	CHUID	
+A0000001166010	GSA – TFCS	United States	PIV Fingerprints	Fingerprints	
+A0000001166030	GSA – TFCS	United States	PIV Facial Image	Facial Image	
+A0000001169000	GSA – TFCS	United States	PIV Security Object	Security Object	
+A000000116A001	GSA – TFCS	United States	PIV Authentication Key	PIV Authentication Key	
+A000000116DB00	GSA – TFCS	United States	CCC	Card Capability Container	
+A000000118010000	Austria Card	Austria	DF_Verkehr	Domestic Loyalty Program (Version 1.3)	
+A000000118020000	Austria Card	Austria	DF_Partner	Domestic Loyalty Program (Version 1.3)	
+A000000118030000	Austria Card	Austria	DF_Schülerdaten	Domestic Loyalty Program (Version 1.3)	
+A000000118040000	Austria Card	Austria	DF_KEP_SIG	Domestic Loyalty Program (Version 1.32)	
+A0000001184543	Austria Card	Austria	Digital Signature (SSCA)	Digital Signature Application	
+A000000118454E	Austria Card	Austria	Encryption Application	Encryption Application (Version 1.10)	
+A0000001211010	PBS Danmark A/S	Denmark	Dankort (VISA GEM Vision)	Danish domestic debit card	EMV
+A0000001320001	Java Card Forum	United States	org.javacardforum.javacard.biometry		
+A0000001408001	TDS TODOS DATA SYSTEM AB	Sweden	eCode		
+A0000001410001	Associazione Bancaria Italiana	Italy	PagoBANCOMAT	CoGeBan Consorzio BANCOMAT (Italian domestic debit card)	EMV
+A0000001510000	GlobalPlatform, Inc.	United States	Global Platform Security Domain AID	GP Card Manager	GP
+A00000015153504341534400	GlobalPlatform, Inc.	United States	CASD_AID	SPCASD	GP
+A0000001523010	Diners Club International Ltd.	United States	Discover, Pulse D Pas	Discover Card	EMV
+A0000001524010	Diners Club International Ltd.	United States	Discover	Discover Debit Common Card	EMV
+A0000001544442	Banrisul – Banco do Estado do Rio Grande do SUL – S.A.	Brazil	Banricompras Debito	Banrisul (Brazil)	EMV
+A0000001570010	Zühlke Engineering AG	Switzerland	AMEX		
+A0000001570020	Zühlke Engineering AG	Switzerland	MasterCard		
+A0000001570021	Zühlke Engineering AG	Switzerland	Maestro		
+A0000001570022	Zühlke Engineering AG	Switzerland	Maestro		
+A0000001570023	Zühlke Engineering AG	Switzerland	CASH		
+A0000001570030	Zühlke Engineering AG	Switzerland	VISA		
+A0000001570031	Zühlke Engineering AG	Switzerland	VISA		
+A0000001570040	Zühlke Engineering AG	Switzerland	JCB		
+A0000001570050	Zühlke Engineering AG	Switzerland	Postcard		
+A0000001570051	Zühlke Engineering AG	Switzerland	Postcard		
+A0000001570100	Zühlke Engineering AG	Switzerland	MCard		
+A0000001570104	Zühlke Engineering AG	Switzerland	MyOne		
+A0000001570109	Zühlke Engineering AG	Switzerland	Mediamarkt Card		
+A000000157010A	Zühlke Engineering AG	Switzerland	Gift Card		
+A000000157010B	Zühlke Engineering AG	Switzerland	Bonuscard		
+A000000157010C	Zühlke Engineering AG	Switzerland	WIRCard		
+A000000157010D	Zühlke Engineering AG	Switzerland	Power Card		
+A0000001574443	Zühlke Engineering AG	Switzerland	DINERS CLUB		
+A0000001574444	Zühlke Engineering AG	Switzerland	Supercard Plus		
+A000000167413000FF	IBM	Germany	JCOP Identify Applet	identify in JCOP-tools returns eg 27 34 01 2E 00 00 00 00 4E 58 37 35 31 41 00 03 28 62 B3 6A 82	JCOP
+A000000167413001	IBM	Germany	FIPS 140-2	?	
+A000000167455349474E	IBM	Germany	eGK-ESIGN (el.Gesundheitskarte)		
+A000000172950001	Financial Information Service Co. Ltd.	Taiwan	BAROC Financial Application Taiwan	The Bankers Association of the Republic of China	EMV
+A000000177504B43532D3135	Ministère de L’Intérieur	Belgium	BelPIC (Belgian Personal Identity Card)		
+A0000001850002	Post Office Limited	United Kingdom	UK Post Office Account card		EMV
+A0000001884443	Diners Club Switzerland Ltd	Switzerland	DINERS CLUB		
+A0000002040000	Association for Payment Clearing Services	United Kingdom	?		
+A0000002281010	Saudi Arabian Monetary Agency (SAMA)	Kingdom of Saudi Arabia	SPAN (M/Chip)	SPAN2 (Saudi Payments Network) – Saudi Arabia domestic credit/debit card (Saudi Arabia Monetary Agency)	EMV
+A0000002282010	Saudi Arabian Monetary Agency (SAMA)	Kingdom of Saudi Arabia	SPAN (VIS)	SPAN2 (Saudi Payments Network) – Saudi Arabia domestic credit/debit card (Saudi Arabia Monetary Agency)	EMV
+A00000022820101010	Saudi Arabian Monetary Agency (SAMA)	Kingdom of Saudi Arabia	SPAN	SPAN2 (Saudi Payments Network) – Saudi Arabia domestic credit/debit card (Saudi Arabia Monetary Agency)	
+A0000002471001	ISO JTC1/SC17/WG3	United Kingdom	Machine Readable Travel Documents (MRTD)	Electronic (Biometric) Passport. Issuer stored data application (The last three digits of the PIX shall be used to denote future version levels.)	MRTD
+A0000002472001	ISO JTC1/SC17/WG3	United Kingdom	Machine Readable Travel Documents (MRTD)	Electronic (Biometric) Passport. Application for hashes, digital signature, and certificate (The last three digits of the PIX shall be used to denote future version levels.)	MRTD
+A0000002771010	Interac Association	Canada	INTERAC	Canadian domestic credit/debit card	EMV
+A00000030600000000000000	PS/SC Workgroup	United States	PC/SC Initial access data AID	Possibly not an application…	
+A000000308000010000100	National Institute of Standards and Technology	United States	Personal Identity Verification (PIV) / ID-ONE PIV BIO	PIV End Point Applet. Last 2 bytes designate version?	
+A00000031510100528	Currence Holding/PIN BV	The Netherlands	Currence PuC		EMV
+A0000003156020	Currence Holding/PIN BV	The Netherlands	Chipknip		EMV
+A00000032301	Identity Alliance	United States	MUSCLE Applet Package	https://osdir.com/ml/lib.muscle/2005-12/msg00066.html	
+A0000003230101	Identity Alliance	United States	MUSCLE Applet Instance	https://osdir.com/ml/lib.muscle/2005-12/msg00066.html	
+A0000003241010	Discover Financial Services LLC	United States	Discover Zip		
+A000000333010101	China Unionpay Co. Ltd	China	UnionPay Debit		
+A000000333010102	China Unionpay Co. Ltd	China	UnionPay Credit		
+A000000333010103	China Unionpay Co. Ltd	China	UnionPay Quasi Credit		
+A000000333010106	China Unionpay Co. Ltd	China	UnionPay Electronic Cash		
+A000000333010108	China Unionpay Co. Ltd	China	U.S. UnionPay Common Debit AID		
+A000000337101000	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Standard		
+A000000337101001	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Prepaye Online		
+A000000337102000	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Classic		
+A000000337102001	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Prepaye Possibile Offiline		
+A000000337301000	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Retrait		
+A000000337601001	Groupment Interbancaire Monétique de l’ UEMOA	Senegal	Porte Monnaie Electronique		
+A0000003591010	Euro Alliance of Payment Schemes s.c.r.l. – EAPS	Belgium		Unknown	
+A0000003591010028001	Euro Alliance of Payment Schemes s.c.r.l. – EAPS	Belgium	Girocard EAPS	ZKA (Germany)	EMV
+A00000035910100380	Euro Alliance of Payment Schemes s.c.r.l. – EAPS	Belgium		PagoBANCOMAT	
+A0000003660001	Poste Italiane S.P.A	Italy	Postamat		
+A0000003660002	Poste Italiane S.P.A	Italy	Postamat VISA		
+A0000003710001	Verve	Nigeria	InterSwitch Verve Card	Nigerian local switch company	EMV
+A00000038410	eftpos, Australian Payments Clearing Association Ltd	Australia	Savings (debit card)		
+A00000038420	eftpos, Australian Payments Clearing Association Ltd	Australia	Cheque (debit card)		
+A0000003964D66344D0002	NXP Semiconductors Germany GmbH	Germany	MIFARE4MOBILE	NXP Mf4M	
+A00000039742544659	Microsoft Corporation	United States	Microsoft IDMP AID	Identity Device With Microsoft Generic Profile application. 2 bytes can be added at the end. This byte must be set to the IDMP specification revision number which is currently 0x01. The second byte (yy) is reserved for use by the card application.	
+A0000003974349445F0100	Microsoft Corporation	United States	Microsoft PNP AID	MS Plug and Play	
+A0000004271010	Unibanco (Hipercard)	Brazil	Hiperchip		
+A0000004320001	ПРО100	Russia	Universal Electronic Card		
+A0000004360100	Edenred	Belgium	Ticket Restaurant		
+A0000004391010	ACCEL/Exchange	United States	Exchange ATM card	The Exchange Network ATM Network	
+A0000004540010	eTranzact	Nigeria	Etranzact Genesis Card	Nigerian local switch company	EMV
+A0000004540011	eTranzact	Nigeria	Etranzact Genesis Card 2	Nigerian local switch company	EMV
+A0000004762010	Google	United States	GOOGLE_CONTROLLER_AID	GOOGLE_LOCKET_AID	
+A0000004763030	Google	United States	GOOGLE_MIFARE_MANAGER_AID		
+A0000004766C	Google	United States	GOOGLE_PAYMENT_AID		EMV
+A000000476A010	Google	United States	GSD_MANAGER_AID		GP
+A000000476A110	Google	United States	GSD_MANAGER_AID		GP
+A000000485	JVL Ventures, LLC (Softcard)	United States	Softcard SmartTap		
+A0000005241010	RuPay	India	RuPay	RuPay (India)	EMV
+A0000005271002	Yubico	Sweden	Yubikey NEO U2F Demo applet	Universal 2-Factor Proof-of-concept/Demo	YKNEO
+A000000527200101	Yubico	Sweden	Yubikey NEO Yubikey2 applet interface	Javacard Applet AID	YKNEO
+A000000527210101	Yubico	Sweden	Yubikey NEO OATH Applet	Javacard Applet AID	YKNEO
+A0000005591010FFFFFFFF8900000100	GSMA (GSM Association)	United Kingdom	ISD-R Application. Used as TAR.		
+A0000005591010FFFFFFFF8900000200	GSMA (GSM Association)	United Kingdom	ECASD Application. Used as TAR.		
+A0000005591010FFFFFFFF8900000D00	GSMA (GSM Association)	United Kingdom	ISD-P Executable Load File.		
+A0000005591010FFFFFFFF8900000E00	GSMA (GSM Association)	United Kingdom	ISD-P Executable Module.		
+A0000005591010FFFFFFFF8900000F00	GSMA (GSM Association)	United Kingdom	Reserved value for the Profile’s ISD-P		
+A0000005591010FFFFFFFF8900001000	GSMA (GSM Association)	United Kingdom	ISD-P Application (‘1010FFFFFFFF89000010’ to ‘1010FFFFFFFF8900FFFF’. Used as TAR. The value is allocated during the ‘Profile Download and Installation procedure’		
+A00000061700	Fidesmo	Sweden	Fidesmo javacard		
+A0000006200620	Debit Network Alliance (DNA)	United States	Debit Network Alliance (DNA)	Common U.S. Debit	
+A0000006260101010001	SwissPass	Switzerland	SwissPass/SwissPass Plus		
+A0000006351010	Bancnet	Philippines			
+A0000006581010	MIR	Russia	MIR Credit		
+A0000006581011	MIR	Russia	MIR Credit		
+A0000006582010	MIR	Russia	MIR Debit		
+A0000006723010	TROY	Turkey	TROY chip credit card	Turkey’s Payment Method	EMV
+A0000006723020	TROY	Turkey	TROY chip debit card	Turkey’s Payment Method	EMV
+A000000743CC843413925E20C59B0100	SALTO JustIN Mobile		SALTO JustIN Mobile		
+A0000007705850	Indian Oil Corporation Limited	India	XTRAPOWER Fleet Card Program	Indian Oil’s Pre Paid Program	EMV
+A0000007790000	Zimswitch	Zimbabwe			
+A000000A031010	VSDC RF		VSDC RF		
+A00102030400000002	OPBytes		OPBytes		
+B012345678	MasterCard International	United States	Maestro TEST	Used for development	EMV
+D040000001000002	Paylife	Austria	Paylife Quick (IEP). Preloaded Electronic Purse	Domestic Payment System (Version 2.1)	
+D040000002000002	Austria Card	Austria	RFU	Domestic Payment System (Version 2.1)	
+D040000003000002	Austria Card	Austria	POS	Domestic Payment System (Version 2.1)	
+D040000004000002	Austria Card	Austria	ATM	Domestic Payment System (Version 2.1)	
+D04000000B000002	Austria Card	Austria	Retail	Domestic Loyalty Program (Version 2.1)	
+D04000000C000002	Austria Card	Austria	Bank_Data	Domestic Loyalty Program (Version 2.1)	
+D04000000D000002	Austria Card	Austria	Shopping	Domestic Loyalty Program (Version 2.1)	
+D040000013000001	Austria Card	Austria	DF_Schüler1	Domestic Loyalty Program (Version 1.3)	
+D040000013000001	Austria Card	Austria	DF_UNI_Kepler1	Domestic Loyalty Program (Version 2.0)	
+D040000013000002	Austria Card	Austria	DF_Schüler2	Domestic Loyalty Program (Version 1.3)	
+D040000013000002	Austria Card	Austria	DF_UNI_Kepler2	Domestic Loyalty Program (Version 2.0)	
+D040000014000001	Austria Card	Austria	DF_Mensa	Domestic Loyalty Program (Version 2.0)	
+D040000015000001	Austria Card	Austria	DF_Ausweis	Domestic Loyalty Program (Version 1.3)	
+D040000015000001	Austria Card	Austria	DF_UNI_Ausweis	Domestic Loyalty Program (Version 2.0)	
+D0400000190001	Austria Card	Austria	EMV ATM Maestro	Domestic EMV Application (Version 2.1)	
+D0400000190002	Austria Card	Austria	EMV POS Maestro	Domestic EMV Application (Version 2.1)	
+D0400000190003	Austria Card	Austria	EMV ATM MasterCard	Domestic EMV Application (Version 2.1)	
+D0400000190004	Austria Card	Austria	EMV POS MasterCard	Domestic EMV Application (Version 2.1)	
+D0400000190010	Austria Card	Austria	Digital ID	Domestic Payment System (Version 2.1)	
+D2500000024D465F564954414C45		France	Carte vitale MF		
+D250000002564954414C45		France	Carte vitale (French Health Insurance Card)		
+D2500000044164E86C650101		France	Carte vitale ?		
+D268000001	Ministry of Finance of Georgia	Georgia	Fiscal module application	Georgia Revenue Service application for fiscal cash registers	
+D27600000101		Germany	KVK (Dt. Krankenversichertenkarte alt)		
+D27600000102		Germany	eGK-HCA (el.Gesundheitskarte)		
+D2760000015445535442		Germany	eGK-HBA/SMC (Testlaborkarte)		
+D276000005	Giesecke&Devrient	Germany		Giesecke & Devrient	
+D276000005AA040360010410	Giesecke&Devrient	Germany	G D App Nokia 6212		
+D276000005AA0503E00401	Giesecke&Devrient	Germany	G D App Nokia 6212		
+D276000005AA0503E00501	Giesecke&Devrient	Germany	G D App Nokia 6212		
+D276000005AA0503E0050101	Giesecke&Devrient	Germany	G D App Nokia 6212		
+D276000005AB0503E0040101	Giesecke&Devrient	Germany	G D App Nokia 6212		
+D276000002		Germany	ZKA domestic		
+D27600002200000001	IBM Laboratories	Germany	SCT LOYALTY	IBM Test card from the book ‘Smart Card Application Development Using Java’	
+D27600002200000002	IBM Laboratories	Germany	BUSINESS CARD	IBM Test card from the book ‘Smart Card Application Development Using Java’	
+D27600002200000060	IBM Laboratories	Germany	PKCS#11 Token	IBM Test card from the book ‘Smart Card Application Development Using Java’	
+D276000025	ZKA	Germany	Girocard	Girocard (Geldkarte) in Germany	
+D27600002545410100	ZKA	Germany		Unknown	
+D27600002545430200	ZKA	Germany	electronic cash (EUR)		
+D27600002545500100	ZKA	Germany	Girocard	ZKA Girocard (Geldkarte) (Germany)	EMV
+D27600002545500200	ZKA	Germany	GeldKarte (EUR)		
+D27600002546530200	ZKA	Germany	Fahrschein		
+D27600002547410100	ZKA	Germany	Girocard ATM		
+D27600002548420200	ZKA	Germany	ZKA HBCI (Homebanking)		
+D2760000254D010200	ZKA	Germany	ZKA Marktplatz		
+D2760000254E500100	ZKA	Germany	ZKA Notepad		
+D27600002554430100	ZKA	Germany	ZKA TAN Credit		
+D27600002554430200	ZKA	Germany	ZKA TAN Credit alternative AID		
+D27600002554440100	ZKA	Germany	ZKA TAN Debit		
+D27600002554440200	ZKA	Germany	ZKA TAN Debit alternative AID		
+D2760000255A410200	ZKA	Germany	ZKA-Zusatzanwendungen		
+D276000060	Wolfgang Rankl	Germany			
+D27600006601	BAPT/BSI	Germany	QES (Qualifizierte Elektronische Signatur)		
+D276000085	NXP Semiconductors / NFC Forum	Germany	NFC Forum		
+D2760000850100	NXP Semiconductors / NFC Forum	Germany	NDEF Tag Application / Mifare DESFire Tag Application	NFC Forum Type 4 Tag	
+D2760000850101	NXP Semiconductors / NFC Forum	Germany	NDEF Tag Application	NFC Tag type 4 tag	
+D276000118	Giesecke&Devrient Java Card Telecommunikation	Germany			
+D2760001180101	Giesecke&Devrient Java Card Telecommunikation	Germany	Giesecke &amp	Devrient Test Applet?	
+D27600012401	fsfEurope	Germany	OpenPGP Card	For selection when not knowing the exact full AID	OpenPGP
+D276000124010101FFFF000000010000	fsfEurope	Germany	OpenPGP Card	Version 1	OpenPGP
+D2760001240102000000000000010000	fsfEurope	Germany	OpenPGP Card	Version 2	OpenPGP
+D27600012402	fsfEurope	Germany	SmartChess	https://smartchess.de/englisch/SmartChess_1.0.pdf	SmartChess
+D2760001240200010000000000000000	fsfEurope	Germany	SmartChess	https://smartchess.de/englisch/SmartChess_1.0.pdf	SmartChess
+D27600014401	gematik	Germany	eGK-root (el.Gesundheitskarte)		
+D2760001448000	gematik	Germany	eGK – el.Gesundheitskarte		
+D28000000101	KVK (Dt. Krankenversichertenkarte)	Germany	KVK (Dt. Krankenversichertenkarte)		
+D4100000011010		Republic of Korea			
+D4106470004B5410000001	KAuth		KT GPIN		
+D4106470004B5410000002	KAuth		KT PIMS		
+D4106470004B5410000004	KAuth		KAuth		
+D4106470004B5410000005	KAuth		KTicket		
+D4106509900030	KCert		KCert		
+D5280050218002		The Netherlands	?	(Netherlands)	EMV
+D578000002	Bankaxept	Norway	Bankaxept Norway		
+D5780000021010	Bankaxept	Norway	Bankaxept	Norwegian domestic debit card	EMV
+D7560000010101	Swiss Travel Fund (Reka)	Switzerland	Reka Card	prepaid functional debit card	
+D7560000300101	Migros (FCM, GE Money Bank and MasterCard)	Switzerland	M Budget		
+D8040000013010	PROSTIR	Ukraine	PROSTIR Card		
+E80704007F00070302	nPA,German eID	Germany	nPA	German eID	
+E82881C11702	AlphaCard application		AlphaCard application		
+E828BD080F	Carte vitale		ISO-7816-15 EF.DIR	Iso adoption of PKCS-15	
+E828BD080FA000000167455349474E	Carte vitale		eGK-CIA.ESIGN (el.Gesundheitskarte)		
+E828BD080FD2500000044164E86C65	Carte vitale		Carte vitale		
+F0000000030001	BRADESCO	Brazilian Bank Banco Bradesco	BRADESCO	Brazilian Bank Banco Bradesco	EMV
+F0004B5446303031	KTF		KTF		

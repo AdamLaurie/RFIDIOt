@@ -24,15 +24,13 @@ import subprocess
 
 x = 0
 if len(sys.argv) > 1:
-    sod = open(sys.argv[1], "r")
+    sod = open(sys.argv[1], "r", encoding="utf-8")
 else:
-    sod = open("/tmp/EF_SOD.BIN", "r")
+    sod = open("/tmp/EF_SOD.BIN", "r", encoding="utf-8")
 data = sod.read()
 while x < len(data):
-    out = open("/tmp/SOD", "w")
-    out.write(data[x:])
-    out.flush()
-    out.close()
+    with open("/tmp/SOD", "w", encoding="utf-8") as fd:
+        fd.write(data[x:])
     (exitstatus, outtext) = subprocess.getstatusoutput("openssl pkcs7 -text -print_certs -in /tmp/SOD -inform DER")
     if not exitstatus and len(outtext) > 0:
         print("PKCS7 certificate found at offset %d:" % x)

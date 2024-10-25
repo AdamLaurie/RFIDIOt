@@ -27,10 +27,10 @@
 import sys
 from Crypto.Cipher import DES3, DES
 
-# main
-print("mifarekeys v0.1c")
+_VERSION="v0.1c"
 
-if len(sys.argv) != 3:
+def print_help() -> None:
+
     print(f"""
     Usage:
     \t{sys.argv[0]} <KeyA> <KeyB>" % sys.argv[0]
@@ -50,72 +50,90 @@ if len(sys.argv) != 3:
     \t\tMifarePWD:    8C7F46D76CE01266
     """)
 
-    sys.exit(True)
 
 # break keyA and keyB into bytearrays
 
-try:
-    keyA = bytearray.fromhex(sys.argv[1])
-except ValueError:
-    print("A Invalid HEX string:", sys.argv[1])
-    sys.exit(True)
+
+def gen_MifarePWD(keyA, keyB) -> list:
+    """ calculate 3DES key for Mifare access on JCOP cards """
 
 
-try:
-    keyB = bytearray.fromhex(sys.argv[2])
-except ValueError:
-    print("B Invalid HEX string:", sys.argv[2])
-    sys.exit(True)
+    # now expand 48 bit Mifare keys to 64 bits for DES by adding 2 bytes
+    # one is all zeros and the other is derived from the 48 Mifare key bits
 
-# now expand 48 bit Mifare keys to 64 bits for DES by adding 2 bytes
-# one is all zeros and the other is derived from the 48 Mifare key bits
+    # KeyA
+    # first left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
+    newkeyA = bytearray()
+    for n in keyA:
+        newkeyA.append((n << 1) & 0xFF)
+    # now create byte 6 from bit 7 of original bytes 0-5, shifted to the correct bit position
+    newkeyAbyte6 = 0x00
+    m = 0b01000000
+    for n, b in enumerate(keyA):
+        newkeyAbyte6 |= (b >> n + 1) & m
+        m >>= 1
+    newkeyA.append(newkeyAbyte6)
+    # and finally add a 0x00 to the end
+    newkeyA.append(0)
 
-# KeyA
-# first left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
-newkeyA = bytearray()
-for n in keyA:
-    newkeyA.append((n << 1) & 0xFF)
-# now create byte 6 from bit 7 of original bytes 0-5, shifted to the correct bit position
-newkeyAbyte6 = 0x00
-m = 0b01000000
-for n, b in enumerate(keyA):
-    newkeyAbyte6 |= (b >> n + 1) & m
-    m >>= 1
-newkeyA.append(newkeyAbyte6)
-# and finally add a 0x00 to the end
-newkeyA.append(0)
-print()
-print("  DKeyA:       ", newkeyA.hex().upper())
+    # KeyB
+    # now do keyB, which is basically the same but starting at byte 2 and prepending new bytes
+    newkeyB = bytearray([0])
+    # now create byte 1 from bit 7 of original bytes 0-5, shifted to the correct bit position, which is
+    # the reverse of byte6 in KeyA
+    newkeyBbyte1 = 0x00
+    m = 0b00000010
+    for n, b in enumerate(keyB):
+        newkeyBbyte1 |= b >> 7 - (n + 1) & m
+        m <<= 1
+    newkeyB.append(newkeyBbyte1)
+    # left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
+    for b in keyB:
+        newkeyB.append((b << 1) & 0xFF)
 
-# KeyB
-# now do keyB, which is basically the same but starting at byte 2 and prepending new bytes
-newkeyB = bytearray([0])
-# now create byte 1 from bit 7 of original bytes 0-5, shifted to the correct bit position, which is
-# the reverse of byte6 in KeyA
-newkeyBbyte1 = 0x00
-m = 0b00000010
-for n, b in enumerate(keyB):
-    newkeyBbyte1 |= b >> 7 - (n + 1) & m
-    m <<= 1
-newkeyB.append(newkeyBbyte1)
-# left shift 1 to create a 0 trailing bit (masked to keep it a single byte)
-for b in keyB:
-    newkeyB.append((b << 1) & 0xFF)
 
-print("  DKeyB:       ", newkeyB.hex().upper())
+    # now create triple-DES key
+    deskeyABA = ""
+    # build key MSB first
+    keyABA = newkeyA + newkeyB + newkeyA
+    deskeyABA = keyABA[::-1]
 
-# now create triple-DES key
-deskeyABA = ""
-# build key MSB first
-keyABA = newkeyA + newkeyB + newkeyA
-deskeyABA = keyABA[::-1]
+    des3 = DES3.new(deskeyABA, DES.MODE_CBC, b"\0\0\0\0\0\0\0\0")
+    mifarePWD = des3.encrypt(b"\0\0\0\0\0\0\0\0")
 
-des3 = DES3.new(deskeyABA, DES.MODE_CBC, b"\0\0\0\0\0\0\0\0")
-mifarePWD = des3.encrypt(b"\0\0\0\0\0\0\0\0")
+    # reverse LSB/MSB for final output
+    mifarePWDout = mifarePWD[::-1].hex().upper()
 
-# reverse LSB/MSB for final output
-mifarePWDout = mifarePWD[::-1].hex().upper()
+    # Convert to Hex
+    dKeyA = newkeyA.hex().upper()
+    dKeyB = newkeyB.hex().upper()
+    
+    return [mifarePWDout, dKeyA, dKeyB]
 
-print()
-print("  MifarePWD:   ", mifarePWDout)
-print()
+
+if __name__ == '__main__':
+
+    print(f"mifarekeys {_VERSION}")
+    if len(sys.argv) != 3:
+        print_help()
+        sys.exit(True)
+
+    try:
+        key_A = bytearray.fromhex(sys.argv[1])
+    except ValueError:
+        print("A Invalid HEX string:", sys.argv[1])
+        sys.exit(True)
+
+    try:
+        key_B = bytearray.fromhex(sys.argv[2])
+    except ValueError:
+        print("B Invalid HEX string:", sys.argv[2])
+        sys.exit(True)
+
+    mifarePWD, dKey_A, dKey_B = gen_MifarePWD(key_A, key_B)
+
+    print("  DKeyA:       ", dKey_A)
+    print("  DKeyB:       ", dKey_B)
+    print()
+    print("  MifarePWD:   ", mifarePWD)
+    print()

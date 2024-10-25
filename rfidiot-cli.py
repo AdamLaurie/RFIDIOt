@@ -171,7 +171,7 @@ while args:
         start = int(args.pop(), 16)
         end = int(args.pop(), 16)
         print()
-        print("  Dumping data blocks %02X to %02X:" % (start, end))
+        print(f"  Dumping data blocks {start:02X} to {end:02X}:")
         print()
         sector = start
         while sector <= end:
@@ -201,7 +201,7 @@ while args:
     if command == "HSS":
         speed = "%02X" % int(args.pop())
         print()
-        print("  High Speed Selecting (%s)" % card.ISO_SPEED[speed])
+        print(f"  High Speed Selecting ({card.ISO_SPEED[speed]})")
         print()
         if card.hsselect(speed):
             print("    Tag ID: " + card.uid)
@@ -241,14 +241,14 @@ while args:
         if mfcommand == "AUTH":
             keytype = args.pop().upper()
             sector = int(args.pop(), 16)
-            print("  Authenticating to sector %02X with Mifare Key" % sector, end="")
+            print(f"  Authenticating to sector {sector:02X} with Mifare Key", end="")
             Mifare_KeyType = keytype
             if keytype == "A":
                 Mifare_Key = Mifare_KeyA
-                print("A (%s)" % Mifare_Key)
+                print(f"A ({Mifare_Key})")
             elif keytype == "B":
                 Mifare_Key = Mifare_KeyB
-                print("B (%s)" % Mifare_Key)
+                print(f"B ({Mifare_Key})")
             else:
                 print("failed! Invalid keytype:", keytype)
                 sys.exit(True)
@@ -318,7 +318,7 @@ while args:
         if mfcommand == "DUMP":
             start = int(args.pop(), 16)
             end = int(args.pop(), 16)
-            print("  Dumping data blocks %02X to %02X:" % (start, end), end="")
+            print(f"  Dumping data blocks {start:02X} to {end:02X}", end="")
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
                 sys.exit(True)
@@ -358,23 +358,23 @@ while args:
             end = int(args.pop(), 16)
             filename = args.pop()
             print(f"  Reading data blocks {start:02X} to {end:02X} and saving as {filename}:", end="")
-            outfile = open(filename, "wb")
-            if not outfile:
-                print("failed! Couldn't open output file!")
-                sys.exit(True)
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
                 sys.exit(True)
-            print()
-            print()
-            sector = start
-            while sector <= end:
-                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                    outfile.write(card.MIFAREdata.decode("hex"))
-                else:
-                    print("    Failed: " + card.get_error_str(card.errorcode))
-                sector += 1
-            outfile.close()
+            with open(filename, "wb") as outfile:
+                print()
+                print()
+                sector = start
+                while sector <= end:
+                    if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
+                        outfile.write(card.MIFAREdata.decode("hex"))
+                    else:
+                        print("    Failed: " + card.get_error_str(card.errorcode))
+                    sector += 1
+
+            #if not outfile:
+            #    print("failed! Couldn't open output file!")
+            #    sys.exit(True)
             print("    OK")
             continue
 
@@ -427,7 +427,7 @@ while args:
                 print("failed! No authentication performed!")
                 sys.exit(True)
             end = start + len(data) / 16 - 1
-            print("to blocks %02X to %02X" % (start, end))
+            print(f"to blocks {start:02X} to {end:02X}")
             print()
             print("    Key A will be set to:", Mifare_KeyA)
             if Mifare_KeyB:
@@ -468,40 +468,40 @@ while args:
 
     if command == "SCRIPT":
         filename = args.pop()
-        infile = open(filename, "rb")
-        print()
-        print("  Reading commands from", filename)
-        if not infile:
-            print("failed! Can't open file!")
-            sys.exit(True)
-        script = []
-        while 42:
-            line = infile.readline()
-            if line == "":
-                break
-            line = line.strip()
-            if line == "":
-                continue
-            quoted = False
-            for arg in line.split(" "):
-                # skip comments
-                if arg[0] == "#":
+        with open(filename, "rb") as infile:
+            print()
+            print("  Reading commands from", filename)
+            # if not infile:
+            #     print("failed! Can't open file!")
+            #     sys.exit(True)
+            script = []
+            while 42:
+                line = infile.readline()
+                if line == "":
                     break
-                # quoted sections
-                if arg[0] in ['"', "'"]:
-                    quoted = True
-                    quote = ""
-                    arg = arg[1:]
-                if quoted:
-                    if arg[-1] in ['"', "'"]:
-                        quote += " " + arg[:-1]
-                        quoted = False
-                        script.append(quote)
+                line = line.strip()
+                if line == "":
+                    continue
+                quoted = False
+                for arg in line.split(" "):
+                    # skip comments
+                    if arg[0] == "#":
+                        break
+                    # quoted sections
+                    if arg[0] in ['"', "'"]:
+                        quoted = True
+                        quote = ""
+                        arg = arg[1:]
+                    if quoted:
+                        if arg[-1] in ['"', "'"]:
+                            quote += " " + arg[:-1]
+                            quoted = False
+                            script.append(quote)
+                        else:
+                            quote += " " + arg
                     else:
-                        quote += " " + arg
-                else:
-                    script.append(arg)
-        infile.close()
+                        script.append(arg)
+
         script.reverse()
         args += script
         continue

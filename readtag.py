@@ -25,30 +25,34 @@ import sys
 # import os
 import rfidiot
 
-try:
-    card = rfidiot.card
-except:
-    print("Couldn't open reader!")
-    sys.exit(True)
+if __name__ == '__main__':
 
-card.info("readtag v0.1f")
-card.select()
-print(f"\nID: {card.uid}")
-print("  Data:")
+    try:
+        card = rfidiot.card
+    except:
+        print("Couldn't open reader!")
+        sys.exit(True)
 
-card.select()
-for x in range(255):
-    # print("    Block %02x:" % x, end="")
-    print(f"    Block {x:02x}:", end="")
-    if card.readblock(x):
-        print(card.data, card.ReadablePrint(card.ToBinary(card.data)))
+    card.info("readtag v0.1f")
+    card.select()
+    print(f"\nID: {card.uid}")
+    print("  Data:")
+
+    card.select()
+    for x in range(255):
+        # print("    Block %02x:" % x, end="")
+        print(f"    Block {x:02x}:", end="")
+        if card.readblock(x):
+            print(card.data, card.ReadablePrint(card.ToBinary(card.data)))
+        else:
+            # print('read error: %s, %s' % (card.errorcode, card.ISO7816ErrorCodes[card.errorcode]))
+            # print("read error: {}, {}".format(card.errorcode, card.get_error_str(card.errorcode)))
+            print(f"read error: {card.errorcode}, {card.get_error_str(card.errorcode)}")
+
+    print(f"\n    Total blocks: {x}")
+    if x > 0:
+        sys.exit(False)
     else:
-        # print('read error: %s, %s' % (card.errorcode, card.ISO7816ErrorCodes[card.errorcode]))
-        # print("read error: {}, {}".format(card.errorcode, card.get_error_str(card.errorcode)))
-        print(f"read error: {card.errorcode}, {card.get_error_str(card.errorcode)}")
+        sys.exit(True)
 
-print(f"\n    Total blocks: {x}")
-if x > 0:
-    sys.exit(False)
-else:
-    sys.exit(True)
+

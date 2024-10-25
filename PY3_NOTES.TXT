@@ -36,12 +36,11 @@ Address lots of pylint warnings
 run pycodestyle
 
 
-
 ## General Changes:
 
 piped code though expand(1) to get rid of tabs
 
-Ran 2to3 for general concvert
+Ran 2to3 for general conversion
 
 manually reindented
 
@@ -52,10 +51,10 @@ eventually just ran ran black (The uncompromising code formatter) with these opt
     skip-source-first-line = true
     skip-string-normalization = true
 
-ran pylint to spot redefined built-in funtions name used as vars
+ran pylint to spot redefined built-in functions name used as vars
 	(eg: type() use a as a var)
 
-manually updating print formating methods where obvious (more needs doing)
+manually updating print formatting methods where obvious (more needs doing)
 
 add decode("utf-8")  as needed
 

@@ -157,9 +157,12 @@ if len(extraopts) > 0:
 
 # 'args' will be set to remaining arguments (if any)
 try:
-    opts, args = getopt.getopt(extraopts + sys.argv[1:], "df:ghnNr:R:l:Ls:t:")
+    opts, args = getopt.getopt(extraopts + sys.argv[1:], "df:ghjnNr:R:l:Ls:t:")
 
     for o, a in opts:
+        if o == "-j":
+            rfidiotglobals.Json = True
+            continue
         if o == "-d":
             rfidiotglobals.Debug = True
         if o == "-f":
