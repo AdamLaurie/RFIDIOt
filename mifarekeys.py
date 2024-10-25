@@ -33,7 +33,7 @@ def print_help() -> None:
 
     print(f"""
     Usage:
-    \t{sys.argv[0]} <KeyA> <KeyB>" % sys.argv[0]
+    \t{sys.argv[0]} <KeyA> <KeyB> 
 
     \tCreate MifarePWD for access to Mifare protected memory on Dual Interface IC
     \t(JCOP cards. Output is DKeyA, DKeyB and MifarePWD. DKeyA and DKeyB are used as)

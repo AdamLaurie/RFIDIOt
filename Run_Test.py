@@ -21,20 +21,27 @@ def test_mifarekeys() -> bool:
 
     key_A = bytearray.fromhex('A0A1A2A3A4A5')
     key_B = bytearray.fromhex('B0B1B2B3B4B5')
-
     expected_result = ['8C7F46D76CE01266', '40424446484A7E00', '007E60626466686A']
-
     results = gen_MifarePWD(key_A, key_B)
+    if expected_result != results:
+        print("mifarekeys: Test Fail")
+        print(f"\tExpected {expected_result}")
+        print(f"\tReceived {results}")
+        return False
 
-    if expected_result == results:
-        print("mifarekeys: Test Pass")
-        return True
+    key_A = bytearray.fromhex('FFFFFFFFFFFF')
+    key_B = bytearray.fromhex('FFFFFFFFFFFF')
+    expected_result = ['0B54570745FE3AE7', 'FEFEFEFEFEFE7E00', '007EFEFEFEFEFEFE']
+    results = gen_MifarePWD(key_A, key_B)
+    if expected_result != results:
+        print("mifarekeys: Test Fail")
+        print(f"\tExpected {expected_result}")
+        print(f"\tReceived {results}")
+        return False
 
-    print("mifarekeys: Test Fail")
-    print(f"\tExpected {expected_result}")
-    print(f"\tReceived {results}")
+    print("mifarekeys: Test Pass")
+    return True
 
-    return False
 
 def test_conversion_functions() -> bool:
 

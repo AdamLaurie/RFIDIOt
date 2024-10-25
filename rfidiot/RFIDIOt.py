@@ -91,10 +91,12 @@ class rfidiot:
         self.readersubtype = reader
         readernum = int(readernum)
         self.DEBUG = debug
-        self.NoInit = True # noinit
+        self.NoInit = False # noinit
         self.NFCReader = nfcreader
         self.timeout = to
-        if not self.NoInit:
+        if self.NoInit:
+            print("NoInit == TRUE")
+        else:
             if self.readertype == self.READER_PCSC:
                 try:
                     self.pcsc_protocol = smartcard.scard.SCARD_PROTOCOL_T1
@@ -1949,8 +1951,8 @@ class rfidiot:
         if self.readertype == self.READER_LIBNFC:
             if self.libnfc_mifare_read_block(block):
                 self.MIFAREdata = self.data
-            # else:
-            return False
+            else:
+                return False
         if self.readblock(block):
             self.MIFAREdata = self.data
         else:
