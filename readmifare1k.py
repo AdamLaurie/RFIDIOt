@@ -78,7 +78,7 @@ while sector < 16:
         print(f"\n Sector 0x{sector:02X}: Keytype: {ctype}", end="")
         sys.stdout.flush()
         sys.stderr.flush()
-        print("1---")
+        print("\n1---")
         card.select()
         sys.stdout.flush()
         sys.stderr.flush()
