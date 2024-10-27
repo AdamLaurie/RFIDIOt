@@ -23,15 +23,6 @@
 # pylint: disable=attribute-defined-outside-init,too-many-statements,too-many-branches,too-many-instance-attributes,too-few-public-methods,too-many-lines,too-many-public-methods,too-many-return-statements
 
 
-# use Psyco compiler to speed things up if available
-try:
-    import psyco
-
-    psyco.profile(0.01)
-    psyco.full()
-except ImportError:
-    pass
-
 # import os
 import sys
 import random
@@ -43,8 +34,19 @@ import time
 import string
 from typing import Tuple # Union
 from operator import xor
-from Crypto.Hash import SHA
-from Crypto.Cipher import DES3, DES
+# Cryptodome installed under the Crypto package
+# but not with the linux pkg python3-pycryptodome
+try:
+    try:
+        from Crypto.Hash import SHA
+        from Crypto.Cipher import DES3, DES
+    except ModuleNotFoundError as _e:
+        print(_e, "Trying Cryptodome")
+        from xCryptodome.Hash import SHA
+        from xCryptodome.Cipher import DES3, DES
+except ImportError as _er:
+    print(_er, "giving up")
+    sys.exit(1)
 # from Crypto.Cipher import DES
 from . import pynfc
 from . import pyandroid
@@ -87,6 +89,8 @@ class rfidiot:
     # open reader port
     #
     def __init__(self, readernum, reader, port, baud, to, debug, noinit, nfcreader):
+        self.json = False
+        self.silent = False
         self.readertype = reader
         self.readersubtype = reader
         readernum = int(readernum)
@@ -328,6 +332,7 @@ class rfidiot:
     HITAG2_CRYPTO = "0e"
     ACG_FAIL = "N"
     # Mifare transort keys
+    # MIFARE_TK = {"AA": "A0A1A2A3A4A5", "BB": "B0B1B2B3B4B5", "FF": "FFFFFFFFFFFF"}
     MIFARE_TK = {"AA": "A0A1A2A3A4A5", "BB": "B0B1B2B3B4B5", "FF": "FFFFFFFFFFFF"}
     ISOTags = {
         "a": "ISO 14443 Type A  ",
@@ -877,7 +882,7 @@ class rfidiot:
     def info(self, caller) -> None:
         if len(caller) > 0:
             print(caller + " (using RFIDIOt v" + self.VERSION + ")")
-        print("self.readertype:", self.readertype)  ## PMS
+        # print("self.readertype:", self.readertype)  ## PMS
         if not self.NoInit:
             self.reset()
             self.version()
@@ -928,28 +933,14 @@ class rfidiot:
                 print("Android Reader")
             print()
 
-    @staticmethod
-    def get_error_str(err=None) -> str:
-
-        # if err is None:
-        #    err = self.errorcode
-
-        if err in rfidiot.ISO7816ErrorCodes:
-            return rfidiot.ISO7816ErrorCodes[err]
-
-        if err in pynfc.NFC_LIB_ERROR_CODES:
-            return pynfc.NFC_LIB_ERROR_CODES[err]
-
-        # Punt
-        return "gemeral error"
-
-    def _get_error_str(self, err=None) -> str:
+    @classmethod
+    def get_error_str(cls, err=None) -> str:
 
         if err is None:
-            err = self.errorcode
+            err = cls.errorcode
 
-        if err in self.ISO7816ErrorCodes:
-            return self.ISO7816ErrorCodes[err]
+        if err in cls.ISO7816ErrorCodes:
+            return cls.ISO7816ErrorCodes[err]
 
         if err in pynfc.NFC_LIB_ERROR_CODES:
             return pynfc.NFC_LIB_ERROR_CODES[err]
@@ -1842,7 +1833,7 @@ class rfidiot:
                 else:
                     keynumoffset = 0
                 apdu.append("%02x" % (keynum + keynumoffset))  # p2 - key number
-                apdu.append("%02x" % (len(key) / 2))  # lc
+                apdu.append("%02x" % (len(key) // 2))  # use // for type int
                 apdu.append(key)  # data
                 if not self.pcsc_send_apdu(apdu):
                     return False
@@ -2151,30 +2142,30 @@ class rfidiot:
         out += "0"
         return out
 
-    @staticmethod
-    def UniqueToEM(data) -> str:
+    @classmethod
+    def UniqueToEM(cls, data) -> str:
         "convert Unique ID to raw EM4x02 ID"
         # swap words
         tmp = ""
         for x in range(5):
             tmp += data[x * 2 + 1] + data[x * 2]
         # reverse bits
-        return rfidio.ToBinaryString(rfidio.ToBinary(tmp))[::-1]
+        return cls.ToBinaryString(cls.ToBinary(tmp))[::-1]
 
-    @staticmethod
-    def EMToUnique(data):
+    @classmethod
+    def EMToUnique(cls, data):
         "convert raw EM4x02 ID to Unique"
-        return rfidio.ToHex(rfidio.BitReverse(rfidio.ToBinary(data)))
+        return cls.ToHex(cls.BitReverse(cls.ToBinary(data)))
 
-    @staticmethod
-    def HexToQ5(data) -> str:
+    @classmethod
+    def HexToQ5(cls, data) -> str:
         "conver human readable HEX to Q5 ID"
-        return rfidio.ToBinaryString(rfidio.ToBinary(data))
+        return cls.ToBinaryString(cls.ToBinary(data))
 
-    @staticmethod
-    def crcccitt(data) -> int:
+    @classmethod
+    def crcccitt(cls, data) -> int:
         crcvalue = 0x0000
-        return rfidio.crc(crcvalue, data, MASK_CCITT)
+        return cls.crc(crcvalue, data, MASK_CCITT)
 
     @staticmethod
     def crc(crc, data, mask=MASK_CRC16) -> int:
@@ -2278,13 +2269,26 @@ class rfidiot:
     @staticmethod
     def BitReverse(data) -> str:
         "Reverse bits - MSB to LSB"
-        output = ""
-        for y in range(len(data)):
-            outchr = ""
-            for x in range(8):
-                outchr += str(ord(data[y]) >> x & 1)
-            output += str(chr(int(outchr, 2)))
-        return output
+        # 010a08 -> 805010
+        # 000000010000101000001000 -> 100000000101000000010000
+        if isinstance(data, str):
+            data = bytes(data, encoding='latin-1')
+
+        result = bytearray()
+        for x in data:
+            x = ((x & 0x5555) << 1) | ((x & 0xAAAA) >> 1)
+            x = ((x & 0x3333) << 2) | ((x & 0xCCCC) >> 2)
+            x = ((x & 0x0F0F) << 4) | ((x & 0xF0F0) >> 4)
+            result.append(x)
+
+        return result
+        #    output = ""
+        #    for y in range(len(data)):
+        #        outchr = ""
+        #        for x in range(8):
+        #            outchr += str(ord(data[y]) >> x & 1)
+        #        output += str(chr(int(outchr, 2)))
+        #    return output
 
     @staticmethod
     def HexReverse(data) -> str:
@@ -2334,11 +2338,11 @@ class rfidiot:
         #     output += str(chr(int(rightnibble + leftnibble, 2)))
         # return output
 
-    @staticmethod
-    def HexNibbleReverse(data) -> str:
+    @classmethod
+    def HexNibbleReverse(cls, data) -> str:
         "Convert HEX to Binary then reverse nibbles and convert back"
         # 12345678' => '84c2a6e1'
-        return rfidiot.NibbleReverse(bytes.fromhex(data)).hex()
+        return cls.NibbleReverse(bytes.fromhex(data)).hex()
 
     @staticmethod
     def ToHex(data) -> str:
@@ -2352,9 +2356,9 @@ class rfidiot:
         #     string += "%02x" % ord(data[x])
         # return string
 
-    @staticmethod
-    def HexPrint(data) -> None:
-        print(rfidiot.ToHex(data))
+    @classmethod
+    def HexPrint(cls, data) -> None:
+        print(cls.ToHex(data))
 
     @staticmethod
     def _ReadablePrint(text) -> str:
@@ -2385,19 +2389,19 @@ class rfidiot:
         #     out += n
         # return out
 
-    @staticmethod
-    def HexArraysToArray(array) -> list:
+    @classmethod
+    def HexArraysToArray(cls, array) -> list:
         # translate an array of strings to an array of 2 character strings
         # "DEADBEEF" => ['DE', 'AD', 'BE', 'EF']
-        temp = rfidiot.HexArrayToString(array)
+        temp = cls.HexArrayToString(array)
         return [temp[i:i+2] for i in range(0, len(temp), 2)]
 
-    @staticmethod
-    def HexArrayToList(array) -> list:
+    @classmethod
+    def HexArrayToList(cls, array) -> list:
         # translate array of 2 char HEX to int list
         #  ["DE", "AD", "BE", "EF"] => [222, 173, 190, 239]
         # first make sure we're dealing with a single array
-        source = rfidiot.HexArraysToArray(array)
+        source = cls.HexArraysToArray(array)
         return [int(n, 16) for n in source]
         # out = []
         # for n in source:
@@ -2432,10 +2436,10 @@ class rfidiot:
         "print binary representation"
         print(self.ToBinaryString(data))
 
-    @staticmethod
-    def BinaryPrint(data) -> None:
+    @classmethod
+    def BinaryPrint(cls, data) -> None:
         "print binary representation"
-        print(rfidiot.ToBinaryString(data))
+        print(cls.ToBinaryString(data))
 
     @staticmethod
     def ToBinaryString(data) -> str:
@@ -2486,16 +2490,16 @@ class rfidiot:
             # adjusted += chr(y + (not parity % 2))
         return bytes(adjusted)
 
-    @staticmethod
-    def DESKey(seed, d_type, length) -> bytes:
+    @classmethod
+    def DESKey(cls, seed, d_type, length) -> bytes:
         d = seed + d_type
         kencsha = SHA.new(d)
         k = kencsha.digest()
-        kp = rfidiot.DESParity(k)
+        kp = cls.DESParity(k)
         return kp[:length]
 
-    @staticmethod
-    def PADBlock( block) -> bytearray:
+    @classmethod
+    def PADBlock(cls, block) -> bytearray:
         "add DES padding to data block"
         if isinstance(block, str):
             block = bytearray(block, encoding='latin-1')
@@ -2503,11 +2507,11 @@ class rfidiot:
         # call with an unknown sized block to return the block padded to a multiple of 8 bytes
         # print('blk', bytes(block, encoding='utf-8'))
         for x in range(8 - (len(block) % 8)):
-            block.append(rfidiot.DES_PAD[x])
+            block.append(cls.DES_PAD[x])
         return block # bytes(block, encoding='utf-8')
 
-    @staticmethod
-    def DES3MAC(message, key, ssc) -> bytes:
+    @classmethod
+    def DES3MAC(cls, message, key, ssc) -> bytes:
         "iso 9797-1 Algorithm 3 (Full DES3)"
         # https://pycryptodome.readthedocs.io/en/latest/src/cipher/des3.html
         # "implementation does not support and will purposefully fail
@@ -2516,10 +2520,10 @@ class rfidiot:
             message = bytearray(message, encoding='latin-1')
         tdes = DES3.new(key, DES3.MODE_ECB)  # , self.DES_IV)
         if ssc:
-            mac = tdes.encrypt(rfidiot.ToBinary(ssc))
+            mac = tdes.encrypt(cls.ToBinary(ssc))
         else:
-            mac = rfidiot.DES_IV
-        message += rfidiot.PADBlock("")
+            mac = cls.DES_IV
+        message += cls.PADBlock("")
         for y in range(len(message) // 8):
             current = message[y * 8 : (y * 8) + 8]
             left = ""
@@ -2535,8 +2539,8 @@ class rfidiot:
         # mac= tdes.encrypt(mac)
         return mac
 
-    @staticmethod
-    def DESMAC(message, key, ssc):
+    @classmethod
+    def DESMAC(cls, message, key, ssc):
         "iso 9797-1 Algorithm 3 (Retail MAC)"
         # DES for all blocks
         # DES3 for last block
@@ -2545,10 +2549,10 @@ class rfidiot:
         tdesa = DES.new(key[0:8], DES.MODE_ECB)
         tdesb = DES.new(key[8:16], DES.MODE_ECB)
         if ssc:
-            mac = tdesa.encrypt(rfidiot.ToBinary(ssc))
+            mac = tdesa.encrypt(cls.ToBinary(ssc))
         else:
-            mac = rfidiot.DES_IV
-        message += rfidiot.PADBlock("")
+            mac = cls.DES_IV
+        message += cls.PADBlock("")
         for y in range(len(message) // 8):
             current = message[y * 8 : (y * 8) + 8]
             left = right = ""
@@ -2561,38 +2565,38 @@ class rfidiot:
         mac = tdesb.decrypt(mac)
         return tdesa.encrypt(mac)
 
-    @staticmethod
-    def MACVerify(message, key) -> bool:
-        mess = rfidiot.ToBinary(message[: len(message) - 16])
-        mac = rfidiot.DESMAC(mess, key, "")
-        if not mac == rfidiot.ToBinary(message[len(message) - 16 :]):
+    @classmethod
+    def MACVerify(cls, message, key) -> bool:
+        mess = cls.ToBinary(message[: len(message) - 16])
+        mac = cls.DESMAC(mess, key, "")
+        if not mac == cls.ToBinary(message[len(message) - 16 :]):
             print("MAC Error!")
             print("Expected MAC: ", message[len(message) - 16 :])
             print("Actual MAC:   ", end=" ")
-            rfidiot.HexPrint(mac)
+            cls.HexPrint(mac)
             return False
         return True
 
-    @staticmethod
-    def SSCIncrement(ssc) -> str:
-        out = int(rfidiot.ToHex(ssc), 16) + 1
-        return rfidiot.ToBinary("%016x" % out)
+    @classmethod
+    def SSCIncrement(cls, ssc) -> str:
+        out = int(cls.ToHex(ssc), 16) + 1
+        return cls.ToBinary("%016x" % out)
 
-    @staticmethod
-    def TRANSITIDEncode(data) -> str:
+    @classmethod
+    def TRANSITIDEncode(cls, data) -> str:
         "Encode TRANSIT ID"
         # start sentinel
         out = "0000000000000000"
         # UID
-        out += rfidiot.ToBinaryString(rfidiot.ToBinary(data))
+        out += cls.ToBinaryString(cls.ToBinary(data))
         # LRC
-        lrc = rfidiot.TRANSITLRC(out[16:48])
-        out += rfidiot.ToBinaryString(chr(lrc))
+        lrc = cls.TRANSITLRC(out[16:48])
+        out += cls.ToBinaryString(chr(lrc))
         # end sentinel
-        out += rfidiot.ToBinaryString(chr(0xF2))
+        out += cls.ToBinaryString(chr(0xF2))
         return out
 
-    @staticmethod
+    @classmethod
     def TRANSITID(data) -> int:
         "Decode TRANSIT ID"
         # check for start sentinel
@@ -2603,16 +2607,16 @@ class rfidiot:
         if int(data[56:], 2) != 0xF2:
             print("End sentinel not found! (11110010)")
             return 0
-        lrc = rfidiot.TRANSITLRC(data[16:48])
+        lrc = clcls.TRANSITLRC(data[16:48])
         if lrc != int(data[48:56], 2):
             print("LRC mismatch: %02X should be %02X!" % (int(data[48:56], 2), lrc))
             return 0
         out = "%08X" % int(data[16:48], 2)
         return out
 
-    @staticmethod
+    @classmethod
     def TRANSITIDPrint(data) -> str:
-        out = rfidiot.TRANSITID(data)
+        out = cls.TRANSITID(data)
         if out != 0:
             print("UID:", out)
         else:
@@ -2649,8 +2653,8 @@ class rfidiot:
         natid = hexout[6:16]
         self.FDXBNID = int(natid, 16) & 0x3FFFFFFFFF
 
-    @staticmethod
-    def FDXBIDEncode(appid, ccode, natid) -> str:
+    @classmethod
+    def FDXBIDEncode(cls, appid, ccode, natid) -> str:
         "Encode FDX-B ID"
         hexccode = "%03x" % (int(ccode, 10) << 2)
         glue = int(hexccode[-1:], 16) & 0xC
@@ -2660,8 +2664,8 @@ class rfidiot:
         hexglue = "%01x" % glue
         hexid = hexid[1:]
         rawid = appid + hexccode + hexglue + hexid
-        nibbleid = rfidiot.NibbleReverse(rfidiot.ToBinary(rawid))
-        hexout = rfidiot.HexReverse(rfidiot.ToHex(nibbleid))
+        nibbleid = cls.NibbleReverse(cls.ToBinary(rawid))
+        fexout = cls.HexReverse(cls.ToHex(nibbleid))
         return hexout
 
     def FDXBIDPrint(self, data) -> None:
@@ -2673,10 +2677,10 @@ class rfidiot:
         print("National ID: ", end=" ")
         print(self.FDXBNID)
 
-    @staticmethod
-    def FDXBID128Bit(data) -> str:
+    @classmethod
+    def FDXBID128Bit(cls, data) -> str:
         "generate raw 128 bit FDX-B data from FDX-B ID"
-        idbin = rfidiot.ToBinaryString(rfidiot.ToBinary(data))
+        idbin = cls.ToBinaryString(cls.ToBinary(data))
         # construct FDX-B encoded blocks
         out = ""
         # header is ten zeros and a '1'
@@ -2686,8 +2690,8 @@ class rfidiot:
         for x in range(0, len(idbin), 8):
             out += idbin[x : x + 8] + "1"
         # add 16 CRC-CCITT error detection bits
-        crc = "%04x" % rfidiot.crcccitt(rfidiot.ToBinary(data))
-        crcbin = rfidiot.ToBinaryString(rfidiot.ToBinary(crc))
+        crc = "%04x" % cls.crcccitt(cls.ToBinary(data))
+        crcbin = cls.ToBinaryString(cls.ToBinary(crc))
         # crc is transmitted LSB first with trailing '1's
         out += crcbin[0:8] + "1"
         out += crcbin[8:16] + "1"
@@ -2709,11 +2713,12 @@ class rfidiot:
         # ignore the rest - CRC etc.
         return "%016x" % int(out, 2)
 
-    def PCSCGetTagType(atr) -> str:
+    @classmethod
+    def PCSCGetTagType(cls, atr) -> str:
         "get currently selected tag type from atr"
-        if atr[8:12] == rfidiot.PCSC_CSC:
+        if atr[8:12] == cls.PCSC_CSC:
             ss = atr[24:26]
-            return rfidiot.PCSC_SS[ss]
+            return cls.PCSC_SS[ss]
         # else:
         return "SMARTCARD"
 

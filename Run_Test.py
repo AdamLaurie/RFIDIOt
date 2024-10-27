@@ -8,6 +8,7 @@
 
 #pylint: disable=import-outside-toplevel
 
+import os
 import sys
 
 
@@ -174,6 +175,25 @@ def test_conversion_functions() -> bool:
 # ('HexNibbleReverse:', '8844cc55dd33bbff')
 # 112233AABBCCDDFF
 
+
+    in_val = '\x01\x0A\x08'
+    out_val = b'\x80P\x10'
+    dat = rfi.BitReverse(in_val)
+    if dat != out_val:
+        print("BitReverse: str Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+
+    in_val = b'\x01\x0A\x08'
+    # out_val = b'\x16\xaf\x86'
+    dat = rfi.BitReverse(in_val)
+    if dat != out_val:
+        print("BitReverse: byte Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+
     if return_val:
         print("Conversion Functions: Test Pass")
 
@@ -332,7 +352,11 @@ if __name__ == '__main__':
 
     text_aid_lookup()
 
-    sys.argv.append('-n')
+    # sys.argv.append('-n')
+    # sys.argv.append('-R')
+    # sys.argv.append('READER_NONE')
+    os.environ["RFIDIOtconfig_opts"] = "RFIDIOtconfig.None"
+
     import rfidiot
     rfi = rfidiot.card
 

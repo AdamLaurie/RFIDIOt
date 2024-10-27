@@ -18,6 +18,8 @@ maintainers = [
     {name = "Adam Laurie", email = "adam@algroup.co.uk" }
 ]
 
+# apt-get install python3-pycryptodome
+
 dependencies = [
     "pycryptodome>=3.20.0"
 ]
@@ -44,6 +46,7 @@ classifiers = [
 "Homepage" = "http://rfidiot.org/"
 "Source" = "https://github.com/AdamLaurie/RFIDIOt"
 
+# apt-get install pylint pycodestyle black python3-bs4 python3-pandas 
 [project.optional-dependencies]
 dev = [
     "pylint",
