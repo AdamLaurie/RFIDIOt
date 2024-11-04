@@ -31,7 +31,7 @@ from . import rfidiotglobals
 from . import RFIDIOt
 
 # help flag (-h) set?
-help = False
+chelp = False
 
 # nogui flag (-g) set?
 nogui = False
@@ -96,6 +96,9 @@ def printoptions():
     print("\t-d\t\tDebug on")
     print("\t-f <num>\tUse LibNFC device number <num> (implies -R READER_LIBNFC)")
     print("\t-g\t\tNo GUI")
+    print("\t-j\t\tJson Output (if supported)")
+    print("\t-v\t\tMore verbose Output (if supported)")
+    print("\t-s\t\tSilent/Quiet Less Output")
     print("\t-h\t\tPrint detailed help message")
     print("\t-n\t\tNo Init - do not initialise hardware")
     print("\t-N\t\tList available LibNFC devices")

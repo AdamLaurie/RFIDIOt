@@ -95,7 +95,7 @@ class rfidiot:
         self.readersubtype = reader
         readernum = int(readernum)
         self.DEBUG = debug
-        self.NoInit = False # noinit
+        self.NoInit = noinit
         self.NFCReader = nfcreader
         self.timeout = to
         if self.NoInit:
@@ -1854,7 +1854,8 @@ class rfidiot:
         block = "%04x" % sector
         apdu.append(block[0:2])  # p1 sector msb
         apdu.append(block[2:4])  # p1 sector lsb
-        if keytype in ["AA", "FF"]:
+        # if keytype in ["AA", "FF"]:
+        if keytype == "AA":
             apdu.append("60")  # keytype
         elif keytype == "BB":
             apdu.append("61")  # keytype
@@ -1872,7 +1873,7 @@ class rfidiot:
         keytype = keytype.upper()
         apdu = []
         apdu += self.PCSC_APDU["VERIFY"]
-        if keytype in ["AA","FF"]:
+        if keytype in ["AA"]: # ,"FF"]:
             apdu.append("60")  # keytype
         elif keytype == "BB":
             apdu.append("61")  # keytype
@@ -1948,10 +1949,11 @@ class rfidiot:
             self.MIFAREdata = self.data
         else:
             return False
-        count = 0
-        while count * 2 < len(self.MIFAREdata):
-            self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
-            count += 1
+        # count = 0
+        # while count * 2 < len(self.MIFAREdata):
+        #     self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
+        #     count += 1
+        self.MIFAREbinary = bytes.fromhex(self.MIFAREdata)
         return True
 
     def readvalueblock(self, block) -> bool:
@@ -1961,10 +1963,11 @@ class rfidiot:
             self.errorcode = self.MIFAREdata
             self.MIFAREdata = ""
             return False
-        count = 0
-        while count * 2 < len(self.MIFAREdata):
-            self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
-            count += 1
+        # count = 0
+        # while count * 2 < len(self.MIFAREdata):
+        #     self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
+        #     count += 1
+        self.MIFAREbinary = bytes.fromhex(self.MIFAREdata)
         return True
 
     def writeblock(self, block, data) -> bool:
@@ -2120,7 +2123,7 @@ class rfidiot:
             myparity += int(data[x], 2)
         myparity %= 2
         return xor(myparity, parity)
- 
+
     @staticmethod
     def Unique64Bit(data) -> str:
         "convert binary ID to Unique formatted 64 bit data block"
@@ -2169,8 +2172,9 @@ class rfidiot:
 
     @staticmethod
     def crc(crc, data, mask=MASK_CRC16) -> int:
-        for char in data:
-            c = ord(char)
+        if isinstance(data, str):
+            data = bytearray(data, encoding='latin-1')
+        for c in data:
             c = c << 8
             for j in range(8):
                 if (crc ^ c) & 0x8000:
@@ -2179,6 +2183,19 @@ class rfidiot:
                     crc = crc << 1
                 c = c << 1
         return crc & 0xFFFF
+
+#    @staticmethod
+#    def _crc(crc, data, mask=MASK_CRC16) -> int:
+#        for char in data:
+#            c = ord(char)
+#            c = c << 8
+#            for j in range(8):
+#                if (crc ^ c) & 0x8000:
+#                    crc = (crc << 1) ^ mask
+#                else:
+#                    crc = crc << 1
+#                c = c << 1
+#        return crc & 0xFFFF
 
     @staticmethod
     def crc16(data):
@@ -2217,8 +2234,10 @@ class rfidiot:
             0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
             0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040,
         )
+        if isinstance(data, str):
+            data = bytearray(data, encoding='latin-1')
         for ch in data:
-            tmp = crcValue ^ (ord(ch))
+            tmp = crcValue ^ ch
             crcValue = (crcValue >> 8) ^ crc16tab[(tmp & 0xFF)]
         return crcValue
 
@@ -2293,6 +2312,7 @@ class rfidiot:
     @staticmethod
     def HexReverse(data) -> str:
         "Reverse HEX characters"
+        # DEADBEEF -> FEEBDAED
         return data[::-1]
         # output = ""
         # for y in reversed(list(range(len(data)))):
@@ -2365,11 +2385,16 @@ class rfidiot:
         return ''.join([i if i in string.printable else "." for i in text])
 
     # https://stackoverflow.com/questions/8689795/how-can-i-remove-non-ascii-characters-but-leave-periods-and-spaces ??
+    # https://stackoverflow.com/questions/34869889/what-is-the-proper-way-to-determine-if-an-object-is-a-bytes-like-object-in-pytho#34869964
     @staticmethod
     def ReadablePrint(data) -> str:
-        if isinstance(data, bytes):
+        if isinstance(data, (bytes, bytearray)):
             data = data.decode('latin-1')  # Special case
-        return ''.join([i if i >= " " and i <= "~"  else "." for i in data])
+        return ''.join([i if i >= " " and i <= "~" else "." for i in data])
+
+    @staticmethod
+    def ret_true():
+        return True
 
     @staticmethod
     def ListToHex(data) -> str:
@@ -2382,7 +2407,7 @@ class rfidiot:
     @staticmethod
     def HexArrayToString(array) -> str:
         # translate array of strings to single string
-        # ['DE', 'AD', 'BE', 'EF'] => 'DEADBEEF' 
+        # ['DE', 'AD', 'BE', 'EF'] => 'DEADBEEF'
         return ''.join(array)
         # out = ""
         # for n in array:

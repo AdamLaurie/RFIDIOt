@@ -306,6 +306,49 @@ def test_get_error_str() -> bool:
 
     return False
 
+def test_crc_functions():
+
+    return_val = True
+
+    in_val = b"The quick brown fox jumps over the lazy dog"
+    out_val = 41437
+    dat = rfi.crc(10, in_val)
+    if dat != out_val:
+        print("crc: byte Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+    in_val = "The quick brown fox jumps over the lazy dog"
+    out_val = 41437
+    dat = rfi.crc(10, in_val)
+    if dat != out_val:
+        print("crc: str Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+
+    in_val = "The quick brown fox jumps over the lazy dog"
+    out_val = 64735
+    dat = rfi.crc16(in_val)
+    if dat != out_val:
+        print("crc16: str Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+    in_val = b"The quick brown fox jumps over the lazy dog"
+    out_val = 64735
+    dat = rfi.crc16(in_val)
+    if dat != out_val:
+        print("crc16: byte Test Fail")
+        print(f"\t{dat} != {out_val}")
+        return_val = False
+
+    if return_val:
+        print("crc Functions: Test Pass")
+
+    return return_val
+
+
 def test_rfidiot_lib() -> bool:
 
     test_get_error_str()
@@ -317,6 +360,10 @@ def test_rfidiot_lib() -> bool:
     print()
 
     test_crypto_functions()
+
+    print()
+
+    test_crc_functions()
 
 def text_aid_lookup() -> bool:
     try:

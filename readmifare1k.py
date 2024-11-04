@@ -27,8 +27,8 @@ import json
 # try to deal with segfault with no readers
 
 import time
+from smartcard.Exceptions import CardConnectionException
 import rfidiot
-
 
 
 json_output = None
@@ -37,12 +37,12 @@ verbose = 0
 
 def read_mifare1k(card, j_out=None):
 
-    print(f"card.silent = {card.silent}")
+    # print(f"card.silent = {card.silent}")
     verbose = card.verbose
 
     if j_out:
         j_out['UID']  = card.uid
-        jdata = j_out['data']
+        jdata = j_out['Block']
     else:
         jdata = None
 
@@ -172,10 +172,10 @@ if __name__ == '__main__':
         print("Couldn't open card!")
         sys.exit(True)
 
-    print(f"card.json = {card.json}")
-    print(f"card.verbose = {card.verbose}")
-    print(f"card.silent = {card.silent}")
-    time.sleep(2)
+    # print(f"card.json = {card.json}")
+    # print(f"card.verbose = {card.verbose}")
+    # print(f"card.silent = {card.silent}")
+    # time.sleep(2)
 
     if card.json:
         json_output = {
@@ -185,7 +185,7 @@ if __name__ == '__main__':
 
     try:
         read_mifare1k(card, json_output)
-    except smartcard.Exceptions.CardConnectionException as _e:
+    except CardConnectionException as _e:  # smartcard.Exceptions.CardConnectionException
         print(_e)
 
     if json_output:
