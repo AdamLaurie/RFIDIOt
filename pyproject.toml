@@ -1,5 +1,20 @@
 # Pete Shipley peter.shipley@gmail.com
 
+# NOTE: Externally Managed Environments
+#
+# for (debian/Linux) systems where the Python envioment is maintainesd by the operating system package manager
+# installing python based packages might be blocked (or strongly discouraged)
+# 
+# in these cases install dependencies can be satified with:
+# 
+# apt-get install python3-pycryptodome
+#
+# For project-optional dev dependencies :
+#
+# apt-get install pylint pycodestyle black python3-bs4 python3-pandas python-black-doc python3-validate-pyproject pipx
+#
+# see Also https://packaging.python.org/en/latest/specifications/externally-managed-environments/
+
 [project]
 name = "rfidiot"  
 requires-python = ">=3.8"
@@ -46,7 +61,7 @@ classifiers = [
 "Homepage" = "http://rfidiot.org/"
 "Source" = "https://github.com/AdamLaurie/RFIDIOt"
 
-# apt-get install pylint pycodestyle black python3-bs4 python3-pandas 
+# apt-get install pylint pycodestyle black python3-bs4 python3-pandas python-black-doc
 [project.optional-dependencies]
 dev = [
     "pylint",
