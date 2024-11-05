@@ -3,8 +3,8 @@ Mifare test card images in Proxmark and Flipper format
 
 File formats
 
-    nfc : Flipper Zero Format (Ascii)<br>
-    mct : [MifareClassicToo](https://play.google.com/store/apps/details?id=de.syss.MifareClassicTool&hl=en_US) (Ascii)<br>
+    nfc : Flipper Zero Format (ascii)<br>
+    mct : [MifareClassicTool](https://play.google.com/store/apps/details?id=de.syss.MifareClassicTool&hl=en_US) (ascii)<br>
     bin : Proxmark/Binary Format<br>
 
 
@@ -61,7 +61,7 @@ Mf1k_4b-FF-keys
 
     The Keys sould be "guessed" by default dict in [readmifaresimple.py](../readmifaresimple.py)
 
-<details><summary>+Sector Keys:</summary>
+<details><summary>Sector Keys:</summary>
 
 ```
     Sector: 0 KeyA: FFFFFFFFFFFF KeyB: FFFFFFFFFFFF
