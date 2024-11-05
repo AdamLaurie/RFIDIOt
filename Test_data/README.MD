@@ -3,9 +3,9 @@ Mifare test card images in Proxmark and Flipper format
 
 File formats
 
-    nfc : Flipper Zero Format (ascii)<br>
-    mct : [MifareClassicTool](https://play.google.com/store/apps/details?id=de.syss.MifareClassicTool&hl=en_US) (ascii)<br>
-    bin : Proxmark/Binary Format<br>
+&nbsp;&nbsp;&nbsp;nfc : Flipper Zero Format (ascii)<br>
+&nbsp;&nbsp;&nbsp;mct : [MifareClassicTool](https://play.google.com/store/apps/details?id=de.syss.MifareClassicTool&hl=en_US) (ascii)<br>
+&nbsp;&nbsp;&nbsp;bin : Proxmark/Binary Format<br>
 
 
 
@@ -54,12 +54,12 @@ Mf1k_4b-FF-keys
 
 #### [Mf1k_4b-Mixed-Pi](Mf1k_4b-Mixed-Pi.nfc) ####
 
-    Mifare 1k 4 byte ID : 31 41 59 26
+Mifare 1k 4 byte ID : 31 41 59 26
 
-    Card data Sector 0->14 contains the Sector numbers in Hex
-    Sector 15 contains the value for Pi 
+Card data Sector 0->14 contains the Sector numbers in Hex
+Sector 15 contains the value for Pi 
 
-    The Keys sould be "guessed" by default dict in [readmifaresimple.py](../readmifaresimple.py)
+The Keys sould be "guessed" by default dict in [readmifaresimple.py](../readmifaresimple.py)
 
 <details><summary>Sector Keys:</summary>
 
