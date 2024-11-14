@@ -41,12 +41,13 @@ try:
         from Crypto.Hash import SHA
         from Crypto.Cipher import DES3, DES
     except ModuleNotFoundError as _e:
-        print(_e, "Trying Cryptodome")
-        from xCryptodome.Hash import SHA
-        from xCryptodome.Cipher import DES3, DES
+        # print(_e, "Trying Cryptodome")
+        from Cryptodome.Hash import SHA
+        from Cryptodome.Cipher import DES3, DES
 except ImportError as _er:
     print(_er, "giving up")
     sys.exit(1)
+
 # from Crypto.Cipher import DES
 from . import pynfc
 from . import pyandroid
