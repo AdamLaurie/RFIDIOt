@@ -31,7 +31,7 @@ from . import rfidiotglobals
 from . import RFIDIOt
 
 # help flag (-h) set?
-help = False
+chelp = False
 
 # nogui flag (-g) set?
 nogui = False
@@ -96,6 +96,9 @@ def printoptions():
     print("\t-d\t\tDebug on")
     print("\t-f <num>\tUse LibNFC device number <num> (implies -R READER_LIBNFC)")
     print("\t-g\t\tNo GUI")
+    print("\t-j\t\tJson Output (if supported)")
+    print("\t-v\t\tMore verbose Output (if supported)")
+    print("\t-s\t\tSilent/Quiet Less Output")
     print("\t-h\t\tPrint detailed help message")
     print("\t-n\t\tNo Init - do not initialise hardware")
     print("\t-N\t\tList available LibNFC devices")
@@ -157,24 +160,36 @@ if len(extraopts) > 0:
 
 # 'args' will be set to remaining arguments (if any)
 try:
-    opts, args = getopt.getopt(extraopts + sys.argv[1:], "df:ghjnNr:R:l:Ls:t:")
+    opts, args = getopt.getopt(extraopts + sys.argv[1:], "df:ghjnNqr:R:l:Ls:t:v")
 
+    # Python 3.10 has 'case' statments, should we use them?
     for o, a in opts:
         if o == "-j":
             rfidiotglobals.Json = True
             continue
+        if o == '-v':
+            rfidiotglobals.Verbose += 1
+            continue
+        if o == '-q':
+            rfidiotglobals.Quiet = True
+            continue
         if o == "-d":
             rfidiotglobals.Debug = True
+            continue
         if o == "-f":
             nfcreader = int(a)
             readertype = RFIDIOt.rfidiot.READER_LIBNFC
+            continue
         if o == "-g":
             nogui = True
+            continue
         if o == "-h":
             chelp = True
             printoptions()
+            continue
         if o == "-n":
             noinit = True
+            continue
         if o == "-N":
             readertype = RFIDIOt.rfidiot.READER_LIBNFC
             card = RFIDIOt.rfidiot(
@@ -192,13 +207,16 @@ try:
         if o == "-r":
             readernum = a
             readertype = RFIDIOt.rfidiot.READER_PCSC
+            continue
         if o == "-R":
             try:
                 readertype = eval(a)
             except:
                 readertype = eval("RFIDIOt.rfidiot." + a)
+            continue
         if o == "-l":
             line = a
+            continue
         if o == "-L":
             readertype = RFIDIOt.rfidiot.READER_PCSC
             readernum = 0
@@ -216,8 +234,11 @@ try:
             os._exit(True)
         if o == "-s":
             speed = int(a)
+            continue
         if o == "-t":
             timeout = int(a)
+            continue
+
     card = RFIDIOt.rfidiot(
         readernum,
         readertype,
@@ -228,6 +249,10 @@ try:
         noinit,
         nfcreader,
     )
+    # Let's add another option, but not really add one
+    card.json = rfidiotglobals.Json
+    card.verbose = rfidiotglobals.Verbose
+    card.silent = rfidiotglobals.Quiet
 except getopt.GetoptError as e:
     print("RFIDIOtconfig module ERROR: %s" % e)
     printoptions()

@@ -30,8 +30,21 @@ from tkinter import (
     Tk, W, NW, NE, E
 )
 from operator import xor, and_
-from Crypto.Hash import SHA
-from Crypto.Cipher import DES3, DES
+
+# Cryptodome installed under the Crypto package
+# but not with the linux pkg python3-pycryptodome
+try:
+    try:
+        from Crypto.Hash import SHA
+        from Crypto.Cipher import DES3, DES
+    except ModuleNotFoundError as _e:
+        print(_e, "Trying Cryptodome")
+        from Cryptodome.Hash import SHA
+        from Cryptodome.Cipher import DES3, DES
+except ImportError as _er:
+    print(_er, "giving up")
+    sys.exit(1)
+
 # import string
 from PIL import Image, ImageTk
 # import PIL.Image as Image
