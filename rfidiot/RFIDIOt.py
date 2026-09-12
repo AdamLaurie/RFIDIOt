@@ -91,7 +91,7 @@ class rfidiot:
         self.readersubtype = reader
         readernum = int(readernum)
         self.DEBUG = debug
-        self.NoInit = False # noinit
+        self.NoInit = noinit
         self.NFCReader = nfcreader
         self.timeout = to
         if self.NoInit:
@@ -186,7 +186,6 @@ class rfidiot:
                     self.acs_set_retry(to)
             # libnfc device
             elif self.readertype == self.READER_LIBNFC:
-                print("self.READER_LIBNFC", self.READER_LIBNFC)  ## PMS
                 self.nfc = pynfc.NFC(self.NFCReader)
                 self.readername = self.nfc.LIBNFC_READER
             # Andoid reader
@@ -877,7 +876,6 @@ class rfidiot:
     def info(self, caller) -> None:
         if len(caller) > 0:
             print(caller + " (using RFIDIOt v" + self.VERSION + ")")
-        print("self.readertype:", self.readertype)  ## PMS
         if not self.NoInit:
             self.reset()
             self.version()
@@ -1271,8 +1269,9 @@ class rfidiot:
                 if self.DEBUG:
                     print("Error: Unknown card type specified: %s" % cardtype)
                 return False
-            except ValueError:
-                self.errorcode = "Error selecting card using LIBNFC" + e
+            except ValueError as e:
+                self.errorcode = "Error selecting card using LIBNFC" + str(e)
+                return False
 
         if self.readertype == self.READER_ANDROID:
             try:

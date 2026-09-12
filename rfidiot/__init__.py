@@ -176,18 +176,13 @@ try:
         if o == "-n":
             noinit = True
         if o == "-N":
-            readertype = RFIDIOt.rfidiot.READER_LIBNFC
-            card = RFIDIOt.rfidiot(
-                readernum,
-                readertype,
-                line,
-                speed,
-                timeout,
-                rfidiotglobals.Debug,
-                noinit,
-                nfcreader,
-            )
-            card.libnfc_listreaders()
+            # list libnfc devices without opening one (opening would make
+            # nfc_list_devices' intrusive probe fail with EBUSY)
+            from .pynfc import NFC
+
+            nfc = NFC(nfcreader, listonly=True)
+            nfc.listreaders(None)
+            sys.stdout.flush()
             os._exit(True)
         if o == "-r":
             readernum = a

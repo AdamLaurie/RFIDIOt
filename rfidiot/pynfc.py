@@ -369,17 +369,22 @@ class JEWEL():
 class NFC():
     tag = (NFC_TARGET * MAX_TARGET_COUNT)()
 
-    def __init__(self, nfcreader=None):  # IS THIS RIGHT ?
+    def __init__(self, nfcreader=None, listonly=False):
         self.LIB = ctypes.util.find_library("nfc")
         self.device = None
         self.context = ctypes.POINTER(ctypes.c_int)()
         self.poweredUp = False
+        self.NFCReader = nfcreader
 
         self.initLog()
         self.LIBNFC_VER = self.initlibnfc().decode("utf-8")
         if rfidiotglobals.Debug:
             self.log.debug(f"libnfc {self.LIBNFC_VER}")
-        self.configure(nfcreader)
+        # listonly is used by the '-N' device enumeration: opening a device here
+        # would make nfc_list_devices' intrusive probe fail with EBUSY, so skip
+        # configure() and leave the device closed.
+        if not listonly:
+            self.configure(nfcreader)
         sys.stdout.flush()
 
     def __del__(self):
@@ -444,7 +449,7 @@ class NFC():
                 return None
             return devices[target]
         print(
-            "LibNFC ver", self.libnfc.nfc_version(), "devices (%d):" % nfc_num_devices
+            "LibNFC ver", self.libnfc.nfc_version().decode("utf-8"), "devices (%d):" % nfc_num_devices
         )
         if nfc_num_devices == 0:
             print("\t", "no supported devices!")
@@ -456,7 +461,7 @@ class NFC():
                     % ctypes.cast(devices[i].connstring, ctypes.c_char_p).value
                 )
                 dev = self.libnfc.nfc_open(self.context, ctypes.byref(devices[i]))
-                devname = self.libnfc.nfc_device_get_name(dev)
+                devname = self.libnfc.nfc_device_get_name(dev).decode("utf-8")
                 print(f"    No: {i}\t\t{devname}")
                 self.libnfc.nfc_close(dev)
                 # print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
