@@ -1,0 +1,18 @@
+# udev rule for libnfc access as non-root (SCM SCL3711 / PN533 based readers)
+# Grants members of the plugdev group read/write access to the USB device
+# so libnfc (and RFIDIOt via pynfc) can claim it without sudo.
+#
+# Install:
+#   sudo cp linux/42-libnfc-scl3711.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#   (then unplug and replug the reader)
+
+# SCM Microsystems SCL3711-NFC&RW
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5591", GROUP="plugdev", MODE="0660"
+
+# Also cover common PN53x USB readers (harmless if not present)
+# ACS ACR122U
+SUBSYSTEM=="usb", ATTRS{idVendor}=="072f", ATTRS{idProduct}=="2200", GROUP="plugdev", MODE="0660"
+# NXP PN533 / SCM SCL3710
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04cc", ATTRS{idProduct}=="2533", GROUP="plugdev", MODE="0660"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5590", GROUP="plugdev", MODE="0660"
