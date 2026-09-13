@@ -1811,7 +1811,7 @@ class rfidiot:
                 self.ser.write("l" + keytype + key)
             if key == "":
                 self.ser.write("\r")
-            self.errorcode = self.ser.readline()[0]
+            self.errorcode = self.ser.readline()[:1].decode("latin-1")
             if self.DEBUG:
                 print("received:", self.errorcode)
             if self.errorcode == "L":
@@ -1946,6 +1946,7 @@ class rfidiot:
         else:
             return False
         count = 0
+        self.MIFAREbinary = ""
         while count * 2 < len(self.MIFAREdata):
             self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
             count += 1
@@ -1959,6 +1960,7 @@ class rfidiot:
             self.MIFAREdata = ""
             return False
         count = 0
+        self.MIFAREbinary = ""
         while count * 2 < len(self.MIFAREdata):
             self.MIFAREbinary += chr(int(self.MIFAREdata[count * 2 : (count * 2) + 2], 16))
             count += 1
@@ -2002,12 +2004,14 @@ class rfidiot:
         command += data
         commandlen = len(command)
         bcc = self.frosch_bcc_out(command, commandlen + 1)
-        # send length + command + checkdigit
+        # send length + command + checkdigit (frosch is a latin-1 byte
+        # protocol, so encode the str command for the serial port)
+        frame = (chr(commandlen + 1) + command + chr(bcc)).encode("latin-1")
         if self.DEBUG:
             print("Sending: ", end=" ")
-            self.HexPrint(chr(commandlen + 1) + command + chr(bcc))
-        self.ser.write(chr(commandlen + 1) + command + chr(bcc))
-        ret = ""
+            self.HexPrint(frame)
+        self.ser.write(frame)
+        ret = b""
         # perform a blocking read - returned byte is number of chars still to read
         ret += self.ser.read(1)
         # if read times out, reset may be required for normal read mode
@@ -2017,30 +2021,30 @@ class rfidiot:
             self.errorcode = self.FR_TIMEOUT
             return False
         # now read the rest
-        ret += self.ser.read(ord(ret[0]))
+        ret += self.ser.read(ret[0])
         if self.DEBUG:
             print("ret: %d " % len(ret), end=" ")
             self.HexPrint(ret)
         # check integrity of return
         bcc = self.frosch_bcc_in(ret, 0)
-        if not bcc == ord(ret[len(ret) - 1]):
+        if not bcc == ret[len(ret) - 1]:
             # may be reporting an error with wrong BCC set
-            if ret[0] == chr(0x02) and not ret[1] == chr(0x00):
+            if ret[0] == 0x02 and not ret[1] == 0x00:
                 self.data = ""
-                self.errorcode = self.ToHex(ret[1])
+                self.errorcode = self.ToHex(ret[1:2])
                 return False
             print("Frosch error! Checksum error:", end=" ")
             self.HexPrint(ret)
             print("Expected BCC: %02x" % bcc)
             sys.exit(True)
         status = ret[1]
-        if status == self.FR_NO_ERROR:
+        if status == ord(self.FR_NO_ERROR):
             self.errorcode = ""
             # for consistency with ACG, data is converted to printable hex before return
             self.data = self.ToHex(ret[2 : len(ret) - 1])
             return True
         # else:
-        self.errorcode = self.ToHex(status)
+        self.errorcode = self.ToHex(ret[1:2])
         self.data = ""
         if self.DEBUG:
             print("Frosch error:", int(self.errorcode, 16) - 256)
@@ -2050,15 +2054,15 @@ class rfidiot:
         return False
 
     def frosch_bcc(self, data, seed) -> int:
+        if isinstance(data, str):
+            data = data.encode("latin-1")
         bcc = seed
         if self.FR_BCC_Mode == self.FR_COMMAND_MODE:
-            # for x in range(len(data)):
-            #     bcc = xor(bcc, ord(data[x]))
             for x in data:
-                bcc = xor(bcc, ord(x))
+                bcc = xor(bcc, x)
         else:
             for x in data:
-                bcc += ord(x)
+                bcc += x
             bcc = int(bcc & 0xFF)
         return bcc
 
@@ -2147,28 +2151,29 @@ class rfidiot:
         for x in range(5):
             tmp += data[x * 2 + 1] + data[x * 2]
         # reverse bits
-        return rfidio.ToBinaryString(rfidio.ToBinary(tmp))[::-1]
+        return rfidiot.ToBinaryString(rfidiot.ToBinary(tmp))[::-1]
 
     @staticmethod
     def EMToUnique(data):
         "convert raw EM4x02 ID to Unique"
-        return rfidio.ToHex(rfidio.BitReverse(rfidio.ToBinary(data)))
+        return rfidiot.ToHex(rfidiot.BitReverse(rfidiot.ToBinary(data)))
 
     @staticmethod
     def HexToQ5(data) -> str:
         "conver human readable HEX to Q5 ID"
-        return rfidio.ToBinaryString(rfidio.ToBinary(data))
+        return rfidiot.ToBinaryString(rfidiot.ToBinary(data))
 
     @staticmethod
     def crcccitt(data) -> int:
         crcvalue = 0x0000
-        return rfidio.crc(crcvalue, data, MASK_CCITT)
+        return rfidiot.crc(crcvalue, data, MASK_CCITT)
 
     @staticmethod
     def crc(crc, data, mask=MASK_CRC16) -> int:
+        if isinstance(data, str):
+            data = data.encode("latin-1")
         for char in data:
-            c = ord(char)
-            c = c << 8
+            c = char << 8
             for j in range(8):
                 if (crc ^ c) & 0x8000:
                     crc = (crc << 1) ^ mask
@@ -2214,8 +2219,10 @@ class rfidiot:
             0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
             0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040,
         )
+        if isinstance(data, str):
+            data = data.encode("latin-1")
         for ch in data:
-            tmp = crcValue ^ (ord(ch))
+            tmp = crcValue ^ ch
             crcValue = (crcValue >> 8) ^ crc16tab[(tmp & 0xFF)]
         return crcValue
 
@@ -2264,15 +2271,17 @@ class rfidiot:
         self.MRPcompsoitecd = data[43]
 
     @staticmethod
-    def BitReverse(data) -> str:
+    def BitReverse(data) -> bytes:
         "Reverse bits - MSB to LSB"
-        output = ""
+        if isinstance(data, str):
+            data = data.encode("latin-1")
+        output = bytearray()
         for y in range(len(data)):
             outchr = ""
             for x in range(8):
-                outchr += str(ord(data[y]) >> x & 1)
-            output += str(chr(int(outchr, 2)))
-        return output
+                outchr += str(data[y] >> x & 1)
+            output.append(int(outchr, 2))
+        return bytes(output)
 
     @staticmethod
     def HexReverse(data) -> str:
@@ -2346,6 +2355,8 @@ class rfidiot:
 
     @staticmethod
     def _ReadablePrint(text) -> str:
+        if isinstance(text, (bytes, bytearray)):
+            text = text.decode('latin-1')
         return ''.join([i if i in string.printable else "." for i in text])
 
     # https://stackoverflow.com/questions/8689795/how-can-i-remove-non-ascii-characters-but-leave-periods-and-spaces ??
