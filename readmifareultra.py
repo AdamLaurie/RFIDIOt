@@ -94,23 +94,23 @@ for x in range(15, -1, -1):
     y += 1
 
 # show status of the OTP area on the tag
-print("OTP area is", end="")
+print("OTP area is ", end="")
 if int(plock[3:4]) == 1:
-    print("locked and", end="")
+    print("locked and ", end="")
 else:
-    print("unlocked and", end="")
+    print("unlocked and ", end="")
 if int(plock[0:1]) == 1:
     print("cannot be changed")
 else:
     print("can be changed")
 
-print("If locked, blocks 4 through 9", end="")
+print("If locked, blocks 4 through 9 ", end="")
 if int(plock[1:2]) == 1:
     print("cannot be unlocked")
 else:
     print("can be unlocked")
 
-print("If locked, blocks 0a through 0f", end="")
+print("If locked, blocks 0a through 0f ", end="")
 if int(plock[2:3]) == 1:
     print("cannot be unlocked")
 else:

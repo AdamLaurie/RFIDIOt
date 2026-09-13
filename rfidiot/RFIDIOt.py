@@ -1913,21 +1913,10 @@ class rfidiot:
                 count += 1
             return True
         if self.readertype == self.READER_LIBNFC:
-            print("not implemented!")
-            self.errorcode = "----"
-            # raise RuntimeError ?
-            # raise NotImplementedError("READ_BLOCK")
-            return False
-            apdu += self.PCSC_APDU["READ_BLOCK"]
-            apdu = []
-            apdu += "%02X" % pynfc.MC_READ  # mifare read
-            hexblock = "%04x" % block
-            apdu.append(hexblock)
-            ret, self.errorcode = self.nfc.sendAPDU(apdu, self.timeout)
-            if not ret:
-                return False
-            self.errorcode = self.ISO_OK
-            return True
+            # libnfc has no generic block-read command; use the ISO14443-3
+            # READ (0x30) which returns 16 bytes (4 pages) and works without
+            # authentication on Type 2 tags (MIFARE Ultralight / NTAG).
+            return self.libnfc_mifare_read_block(block)
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 return self.acs_read_block(block)
@@ -2362,7 +2351,7 @@ class rfidiot:
     # https://stackoverflow.com/questions/8689795/how-can-i-remove-non-ascii-characters-but-leave-periods-and-spaces ??
     @staticmethod
     def ReadablePrint(data) -> str:
-        if isinstance(data, bytes):
+        if isinstance(data, (bytes, bytearray)):
             data = data.decode('latin-1')  # Special case
         return ''.join([i if i >= " " and i <= "~"  else "." for i in data])
 
