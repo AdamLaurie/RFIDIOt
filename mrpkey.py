@@ -1465,15 +1465,14 @@ if not FILES and BAC:
             print("Kenc: ", end="")
             passport.HexPrint(Kenc)
 
-        tdes = DES3.new(Kenc, DES.MODE_CBC, passport.DES_IV.encode())
-        print("S length %d" % len(S))
-        Eifd = tdes.encrypt(S.encode())
+        tdes = DES3.new(Kenc, DES.MODE_CBC, passport.DES_IV)
+        Eifd = tdes.encrypt(bytes(S))
         if DEBUG or TEST:
             print("Eifd: ", end="")
             passport.HexPrint(Eifd)
             print("Kmac: ", end="")
             passport.HexPrint(Kmac)
-        Mifd = passport.DESMAC(Eifd, Kmac.encode(), "")
+        Mifd = passport.DESMAC(Eifd, Kmac, "")
         if DEBUG or TEST:
             print("Mifd: ", end="")
             passport.HexPrint(Mifd)
