@@ -530,7 +530,9 @@ def check_cc(key, rapdu):
     global SSC
 
     SSC = passport.SSCIncrement(SSC)
-    k = SSC
+    # copy: SSC is a mutable bytearray, and k += ... below would otherwise
+    # extend the global SSC in place (corrupting it for the next command)
+    k = bytes(SSC)
     length = 0
     # check if DO87 present
     if rapdu[0:2] == "87":
@@ -626,7 +628,7 @@ def read_file(file):
     datalen = asn1datalength(data[2:])
     print("File Length:", datalen)
     # deduct length field and header from what we've already read
-    readlen = datalen - (3 - asn1fieldlength(data[2:]) / 2)
+    readlen = datalen - (3 - asn1fieldlength(data[2:]) // 2)
     print("Remaining data length:", readlen)
     # read remaining bytes
     while readlen > 0:
@@ -698,7 +700,7 @@ def secure_read_file(keyenc, keymac, file):
     datalen = asn1datalength(do87hex[2:])
     print("File Length:", datalen)
     # deduct length field and header from what we've already read
-    readlen = datalen - (3 - asn1fieldlength(do87hex[2:]) / 2)
+    readlen = datalen - (3 - asn1fieldlength(do87hex[2:]) // 2)
     print("Remaining data length:", readlen)
     # secure read remaining bytes
     while readlen > 0:
@@ -728,15 +730,15 @@ def decode_ef_dg1(data):
     global FieldLengths
     global FieldKeys
 
-    length = int(passport.ToHex(data[4]), 16)
+    length = data[4]
     print("Data Length: ", end="")
     print(length)
     pointer = 5
     out = ""
     while pointer < len(data):
-        if data[pointer] == chr(0x80):
+        if data[pointer] == 0x80:
             break
-        out += "%s" % chr(int(passport.ToHex(data[pointer]), 16))
+        out += chr(data[pointer])
         pointer += 1
     print("  Decoded Data: " + out)
     DocumentType = out[0:2]
@@ -769,14 +771,10 @@ def decode_ef_dg1(data):
         FieldLengths = MRZ_FIELD_LENGTHS
         FieldKeys = MRZ_FIELD_KEYS
     pointer = 0
-    for n in FieldNames:
-        print("    " + n + ": ", end="")
-        print(out[pointer : pointer + n])
-        pointer += n
-#    for n in range(len(FieldNames)):
-#        print("    " + FieldNames[n] + ": ", end="")
-#        print(out[pointer : pointer + FieldLengths[n]])
-#        pointer += FieldLengths[n]
+    for n in range(len(FieldNames)):
+        print("    " + FieldNames[n] + ": ", end="")
+        print(out[pointer : pointer + FieldLengths[n]])
+        pointer += FieldLengths[n]
     return out
 
 
@@ -801,7 +799,7 @@ def decode_ef_dg2(data):
                     tag,
                     "(" + DG2_ELEMENTS[tag] + ")",
                     "@",
-                    position / 2,
+                    position // 2,
                     end="",
                 )
                 # don't skip TEMPLATE fields as they contain sub-fields
@@ -814,7 +812,7 @@ def decode_ef_dg2(data):
                     if tag in (BDB, BDB1):
                         # process CBEFF block
                         position += asn1fieldlength(datahex[position:])
-                        startposition = position / 2
+                        startposition = position // 2
                         # FACE header
                         length = len(FAC)
                         tag = datahex[position : position + length]
@@ -891,7 +889,7 @@ def decode_ef_dg2(data):
                         else:
                             filename = "%sEF_DG2.%s" % (tempfiles, Filetype)
                         with open(filename, "wb+") as img:
-                            img.write(data[position / 2 : startposition + fieldlength])
+                            img.write(data[position // 2 : startposition + fieldlength])
                         print("     JPEG image stored in %s" % filename)
                         position = (startposition + fieldlength) * 2
                     else:
@@ -908,7 +906,7 @@ def decode_ef_dg2(data):
         if not decoded:
             print(
                 "Unrecognised element @",
-                position / 2,
+                position // 2,
                 ":",
                 datahex[position : position + 4],
             )
@@ -943,7 +941,7 @@ def decode_ef_dg7(data):
                 elif tag == "5f43":
                     position += asn1fieldlength(datahex[position:])
                     with open(tempfiles + "EF_DG7." + Filetype, "wb+") as img:
-                        img.write(data[position / 2 : position + fieldlength])
+                        img.write(data[position // 2 : position + fieldlength])
                     print("     JPEG image stored in %sEF_DG7.%s" % (tempfiles, Filetype))
                     Display_DG7 = True
                     position += fieldlength * 2
@@ -1041,7 +1039,7 @@ def jmrtd_personalise(documentnumber, dob, expiry):
         + "%02X" % len(expiry)
         + passport.ToHex(expiry)
     )
-    lc = "%02X" % (len(data) / 2)
+    lc = "%02X" % (len(data) // 2)
     if passport.send_apdu("", "", "", "", "", ins, p1, p2, lc, data, ""):
         return
     if passport.errorcode == "6D00":
@@ -1056,7 +1054,7 @@ def jmrtd_personalise(documentnumber, dob, expiry):
             + passport.ToHex(expiry)
             + passport.ToHex(calculate_check_digit(expiry))
         )
-        lc = "%02X" % (len(data) / 2)
+        lc = "%02X" % (len(data) // 2)
         if passport.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, ""):
             # see if we need to set BAC or not, hacky way for now...
             if os.access(filespath + NOBAC_FILE, os.F_OK):
@@ -1664,7 +1662,7 @@ for tag in eflist:
         fieldlength = asn1fieldlength(sodhex[2:])
 
         with open(tempfiles + "EF_SOD.TMP", "wb+") as outfile:
-            outfile.write(data[1 + fieldlength / 2 :])
+            outfile.write(data[1 + fieldlength // 2 :])
 
         exitstatus = os.system("openssl pkcs7 -text -print_certs -in %sEF_SOD.TMP -inform DER" % tempfiles)
         if not exitstatus:
@@ -1686,7 +1684,7 @@ for tag in eflist:
         tag = dg15hex[:2]
         fieldlength = asn1fieldlength(dg15hex[2:])
         with open(tempfiles + "EF_DG15.TMP", "wb+") as outfile:
-            outfile.write(data[1 + fieldlength / 2 :])
+            outfile.write(data[1 + fieldlength // 2 :])
         exitstatus = os.system("openssl rsa -in %sEF_DG15.TMP -inform DER -pubin -text -noout" % tempfiles)
         if not exitstatus:
             os.system("openssl rsa -in %sEF_DG15.TMP -out %sEF_DG15.PEM -inform DER -pubin" % (tempfiles, tempfiles))
@@ -1768,7 +1766,7 @@ if Jmrtd:
         jmrtd_write_file(TAG_FID[tag], data)
     # set private key
     # second line of MRZ is second half of decoded mrz from DG1
-    passport.MRPmrzl(mrz[len(mrz) / 2 :])  # pylint mrz possibly-used-before-assignment
+    passport.MRPmrzl(mrz[len(mrz) // 2 :])  # pylint mrz possibly-used-before-assignment
     print("Setting 3DES key")
     jmrtd_personalise(
         mrz[FieldKeys[0] : FieldKeys[0] + 9],
@@ -1892,9 +1890,9 @@ if not Nogui:
         Label(frame, text=mrz[60:], font=fonta, justify="center").grid(row=row, columnspan=4)
         row += 1
     else:
-        Label(frame, text="  " + mrz[: len(mrz) / 2], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
+        Label(frame, text="  " + mrz[: len(mrz) // 2], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
         row += 1
-        Label(frame, text="  " + mrz[len(mrz) / 2 :], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
+        Label(frame, text="  " + mrz[len(mrz) // 2 :], font=fonta, justify="left").grid(row=row, sticky=W, columnspan=4)
         row += 1
     if Display_DG7:
         im = Image.open(tempfiles + "EF_DG7." + Filetype)

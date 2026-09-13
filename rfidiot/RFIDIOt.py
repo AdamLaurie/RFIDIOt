@@ -1617,7 +1617,7 @@ class rfidiot:
         p1 = subset
         p2 = control
         data = "4F00" + aid
-        lc = "%02x" % (len(data) / 2)
+        lc = "%02x" % (len(data) // 2)
         le = "00"
         return self.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le)
 
@@ -1628,7 +1628,7 @@ class rfidiot:
         p1 = "00"
         p2 = "00"
         data = challenge
-        lc = "%02x" % (len(data) / 2)
+        lc = "%02x" % (len(data) // 2)
         le = "00"
         return self.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le)
 
@@ -1640,7 +1640,7 @@ class rfidiot:
     def iso_7816_external_authenticate(self, response, key) -> bool:
         "7816 external authenticate"
         ins = "EXTERNAL_AUTHENTICATE"
-        lc = le = "%02x" % (len(response) / 2)
+        lc = le = "%02x" % (len(response) // 2)
         if self.send_apdu("", "", "", "", "", ins, "", "", lc, response, le):
             if self.MACVerify(self.data, key):
                 return True
@@ -1675,7 +1675,7 @@ class rfidiot:
     def iso_7816_select_file(self, file, control, options) -> bool:
         "7816 select file"
         ins = "SELECT_FILE"
-        lc = "%02x" % (int) (len(file) / 2)
+        lc = "%02x" % (len(file) // 2)
         p1 = control
         p2 = options
         data = file
@@ -1749,9 +1749,9 @@ class rfidiot:
             return False
             dlength = 5
         command = pcb + cla + ins + p1 + p2 + lc + data + le
-        dlength += len(data) / 2
-        dlength += len(lc) / 2
-        dlength += len(le) / 2
+        dlength += len(data) // 2
+        dlength += len(lc) // 2
+        dlength += len(le) // 2
         if self.DEBUG:
             print("sending: " + "t" + "%02x" % dlength + option + command)
         self.ser.write("t" + "%02x" % dlength + option + command)
@@ -1841,7 +1841,7 @@ class rfidiot:
                 else:
                     keynumoffset = 0
                 apdu.append("%02x" % (keynum + keynumoffset))  # p2 - key number
-                apdu.append("%02x" % (len(key) / 2))  # lc
+                apdu.append("%02x" % (len(key) // 2))  # lc
                 apdu.append(key)  # data
                 if not self.pcsc_send_apdu(apdu):
                     return False
@@ -1885,7 +1885,7 @@ class rfidiot:
         elif keytype == "BB":
             apdu.append("61")  # keytype
         apdu.append("00")
-        apdu.append("%02x" % (len(key) / 2))
+        apdu.append("%02x" % (len(key) // 2))
         apdu.append(key)
         ret = self.pcsc_send_apdu(apdu)
         if ret is False:
@@ -1984,7 +1984,7 @@ class rfidiot:
             hexblock = "%04x" % block
             apdu.append(hexblock[0:2])  # p1
             apdu.append(hexblock[2:4])  # p2
-            apdu.append("%02x" % (len(data) / 2))  # le
+            apdu.append("%02x" % (len(data) // 2))  # le
             apdu.append(data)
             return self.pcsc_send_apdu(apdu)
 
