@@ -58,7 +58,7 @@ if prox == card.HID_PROX_H10301:
 
 # H10301 - 26 bit (FAC + CN) (ATR in HEX)
 if prox == card.HID_PROX_H10301_H:
-    binary = card.ToBinaryString(card.pcsc_atr[6:].decode("hex"))
+    binary = card.ToBinaryString(card.ToBinary(card.pcsc_atr[6:]))
     # strip leading zeros and parity
     binary = binary[7:]
     binary = binary[:-1]
@@ -75,7 +75,7 @@ if prox == card.HID_PROX_H10302:
 # H10302 - 37 bit (CN) (ATR in HEX)
 if prox == card.HID_PROX_H10302_H:
     fc = "n/a"
-    binary = card.ToBinaryString(card.pcsc_atr[6:].decode("hex"))
+    binary = card.ToBinaryString(card.ToBinary(card.pcsc_atr[6:]))
     # strip leading zeros and parity
     binary = binary[8:]
     binary = binary[:-1]

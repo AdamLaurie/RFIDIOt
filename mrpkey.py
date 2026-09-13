@@ -642,7 +642,7 @@ def read_file(file):
         print("Reading: %05d\r" % readlen, end="")
         sys.stdout.flush()
     print()
-    return True, data.decode("hex")
+    return True, passport.ToBinary(data)
 
 
 def asn1fieldlength(data):
@@ -1712,39 +1712,41 @@ if Jmrtd:
     print("Initialising JMRTD or vonJeek...")
     if STRIP_INDEX:
         print("Stripping AA & EAC files")
-        print("old EF.COM: " + raw_efcom.encode("hex"))
+        print("old EF.COM: " + passport.ToHex(raw_efcom))
         # DG.COM tag & length
-        total_length = ord(raw_efcom[1])
-        new_total_length = ord(raw_efcom[1])
+        total_length = raw_efcom[1]
+        new_total_length = raw_efcom[1]
         i = 2
-        tmp = ""
+        tmp = bytearray()
         while i - 2 < total_length - 1:
             # next tag
-            tag = raw_efcom[i]
-            tmp += raw_efcom[i]
+            tag = bytearray([raw_efcom[i]])
+            tmp.append(raw_efcom[i])
             # not sure how to distinguish 2-byte tags...
-            if raw_efcom[i] == chr(0x5F) or raw_efcom[i] == chr(0x7F):
+            if raw_efcom[i] == 0x5F or raw_efcom[i] == 0x7F:
                 i += 1
-                tag += raw_efcom[i]
-                tmp += raw_efcom[i]
+                tag.append(raw_efcom[i])
+                tmp.append(raw_efcom[i])
             i += 1
-            length = ord(raw_efcom[i])
+            length = raw_efcom[i]
             i += 1
-            if tag == "5C".decode("hex"):
+            if bytes(tag) == bytes.fromhex("5C"):
                 # Keeping only known files in the tag index
                 oldindex = raw_efcom[i : i + length]
                 clearDGs = [EF_DG1, EF_DG2, EF_DG7, EF_DG11, EF_DG12, EF_DG13]
-                newindex = "".join([x for x in list(oldindex) if x.encode("hex") in clearDGs])
+                newindex = bytes([x for x in oldindex if "%02x" % x in clearDGs])
                 newlength = len(newindex)
-                tmp += chr(newlength) + newindex
+                tmp.append(newlength)
+                tmp += newindex
                 i += newlength
                 # Fixing total length:
                 new_total_length = total_length - (length - newlength)
             else:
-                tmp += chr(length) + raw_efcom[i : i + length]
+                tmp.append(length)
+                tmp += raw_efcom[i : i + length]
             i += length
-        raw_efcom = raw_efcom[0] + chr(new_total_length) + tmp
-        print("new EF.COM: " + raw_efcom.encode("hex"))
+        raw_efcom = bytes([raw_efcom[0], new_total_length]) + bytes(tmp)
+        print("new EF.COM: " + passport.ToHex(raw_efcom))
         eflist = decode_ef_com(raw_efcom)
         eflist.insert(0, EF_SOD)
         eflist.insert(0, EF_COM)

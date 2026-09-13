@@ -176,7 +176,7 @@ while args:
         sector = start
         while sector <= end:
             if card.readblock(sector):
-                print("    %02X: %s %s" % (sector, card.data, card.ReadablePrint(card.data.decode("hex"))))
+                print("    %02X: %s %s" % (sector, card.data, card.ReadablePrint(card.ToBinary(card.data))))
             else:
                 print("    Failed: " + card.get_error_str(card.errorcode))
             sector += 1
@@ -184,7 +184,7 @@ while args:
     if command == "FILE":
         mode = args.pop().upper()
         if mode == "A":
-            isofile = args.pop().encode("hex")
+            isofile = card.ToHex(args.pop())
         elif mode == "H":
             isofile = args.pop().upper()
         else:
@@ -273,12 +273,12 @@ while args:
             blank_key = args.pop()
             start = 0
             end = 0x3F
-            data = ""
+            data = bytearray()
             sector = start
             print("    Reading...")
             while sector <= end:
                 if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                    data += card.MIFAREdata.decode("hex")
+                    data += card.ToBinary(card.MIFAREdata)
                 else:
                     print("    Failed: " + card.get_error_str(card.errorcode))
                 sector += 1
@@ -299,7 +299,7 @@ while args:
             sector = start
             p = 0
             while sector <= end:
-                block = data[p : p + 16].encode("hex")
+                block = card.ToHex(data[p : p + 16])
                 if not (sector + 1) % 4:
                     # trailing block must contain keys, so reconstruct
                     block = Mifare_KeyA + block[12:]
@@ -332,7 +332,7 @@ while args:
                         % (
                             sector,
                             card.MIFAREdata,
-                            card.ReadablePrint(card.MIFAREdata.decode("hex")),
+                            card.ReadablePrint(card.ToBinary(card.MIFAREdata)),
                         )
                     )
                 else:
@@ -367,7 +367,7 @@ while args:
                 sector = start
                 while sector <= end:
                     if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                        outfile.write(card.MIFAREdata.decode("hex"))
+                        outfile.write(card.ToBinary(card.MIFAREdata))
                     else:
                         print("    Failed: " + card.get_error_str(card.errorcode))
                     sector += 1
@@ -438,7 +438,7 @@ while args:
             sector = start
             p = 0
             while sector <= end:
-                block = data[p : p + 16].encode("hex")
+                block = card.ToHex(data[p : p + 16])
                 if not (sector + 1) % 4:
                     # trailing block must contain keys, so reconstruct
                     if Mifare_KeyB:
