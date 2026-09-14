@@ -149,7 +149,7 @@ TAGS = {
     0x83: ["Command Template", BER_TLV, ITEM],
     0x84: ["DF Name", MIXED, ITEM],
     0x86: ["Issuer Script Command", BER_TLV, ITEM],
-    0x87: ["Application Priority Indicator", BER_TLV, ITEM],
+    0x87: ["Application Priority Indicator", BINARY, ITEM],
     0x88: ["Short File Identifier", BINARY, ITEM],
     0x8A: ["Authorisation Response Code", BINARY, VALUE],
     0x8C: ["Card Risk Management Data Object List 1 (CDOL1)", BINARY, TEMPLATE],
@@ -372,88 +372,100 @@ def isbinary(data):
     return False
 
 
-def decode_pse(data):
-    "decode the main PSE select response"
+def ber_tag(data, i):
+    "parse a BER-TLV tag at data[i]; return (tag_int, num_bytes)"
+    first = data[i]
+    if first & 0x1F != 0x1F:
+        return first, 1
+    tag = first
+    k = 1
+    while i + k < len(data):
+        b = data[i + k]
+        tag = (tag << 8) | b
+        k += 1
+        if not b & 0x80:
+            break
+    return tag, k
+
+
+def ber_len(data, i):
+    "parse a BER-TLV length at data[i]; return (length, num_bytes)"
+    b = data[i]
+    if b < 0x80:
+        return b, 1
+    n = b & 0x7F
+    length = 0
+    for k in range(n):
+        length = (length << 8) | data[i + 1 + k]
+    return length, 1 + n
+
+
+def decode_pse(data, indent=""):
+    "decode an EMV BER-TLV response (PSE / FCI / record templates), recursively"
+
+    if not indent:
+        if OutputFiles:
+            with open(f"{CurrentAID}-PSE.HEX", "w", encoding="utf-8") as file:
+                for n in data:
+                    file.write(f"{n:02X}")
+        if RawOutput:
+            hexprint(data)
+            textprint(data)
+            return
 
     index = 0
-    indent = ""
-
-    if OutputFiles:
-        # file = open("%s-PSE.HEX" % CurrentAID, "w")
-        with open(f"{CurrentAID}-PSE.HEX", "w", encoding="utf-8") as file:
-            for n in data:
-                file.write(f"{n:02X}")
-
-    if RawOutput:
-        hexprint(data)
-        textprint(data)
-        return
-
     while index < len(data):
-        tag = data[index]
-        if tag in TAGS:
-            taglen = 1
-        else:
-            tag = data[index] * 256 + data[index + 1]
-            if tag in TAGS:
-                taglen = 2
-            else:
-                print(indent + "  Unrecognised TAG:", end="")
-                hexprint(data[index:])
-                return
-        print(f"{indent}  {tag:0x}: {TAGS[tag][0]}", end="")
-        if TAGS[tag][2] == VALUE:
-            itemlength = 1
-            offset = 0
-        else:
-            itemlength = data[index + taglen]
-            offset = 1
-        print(f"({itemlength} bytes):", end="")
+        # skip inter-object padding
+        if data[index] in (0x00, 0xFF):
+            index += 1
+            continue
+        tag, taglen = ber_tag(data, index)
+        if index + taglen >= len(data):
+            break
+        itemlength, lenlen = ber_len(data, index + taglen)
+        vstart = index + taglen + lenlen
+        value = data[vstart : vstart + itemlength]
+        constructed = bool(data[index] & 0x20)
+        known = tag in TAGS
+        name = TAGS[tag][0] if known else "Unknown TAG"
+        print(f"{indent}  {tag:02x}: {name} ({itemlength} bytes):", end="")
         # store CDOLs for later use
         if tag == CDOL1:
-            Cdol1 = data[index + taglen : index + taglen + itemlength + 1] # pylint unused-variable
+            Cdol1 = value  # noqa: F841 pylint: disable=unused-variable
         if tag == CDOL2:
-            Cdol2 = data[index + taglen : index + taglen + itemlength + 1] # pylint unused-variable
-        out = ""
-        mixedout = []
-        while itemlength > 0:
-            if TAGS[tag][1] == BER_TLV:
-                print("skipping BER-TLV object!")
-                return
-                # decode_ber_tlv_field(data[index + taglen + offset:])
-            if TAGS[tag][1] == BINARY or TAGS[tag][1] == VALUE:
-                if TAGS[tag][2] != TEMPLATE or Verbose:
-                    print("%02x" % data[index + taglen + offset], end="")
-            else:
-                if TAGS[tag][1] == NUMERIC:
-                    out += "%02x" % data[index + taglen + offset]
-                else:
-                    if TAGS[tag][1] == TEXT:
-                        out += "%c" % data[index + taglen + offset]
-                    if TAGS[tag][1] == MIXED:
-                        mixedout.append(data[index + taglen + offset])
-            itemlength -= 1
-            offset += 1
-        if TAGS[tag][1] == MIXED:
-            if isbinary(mixedout):
-                hexprint(mixedout)
-            else:
-                textprint(mixedout)
-        if TAGS[tag][1] == BINARY:
+            Cdol2 = value  # noqa: F841 pylint: disable=unused-variable
+        # only true constructed templates (BER constructed bit 0x20 set) contain
+        # nested TLV - recurse into those. DOLs (CDOL/PDOL/DDOL/TDOL) are
+        # primitive-encoded tag+length lists and must NOT be recursed.
+        if constructed:
             print()
-        if TAGS[tag][1] == TEXT or TAGS[tag][1] == NUMERIC:
-            print(out, end="")
-            if tag in (0x9F42, 0x5F28):
-                print("(" + ISO3166CountryCodes["%03d" % int(out)] + ")")
-            else:
-                print()
-        if TAGS[tag][2] == ITEM:
-            index += data[index + taglen] + taglen + 1
+            decode_pse(value, indent + "  ")
+            index = vstart + itemlength
+            continue
+        # primitive value
+        if not known:
+            hexprint(value)
         else:
-            index += taglen + 1
-    #                       if TAGS[tag][2] != VALUE:
-    #                               indent += '   '
-    indent = ""
+            fmt = TAGS[tag][1]
+            if fmt == TEXT:
+                print("".join("%c" % b for b in value))
+            elif fmt == NUMERIC:
+                out = "".join("%02x" % b for b in value)
+                if tag in (0x9F42, 0x5F28):
+                    try:
+                        print(out + " (" + ISO3166CountryCodes["%03d" % int(out)] + ")")
+                    except (KeyError, ValueError):
+                        print(out)
+                else:
+                    print(out)
+            elif fmt == MIXED:
+                if isbinary(value):
+                    hexprint(value)
+                else:
+                    textprint(value)
+            else:  # BINARY / anything else
+                hexprint(value)
+        index = vstart + itemlength
 
 
 def textprint(data):
@@ -607,7 +619,6 @@ def decode_processing_options(data):
         x = 2
         while x < len(data):
             tag, fieldlen, value = decode_ber_tlv_item(data[x:])
-            print("-- Value: ", hexprint(value))
             if tag == BER_TLV_AIP:
                 decode_aip(value)
             if tag == BER_TLV_AFL:
@@ -646,7 +657,6 @@ def decode_aip(data):
 
 
 def decode_afl(data):
-    print("-- deccode_afl data: ", hexprint(data))
     sfi = int(data[0] >> 3)
     start = int(data[1])
     end = int(data[2])
