@@ -52,6 +52,7 @@ Debug = False
 Protocol = CardConnection.T0_protocol
 RawOutput = False
 Verbose = False
+UseLibNFC = False
 
 # Global VARs for data interchange
 Cdol1 = ""
@@ -74,7 +75,7 @@ KNOWN_AIDS = [
     ["VISA BoA Debit", 0xA0, 0x00, 0x00, 0x00, 0x98],
     ["VISA Common Debit", 0xA0, 0x00, 0x00, 0x00, 0x98, 0x08, 0x40],
     ["VISA Schwab Debit", 0xA0, 0x00, 0x00, 0x00, 0x98, 0x08, 0x48],
-    ["Discover/Diners", 0xA0, 0x00, 0x00, 0x01, 0x52]
+    ["Discover/Diners", 0xA0, 0x00, 0x00, 0x01, 0x52],
     ["Discover Card", 0xA0, 0x00, 0x00, 0x01, 0x52, 0x30, 0x10],
     ["Discover Debit", 0xA0, 0x00, 0x00, 0x01, 0x52, 0x40, 0x10],
     ["MASTERCARD", 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10],
@@ -298,6 +299,7 @@ def printhelp():
     print("\t-e\t\tBruteforce EMV AIDs")
     print("\t-f\t\tBruteforce files")
     print("\t-h\t\tPrint detailed help message")
+    print("\t-n\t\tUse libnfc reader (device 0) instead of PC/SC")
     print("\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)")
     print("\t-p\t\tBruteforce primitives")
     print("\t-r\t\tRaw output - do not interpret EMV data")
@@ -775,10 +777,41 @@ def verify_pin(pin):
 # main loop
 aidlist = KNOWN_AIDS
 
+
+# libnfc backend: adapter presenting the same interface as a pyscard
+# CardConnection (transmit/connect/addObserver) so the rest of ChAP.py is
+# unchanged, but APDUs go over RFIDIOt's libnfc transceive.
+class _LibNFCConnection:
+    def __init__(self, card):
+        self._card = card
+
+    def addObserver(self, observer):
+        pass
+
+    def connect(self, *args, **kwargs):
+        if not self._card.select():
+            raise RuntimeError("No card on libnfc reader")
+
+    def transmit(self, apdu, protocol=None):
+        h = "".join("%02X" % b for b in apdu)
+        ok, resp = self._card.nfc.sendAPDU(h, self._card.timeout)
+        if not ok or len(resp) < 4:
+            return [], 0x6F, 0x00
+        data = [int(resp[i : i + 2], 16) for i in range(0, len(resp) - 4, 2)]
+        return data, int(resp[-4:-2], 16), int(resp[-2:], 16)
+
+
+class _LibNFCService:
+    def __init__(self, card):
+        self.connection = _LibNFCConnection(card)
+
+
 try:
     # 'args' will be set to remaining arguments (if any)
-    opts, args = getopt.getopt(sys.argv[1:], "aAdefoprtv")
+    opts, args = getopt.getopt(sys.argv[1:], "aAdefnoprtv")
     for o, a in opts:
+        if o == "-n":
+            UseLibNFC = True
         if o == "-a":
             BruteforceAID = True
         if o == "-A":
@@ -823,20 +856,32 @@ if args:
         PIN = args[0]
 
 try:
-    # request any card type
-    cardtype = AnyCardType()
-    # request card insertion
-    print("insert a card within 10s")
-    cardrequest = CardRequest(timeout=10, cardType=cardtype)
-    cardservice = cardrequest.waitforcard()
+    if UseLibNFC:
+        # rfidiot is already imported (top-of-file iso3166 import runs its
+        # __init__, which builds a default rfidiot.card from *our* argv). Don't
+        # reuse that; build a dedicated libnfc instance (device 0) here.
+        import rfidiot  # noqa: E402
 
-    # attach the console tracer
-    if Debug:
-        observer = ConsoleCardConnectionObserver()
-        cardservice.connection.addObserver(observer)
+        _R = rfidiot.RFIDIOt.rfidiot
+        libcard = _R(0, _R.READER_LIBNFC, "", 9600, 1, rfidiot.rfidiotglobals.Debug, False, 0)
+        print("using libnfc reader:", getattr(libcard, "readername", "libnfc"))
+        cardservice = _LibNFCService(libcard)
+        cardservice.connection.connect(Protocol)
+    else:
+        # request any card type
+        cardtype = AnyCardType()
+        # request card insertion
+        print("insert a card within 10s")
+        cardrequest = CardRequest(timeout=10, cardType=cardtype)
+        cardservice = cardrequest.waitforcard()
 
-    # connect to the card
-    cardservice.connection.connect(Protocol)
+        # attach the console tracer
+        if Debug:
+            observer = ConsoleCardConnectionObserver()
+            cardservice.connection.addObserver(observer)
+
+        # connect to the card
+        cardservice.connection.connect(Protocol)
 
     # get_challenge(0)
 
