@@ -136,6 +136,33 @@ VALUE = 2
 SFI = 0x88
 CDOL1 = 0x8C
 CDOL2 = 0x8D
+CVM_LIST = 0x8E
+
+# CVM (Cardholder Verification Method) list decoding - EMV Book 3
+# low 6 bits of the CVM code = method
+CVM_CODES = {
+    0x00: "Fail CVM processing",
+    0x01: "Plaintext PIN verification performed by ICC",
+    0x02: "Enciphered PIN verified online",
+    0x03: "Plaintext PIN verification by ICC and signature (paper)",
+    0x04: "Enciphered PIN verification performed by ICC",
+    0x05: "Enciphered PIN verification by ICC and signature (paper)",
+    0x1E: "Signature (paper)",
+    0x1F: "No CVM required",
+}
+CVM_CONDITIONS = {
+    0x00: "Always",
+    0x01: "If unattended cash",
+    0x02: "If not unattended/manual cash and not cashback",
+    0x03: "If terminal supports the CVM",
+    0x04: "If manual cash",
+    0x05: "If purchase with cashback",
+    0x06: "If in application currency and under X value",
+    0x07: "If in application currency and over X value",
+    0x08: "If in application currency and under Y value",
+    0x09: "If in application currency and over Y value",
+}
+
 TAGS = {
     0x4F: ["Application Identifier (AID)", BINARY, ITEM],
     0x50: ["Application Label", TEXT, ITEM],
@@ -445,6 +472,8 @@ def decode_pse(data, indent=""):
         # primitive value
         if not known:
             hexprint(value)
+        elif tag == CVM_LIST:
+            decode_cvm(value)
         else:
             fmt = TAGS[tag][1]
             if fmt == TEXT:
@@ -654,6 +683,30 @@ def decode_aip(data):
     for x in AIP_MASK:
         if data[0] & x:
             print("    " + AIP_MASK[x])
+
+
+def decode_cvm(data):
+    "decode a Cardholder Verification Method (CVM) List (tag 8E)"
+    print()
+    if len(data) < 8:
+        print("      (malformed CVM list)")
+        return
+    amount_x = int.from_bytes(bytes(data[0:4]), "big")
+    amount_y = int.from_bytes(bytes(data[4:8]), "big")
+    print("      Amount X: %d   Amount Y: %d" % (amount_x, amount_y))
+    rules = data[8:]
+    i = 0
+    n = 1
+    while i + 1 < len(rules):
+        code, cond = rules[i], rules[i + 1]
+        method = code & 0x3F
+        cont = code & 0x40  # apply next rule if this CVM is unsuccessful
+        mname = CVM_CODES.get(method, "RFU/proprietary (0x%02x)" % method)
+        cname = CVM_CONDITIONS.get(cond, "RFU/proprietary (0x%02x)" % cond)
+        tail = "else apply next rule" if cont else "else fail CVM"
+        print("      %d. %s  [%s]  (%s)" % (n, mname, cname, tail))
+        i += 2
+        n += 1
 
 
 def decode_afl(data):
