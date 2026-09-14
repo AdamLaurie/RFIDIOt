@@ -35,9 +35,9 @@ warnings.filterwarnings("ignore")
 try:
     from cryptography import x509
     from cryptography.hazmat.primitives import serialization
+    HAVE_CRYPTO = True
 except ImportError:
-    print("*** this tool needs the 'cryptography' module (pip install cryptography)")
-    sys.exit(True)
+    HAVE_CRYPTO = False
 
 # hash OID -> hashlib constructor
 HASH_OID = {
@@ -160,12 +160,13 @@ def decode_oid(b):
     return ".".join(str(x) for x in vals)
 
 
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: passiveauth.py <EF_SOD.BIN> <masterlist.ml> [DG_DIR]")
-        sys.exit(True)
-    sod_path, ml_path = sys.argv[1], sys.argv[2]
-    dg_dir = sys.argv[3] if len(sys.argv) > 3 else os.path.dirname(sod_path) or "."
+def passive_authenticate(sod_path, ml_path, dg_dir=None):
+    "run Passive Authentication; return True only if fully verified, else False"
+    if not HAVE_CRYPTO:
+        print("*** Passive Authentication needs the 'cryptography' module (pip install cryptography)")
+        return None
+    if dg_dir is None:
+        dg_dir = os.path.dirname(sod_path) or "."
 
     cms_der = strip_icao_wrapper(open(sod_path, "rb").read())
 
@@ -173,7 +174,7 @@ def main():
     ds_pem = run(["openssl", "pkcs7", "-inform", "DER", "-print_certs"], cms_der).stdout
     if b"BEGIN CERTIFICATE" not in ds_pem:
         print("*** no Document Signer certificate found in SOD")
-        sys.exit(True)
+        return False
     ds = x509.load_pem_x509_certificate(ds_pem)
     aki = cert_aki(ds)
     print("Document Signer:")
@@ -199,7 +200,7 @@ def main():
                 break
     if not match:
         print("  *** CSCA NOT found in master list - cannot establish trust")
-        sys.exit(True)
+        return False
     csca_pem = tempfile.NamedTemporaryFile(suffix=".pem", delete=False).name
     open(csca_pem, "wb").write(match.public_bytes(serialization.Encoding.PEM))
     print("  FOUND CSCA:", match.subject.rfc4514_string())
@@ -232,8 +233,18 @@ def main():
             print("  DG%-2d  in SOD, data group file not available (%s)" % (dg, fn))
 
     os.unlink(csca_pem)
-    print("\nPassive Authentication:", "PASSED" if (sod_ok and all_ok) else "INCOMPLETE/FAILED")
-    sys.exit(not (sod_ok and all_ok))
+    result = bool(sod_ok and all_ok)
+    print("\nPassive Authentication:", "PASSED" if result else "INCOMPLETE/FAILED")
+    return result
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: passiveauth.py <EF_SOD.BIN> <masterlist.ml> [DG_DIR]")
+        sys.exit(True)
+    dg_dir = sys.argv[3] if len(sys.argv) > 3 else None
+    ok = passive_authenticate(sys.argv[1], sys.argv[2], dg_dir)
+    sys.exit(not ok)
 
 
 if __name__ == "__main__":

@@ -1185,6 +1185,10 @@ def print_help():
     print("\tSpecify the option SLOWBRUTE after MRZ to force reset between attempts (required on some new passports)")
     print("\tPadding character '<' should be used for unknown fields.")
     print()
+    print("\tPassive Authentication: set $RFIDIOT_MASTERLIST to a CSCA master list (.ml)")
+    print("\t(e.g. the BSI GermanMasterList) to verify the passport and flag it SAFE/UNSAFE,")
+    print("\tor place one at ~/.rfidiot/masterlist.ml or /etc/rfidiot/masterlist.ml.")
+    print()
     sys.exit(True)
 
 
@@ -1781,6 +1785,42 @@ if Jmrtd:
     )
 if JmrtdLock:
     jmrtd_lock()
+
+# ----- Passive Authentication hook -----
+# If a CSCA master list is available, verify the passport just read and flag it
+# SAFE / UNSAFE. Enable by setting $RFIDIOT_MASTERLIST to a CSCA master list .ml
+# (e.g. the BSI GermanMasterList.ml), or by placing one at a default path.
+_pa_sod = tempfiles + "EF_SOD.BIN"
+if os.path.exists(_pa_sod):
+    _pa_ml = os.environ.get("RFIDIOT_MASTERLIST", "")
+    if not _pa_ml:
+        for _p in (
+            os.path.expanduser("~/.rfidiot/masterlist.ml"),
+            "/etc/rfidiot/masterlist.ml",
+            tempfiles + "masterlist.ml",
+        ):
+            if os.path.exists(_p):
+                _pa_ml = _p
+                break
+    print()
+    if _pa_ml:
+        print("===== Passive Authentication (%s) =====" % _pa_ml)
+        try:
+            import passiveauth
+
+            _pa_ok = passiveauth.passive_authenticate(_pa_sod, _pa_ml, tempfiles)
+        except Exception as _pa_e:
+            _pa_ok = False
+            print("Passive Authentication error:", _pa_e)
+        print()
+        if _pa_ok is True:
+            print("***** PASSPORT SAFE - signed by a CSCA in the master list, data groups intact *****")
+        elif _pa_ok is False:
+            print("##### PASSPORT UNSAFE - Passive Authentication FAILED (signer not in PKD / tampered / incomplete) #####")
+        else:
+            print("----- Passport trust UNVERIFIED - could not run Passive Authentication -----")
+    else:
+        print("(Passive Authentication skipped - set $RFIDIOT_MASTERLIST to a CSCA master list .ml to enable)")
 
 # image read is nasty hacky bodge to see if image display without interpreting the headers
 # start of image location may change - look for JPEG header bytes 'FF D8 FF E0'
