@@ -53,6 +53,23 @@ Protocol = CardConnection.T0_protocol
 RawOutput = False
 Verbose = False
 UseLibNFC = False
+Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
+
+# terminal-side defaults used to populate a PDOL/DOL for GET PROCESSING OPTIONS
+PDOL_DEFAULTS = {
+    "9F66": "36000000",  # TTQ (Terminal Transaction Qualifiers)
+    "9F02": "000000000100",  # Amount, Authorised
+    "9F03": "000000000000",  # Amount, Other
+    "9F1A": "0826",  # Terminal Country Code (GB)
+    "95": "0000000000",  # TVR
+    "5F2A": "0826",  # Transaction Currency Code (GBP)
+    "9A": "010101",  # Transaction Date
+    "9C": "00",  # Transaction Type
+    "9F37": "12345678",  # Unpredictable Number
+    "9F35": "22",  # Terminal Type
+    "9F6E": "D8E04000",  # (AMEX) Enhanced Contactless Reader Capabilities (EMV+magstripe capable)
+    "9F40": "0000000000",
+}
 
 # Global VARs for data interchange
 Cdol1 = ""
@@ -296,9 +313,17 @@ PIN_WRONG = 0x63
 
 # some human readable error messages
 ERRORS = {
-    "6700": "Not known",
-    "6985": "Conditions of use not satisfied or Command not supported",
+    "6283": "Selected file deactivated / blocked",
+    "6700": "Wrong length",
+    "6982": "Security status not satisfied",
+    "6983": "Authentication method blocked",
     "6984": "PIN Try Limit exceeded",
+    "6985": "Conditions of use not satisfied or Command not supported",
+    "6a81": "Function not supported",
+    "6a82": "File or application not found",
+    "6a86": "Incorrect parameters P1-P2",
+    "6d00": "Instruction code not supported or invalid",
+    "6e00": "Class not supported",
 }
 
 # define GET_DATA primitive tags
@@ -430,7 +455,10 @@ def ber_len(data, i):
 def decode_pse(data, indent=""):
     "decode an EMV BER-TLV response (PSE / FCI / record templates), recursively"
 
+    global Pdol
     if not indent:
+        # top-level call (a fresh response); clear any PDOL from a prior select
+        Pdol = []
         if OutputFiles:
             with open(f"{CurrentAID}-PSE.HEX", "w", encoding="utf-8") as file:
                 for n in data:
@@ -461,6 +489,8 @@ def decode_pse(data, indent=""):
             Cdol1 = value  # noqa: F841 pylint: disable=unused-variable
         if tag == CDOL2:
             Cdol2 = value  # noqa: F841 pylint: disable=unused-variable
+        if tag == 0x9F38:
+            Pdol = list(value)
         # only true constructed templates (BER constructed bit 0x20 set) contain
         # nested TLV - recurse into those. DOLs (CDOL/PDOL/DDOL/TDOL) are
         # primitive-encoded tag+length lists and must NOT be recursed.
@@ -617,8 +647,37 @@ def bruteforce_files():
                 decode_pse(response)
 
 
+def build_dol(dol):
+    "populate a DOL (list of int tag/length pairs) with terminal defaults; return list of ints"
+    out = []
+    i = 0
+    while i < len(dol):
+        t0 = dol[i]
+        tag = "%02X" % t0
+        i += 1
+        if t0 & 0x1F == 0x1F:
+            while i < len(dol):
+                tag += "%02X" % dol[i]
+                more = dol[i] & 0x80
+                i += 1
+                if not more:
+                    break
+        if i >= len(dol):
+            break
+        length = dol[i]
+        i += 1
+        fill = PDOL_DEFAULTS.get(tag, "")
+        b = bytes.fromhex(fill) if fill else b""
+        b = (b + b"\x00" * length)[:length]
+        out += list(b)
+    return out
+
+
 def get_processing_options():
-    apdu = GET_PROCESSING_OPTIONS
+    # build the GPO command data object (83) from the card's PDOL (9F38) if any
+    pdol_data = build_dol(Pdol) if Pdol else []
+    field = [0x83, len(pdol_data)] + pdol_data
+    apdu = [0x80, 0xA8, 0x00, 0x00, len(field)] + field + [0x00]
     response, sw1, sw2 = send_apdu(apdu)
     if check_return(sw1, sw2):
         return True, response
@@ -1038,7 +1097,7 @@ try:
                     print(
                         "  Could not get processing options:",
                         response,
-                        ERRORS[response],
+                        ERRORS.get(response, "unknown error"),
                     )
                 ret, length, pins = get_primitive(PIN_TRY_COUNTER)
                 if ret:
