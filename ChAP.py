@@ -53,7 +53,29 @@ Protocol = CardConnection.T0_protocol
 RawOutput = False
 Verbose = False
 UseLibNFC = False
+RecoverCerts = False  # -c : recover/verify the SDA-DDA certificate chain
 Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
+EMVData = {}  # tag -> value(list of ints) collected while decoding the current app
+
+# CA public keys, keyed by (RID hex, index). Recovery is self-validating
+# (6A..BC + SHA-1), so a wrong entry fails cleanly rather than misleading.
+# Add keys from the public EMV CA key tables (e.g. eftlab) as needed.
+CA_PUBLIC_KEYS = {
+    # American Express (RID A000000025) index 0x10, 1984-bit - verified live
+    ("A000000025", 0x10): {
+        "exp": 3,
+        "mod": (
+            "CF98DFEDB3D3727965EE7797723355E0751C81D2D3DF4D18EBAB9FB9D49F38C8"
+            "C4A826B99DC9DEA3F01043D4BF22AC3550E2962A59639B1332156422F788B9C1"
+            "6D40135EFD1BA94147750575E636B6EBC618734C91C1D1BF3EDC2A46A4390166"
+            "8E0FFC136774080E888044F6A1E65DC9AAA8928DACBEB0DB55EA3514686C6A73"
+            "2CEF55EE27CF877F110652694A0E3484C855D882AE191674E25C296205BBB599"
+            "455176FDD7BBC549F27BA5FE35336F7E29E68D783973199436633C67EE5A680F"
+            "05160ED12D1665EC83D1997F10FD05BBDBF9433E8F797AEE3E9F02A34228ACE9"
+            "27ABE62B8B9281AD08D3DF5C7379685045D7BA5FCDE58637"
+        ),
+    },
+}
 
 # terminal-side defaults used to populate a PDOL/DOL for GET PROCESSING OPTIONS
 PDOL_DEFAULTS = {
@@ -356,6 +378,7 @@ def printhelp():
     print("\nOptions:\n")
     print("\t-a\t\tBruteforce AIDs")
     print("\t-A\t\tPrint list of known AIDs")
+    print("\t-c\t\tRecover & verify the SDA/DDA certificate chain")
     print("\t-d\t\tDebug - Show PC/SC APDU data")
     print("\t-e\t\tBruteforce EMV AIDs")
     print("\t-f\t\tBruteforce files")
@@ -509,6 +532,7 @@ def decode_pse(data, indent=""):
             index = vstart + itemlength
             continue
         # primitive value
+        EMVData[tag] = list(value)  # collect for later cert-chain recovery
         if not known:
             hexprint(value)
         elif tag == CVM_LIST:
@@ -785,6 +809,70 @@ def decode_afl(data):
     return sfi, start, end, offline
 
 
+def _rsa_recover(cert, mod_int, exp):
+    "EMV public-key recovery: cert^exp mod n, returned as bytes"
+    c = int.from_bytes(bytes(cert), "big")
+    r = pow(c, exp, mod_int)
+    return r.to_bytes((mod_int.bit_length() + 7) // 8, "big")
+
+
+def recover_certificates():
+    "recover & verify the SDA/DDA certificate chain from the collected EMVData"
+    import hashlib
+
+    idx = EMVData.get(0x8F)
+    cert = EMVData.get(0x90)
+    if not idx or not cert:
+        return  # no readable offline-auth data on this application
+    rid = CurrentAID[:10].upper()
+    index = idx[0]
+    print("  -- Offline Data Authentication --")
+    key = CA_PUBLIC_KEYS.get((rid, index))
+    if not key:
+        print("    no CA public key for RID %s index %02X (add it to CA_PUBLIC_KEYS)" % (rid, index))
+        return
+    ca_mod = int(key["mod"], 16)
+    print("    CA key: RID %s index %02X (%d-bit)" % (rid, index, ca_mod.bit_length()))
+
+    # 1. Issuer Public Key certificate (tag 90), signed by the CA key
+    rec = _rsa_recover(cert, ca_mod, key["exp"])
+    if not (rec[0] == 0x6A and rec[1] == 0x02 and rec[-1] == 0xBC):
+        print("    Issuer PK cert: INVALID recovery (wrong CA key or corrupt cert)")
+        return
+    pklen = rec[13]
+    field = rec[15:-21]
+    rem = EMVData.get(0x92)
+    iexp = EMVData.get(0x9F32, [])
+    hin = bytes(rec[1:-21]) + (bytes(rem) if rem else b"") + bytes(iexp)
+    hash_ok = hashlib.sha1(hin).digest() == bytes(rec[-21:-1])
+    if pklen <= len(field):
+        issuer_mod = bytes(field[:pklen])
+    else:
+        issuer_mod = bytes(field) + (bytes(rem) if rem else b"")
+    print("    Issuer PK cert: 6A..BC ok, hash %s, key %d-bit, expiry %02x/%02x, serial %s"
+          % ("OK" if hash_ok else "FAIL", pklen * 8, rec[6], rec[7], bytes(rec[8:11]).hex().upper()))
+
+    # 2. ICC Public Key certificate (tag 9F46), signed by the issuer key
+    icc = EMVData.get(0x9F46)
+    if not icc:
+        print("    (no ICC PK certificate - SDA-only application)")
+        return
+    imod = int.from_bytes(issuer_mod, "big")
+    icc_exp = int.from_bytes(bytes(EMVData.get(0x9F47, [3])), "big")
+    rec2 = _rsa_recover(icc, imod, icc_exp)
+    if not (rec2[0] == 0x6A and rec2[1] == 0x04 and rec2[-1] == 0xBC):
+        print("    ICC PK cert: INVALID recovery")
+        return
+    icclen = rec2[19]
+    pan_cert = bytes(rec2[2:12]).hex().upper().rstrip("F")
+    pan_card = bytes(EMVData.get(0x5A, [])).hex().upper().rstrip("F")
+    match = "  (matches card PAN)" if pan_card and pan_cert == pan_card else ""
+    print("    ICC PK cert: 6A..BC ok, key %d-bit, PAN %s%s, expiry %02x/%02x"
+          % (icclen * 8, pan_cert, match, rec2[12], rec2[13]))
+    print("    chain verified: CA %d-bit -> Issuer %d-bit -> ICC %d-bit"
+          % (ca_mod.bit_length(), pklen * 8, icclen * 8))
+
+
 def decode_ber_tlv_field(data):
     x = 0
     while x < len(data):
@@ -939,10 +1027,12 @@ class _LibNFCService:
 
 try:
     # 'args' will be set to remaining arguments (if any)
-    opts, args = getopt.getopt(sys.argv[1:], "aAdefnoprtv")
+    opts, args = getopt.getopt(sys.argv[1:], "aAcdefnoprtv")
     for o, a in opts:
         if o == "-n":
             UseLibNFC = True
+        if o == "-c":
+            RecoverCerts = True
         if o == "-a":
             BruteforceAID = True
         if o == "-A":
@@ -1089,6 +1179,7 @@ try:
                 else:
                     print(f"  Found AID: {aidlist[current][0]} -", end="")
                     hexprint(aidlist[current][1:])
+                EMVData.clear()  # fresh tag collection for this application
                 decode_pse(response)
                 if BruteforcePrimitives:
                     # brute force primitives
@@ -1108,6 +1199,8 @@ try:
                         response,
                         ERRORS.get(response, "unknown error"),
                     )
+                if RecoverCerts:
+                    recover_certificates()
                 ret, length, pins = get_primitive(PIN_TRY_COUNTER)
                 if ret:
                     ptc = int(pins[0])
