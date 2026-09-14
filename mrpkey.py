@@ -1808,15 +1808,17 @@ if os.path.exists(_pa_sod):
         try:
             import passiveauth
 
-            _pa_ok = passiveauth.passive_authenticate(_pa_sod, _pa_ml, tempfiles)
+            _pa_verdict = passiveauth.passive_authenticate(_pa_sod, _pa_ml, tempfiles)
         except Exception as _pa_e:
-            _pa_ok = False
+            _pa_verdict = None
             print("Passive Authentication error:", _pa_e)
         print()
-        if _pa_ok is True:
+        if _pa_verdict == "SAFE":
             print("***** PASSPORT SAFE - signed by a CSCA in the master list, data groups intact *****")
-        elif _pa_ok is False:
-            print("##### PASSPORT UNSAFE - Passive Authentication FAILED (signer not in PKD / tampered / incomplete) #####")
+        elif _pa_verdict == "TAMPERED":
+            print("##### PASSPORT UNSAFE - TAMPERED: data altered and not validly re-signed #####")
+        elif _pa_verdict == "UNTRUSTED":
+            print("##### PASSPORT UNSAFE - UNTRUSTED: internally consistent but signer NOT in the master list (unknown CSCA) #####")
         else:
             print("----- Passport trust UNVERIFIED - could not run Passive Authentication -----")
     else:
