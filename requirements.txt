@@ -1,2 +1,4 @@
 # pip install -r requirements.txt
 pycryptodome>=3.20.0
+# passiveauth.py (ePassport Passive Authentication / CSCA master-list check)
+cryptography>=3.4

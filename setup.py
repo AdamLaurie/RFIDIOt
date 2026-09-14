@@ -33,6 +33,7 @@ scripts = [
     "readmifaresimple.py",
     "readmifareultra.py",
     "readtag.py",
+    "passiveauth.py",
     "rfidiot-cli.py",
     "send_apdu.py",
     "sod.py",
