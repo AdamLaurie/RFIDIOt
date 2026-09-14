@@ -61,6 +61,20 @@ EMVData = {}  # tag -> value(list of ints) collected while decoding the current 
 # (6A..BC + SHA-1), so a wrong entry fails cleanly rather than misleading.
 # Add keys from the public EMV CA key tables (e.g. eftlab) as needed.
 CA_PUBLIC_KEYS = {
+    # Mastercard (RID A000000004) index 0x06, 1984-bit - verified live
+    ("A000000004", 0x06): {
+        "exp": 3,
+        "mod": (
+            "CB26FC830B43785B2BCE37C81ED334622F9622F4C89AAE641046B2353433883F"
+            "307FB7C974162DA72F7A4EC75D9D657336865B8D3023D3D645667625C9A07A6B7"
+            "A137CF0C64198AE38FC238006FB2603F41F4F3BB9DA1347270F2F5D8C606E4209"
+            "58C5F7D50A71DE30142F70DE468889B5E3A08695B938A50FC980393A9CBCE44AD"
+            "2D64F630BB33AD3F5F5FD495D31F37818C1D94071342E07F1BEC2194F6035BA5D"
+            "ED3936500EB82DFDA6E8AFB655B1EF3D0D7EBF86B66DD9F29F6B1D324FE8B26CE"
+            "38AB2013DD13F611E7A594D675C4432350EA244CC34F3873CBA06592987A1D7E8"
+            "52ADC22EF5A2EE28132031E48F74037E3B34AB747F"
+        ),
+    },
     # American Express (RID A000000025) index 0x10, 1984-bit - verified live
     ("A000000025", 0x10): {
         "exp": 3,
@@ -743,12 +757,16 @@ def decode_processing_options(data):
             if tag == BER_TLV_AIP:
                 decode_aip(value)
             if tag == BER_TLV_AFL:
-                sfi, start, end, offline = decode_afl(value)
-                print(
-                    "    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records"
-                    % (sfi, start, end, offline)
-                )
-                decode_file(sfi, start, end)
+                # the AFL may hold several 4-byte entries - iterate all of them
+                j = 0
+                while j < len(value):
+                    sfi, start, end, offline = decode_afl(value[j : j + 4])
+                    print(
+                        "    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records"
+                        % (sfi, start, end, offline)
+                    )
+                    decode_file(sfi, start, end)
+                    j += 4
             x += fieldlen
 
 
