@@ -38,10 +38,20 @@ paths that can't be hardware-tested with the current SCL3711 (libnfc) setup.
 - `hidprox.py` H10301/H10302 decode - needs an HID Prox card via PC/SC
 
 ## 4. Grow the ChAP EMV CA key table (as cards appear)
-- `ChAP.py` `CA_PUBLIC_KEYS` has verified AMEX `A000000025`/`10` and Mastercard
-  `A000000004`/`06`. Add **Visa** (`A000000003`) and others when a card is tapped
-  (ChAP prints "no CA public key for RID ... index ..."); each key self-validates
-  via the `6A..BC` + SHA-1 recovery before trusting it.
+- `ChAP.py` `CA_PUBLIC_KEYS` now holds 26 production keys across 8 schemes (Visa,
+  Mastercard, Amex, CB, JCB, Discover, UnionPay, RuPay), imported from a terminal
+  capkeys.cfg and each verified against its EMVCo CAPK checksum
+  SHA1(RID|index|modulus|exp). Verified live so far: Visa 08/09, MC 05/06, Amex
+  0F/10. Add more when a card needs them: a terminal capkeys.cfg (RID/CAPKI/EXP/
+  HASH + modulus hex block), e.g. paypalobjects miura capkeys.cfg, is a good
+  structured source - fetch with curl + a browser UA, then checksum-verify.
+  each new key is checked against the published EMVCo CAPK checksum
+  SHA1(RID|index|modulus|exp) before adding, and self-validates via the `6A..BC`
+  + SHA-1 cert recovery when used.
+- Companion/alias AIDs (e.g. LINK `A000000029`) report "no CA public key" because
+  the lookup uses the AID's own RID, but their certs are signed by the primary
+  scheme's CA. A proper fix would map a companion AID to its signing scheme's RID
+  (separate from just growing the key table).
 
 ## 5. ChAP.py feature enhancements (implement in order)
 Survey of what ChAP.py could do that it doesn't yet. Work these one at a time,
