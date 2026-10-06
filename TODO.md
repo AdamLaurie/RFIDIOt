@@ -62,8 +62,7 @@ top to bottom.
    - **SDA** - `verify_sda()` recovers Signed Static Application Data (tag 93)
      against the recovered Issuer key, rebuilding the authenticated static data
      from the AFL offline records (SFI<=10 template-stripping rule) + the 9F4A tag
-     list's AIP. *Hardware-untested positive: both test cards are DDA-only (no tag
-     93); need a pre-2010 SDA card to exercise a VERIFIED result.*
+     list's AIP. VERIFIED live on an SDA-only HDFC Bank Visa (Visa CA idx 08).
    - **DDA (contact)** - `verify_dda()` sends INTERNAL AUTHENTICATE with a random
      UN via the DDOL (9F49), recovers 9F4B, verifies. VERIFIED on Visa + Amex.
    - **fDDA (contactless)** - verifies the 9F4B returned inline in the GPO. The
