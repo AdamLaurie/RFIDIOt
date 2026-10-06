@@ -2713,6 +2713,7 @@ class rfidiot:
         # ignore the rest - CRC etc.
         return "%016x" % int(out, 2)
 
+    @staticmethod
     def PCSCGetTagType(atr) -> str:
         "get currently selected tag type from atr"
         if atr[8:12] == rfidiot.PCSC_CSC:
