@@ -22,6 +22,9 @@ Run everything with python3. The original Python 2.7 code is preserved on the
 'python2.7' branch and tagged 'v1.0-python2.7' - it will not run under python3,
 and this version will not run under python2.
 
+With huge thanks to Pete Shipley (evilpete), who did the bulk of the Python 3
+port and contributed a great deal to the python3 branch that became this release.
+
 q: What is RFIDIOt?
 a: A collection of tools and libraries for exploring RFID/NFC technology, written
 in python.
