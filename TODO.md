@@ -99,8 +99,12 @@ top to bottom.
    completes offline-auth coverage for CDA cards (the common modern type). Behind an
    explicit flag with an ATC-increment warning. VERIFIED live on a CDA Debit
    Mastercard - so SDA/DDA/fDDA/CDA are all hardware-verified now.
-7. **Enciphered offline PIN** - `verify_pin()` only does plaintext; add RSA-enciphered
-   PIN using the recovered ICC key.
+7. **[DONE] Enciphered offline PIN** - `-E` sends the offline PIN as RSA-enciphered
+   under the recovered ICC public key (verify_pin_enciphered): GET CHALLENGE, build
+   7F || PIN-block || ICC-UN || random-pad to the ICC key length, encipher, VERIFY
+   with P2=0x88. Implies -c; opt-in with a PIN-Try-Counter warning. Unit-tested
+   (block layout + message < modulus); live VERIFY left for the user to run with a
+   real PIN (a wrong PIN can block the card).
 
 Lower priority:
 - JSON/structured output (library already has a `-j` Json global ChAP ignores).

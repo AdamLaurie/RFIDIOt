@@ -64,6 +64,7 @@ Verbose = False
 UseLibNFC = False
 RecoverCerts = False  # -c : recover/verify the SDA-DDA certificate chain
 GenerateAC = False  # -g : send GENERATE AC (CDA) - intrusive, increments the ATC
+EncipheredPIN = False  # -E : offline PIN as RSA-enciphered (vs plaintext) VERIFY
 Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
 EMVData = {}  # tag -> value(list of ints) collected while decoding the current app
 SDA_INPUT = []  # static data to be authenticated, accumulated from the AFL records
@@ -724,6 +725,8 @@ def printhelp():
     print("\t-c\t\tRecover & verify the SDA/DDA certificate chain")
     print("\t-d\t\tDebug - Show PC/SC APDU data")
     print("\t-e\t\tBruteforce EMV AIDs")
+    print("\t-E\t\tSend the PIN as an RSA-enciphered offline PIN (needs a PIN")
+    print("\t\t\t  argument; implies -c. WARNING: updates the PIN Try Counter)")
     print("\t-f\t\tBruteforce files")
     print("\t-g\t\tGENERATE AC with CDA to verify the dynamic signature")
     print("\t\t\t  (WARNING: this increments the card's ATC)")
@@ -1691,44 +1694,78 @@ def get_challenge(d_bytes):
     # print 'GET CHAL: %02x%02x %d' % (sw1,sw2,len(response))
 
 
-def verify_pin(pin):
-    # construct offline PIN block and verify (plaintext)
-    print("Verifying PIN:", pin)
-    control = 0x02
-    pinlen = len(pin)
-    block = []
-    block.append((control << 4) + pinlen)
+def build_pin_block(pin):
+    "build the 8-byte plaintext offline PIN block (control 2, length, PIN nibbles, F pad)"
+    block = [(0x02 << 4) + len(pin)]
     x = 0
     while x < len(pin):
         leftnibble = int(pin[x])
         try:
             rightnibble = int(pin[x + 1])
-        except:
-            # pad to even length
-            rightnibble = 0x0F
+        except (IndexError, ValueError):
+            rightnibble = 0x0F  # pad to even length
         block.append((leftnibble << 4) + rightnibble)
         x += 2
     while len(block) < 8:
         block.append(0xFF)
-    lc = len(block)
-    apdu = VERIFY + [lc] + block
-    _response, sw1, sw2 = send_apdu(apdu)
-    if check_return(sw1, sw2):
+    return block
+
+
+def _pin_result(sw1, sw2):
+    "report the outcome of a VERIFY and return True on success"
+    if [sw1, sw2] == SW12_OK:
         print("PIN verified")
         return True
-    # else:
     if [sw1, sw2] == PIN_BLOCKED or [sw1, sw2] == PIN_BLOCKED2:
         print("PIN blocked!")
+    elif sw1 == PIN_WRONG:
+        print("wrong PIN - %d tries left" % (int(sw2) & 0x0F))
+    elif [sw1, sw2] == SW12_NOT_SUPORTED:
+        print("Function not supported")
     else:
-        if sw1 == PIN_WRONG:
-            print("wrong PIN - %d tries left" % (int(sw2) & 0x0F))
-        if [sw1, sw2] == SW12_NOT_SUPORTED:
-            print("Function not supported")
-        else:
-            print("command failed!", end="")
-            hexprint([sw1, sw2])
-
+        print("command failed! ", end="")
+        hexprint([sw1, sw2])
     return False
+
+
+def verify_pin(pin):
+    # construct offline PIN block and verify (plaintext)
+    print("Verifying PIN:", pin)
+    block = build_pin_block(pin)
+    apdu = VERIFY + [len(block)] + block
+    _response, sw1, sw2 = send_apdu(apdu)
+    return _pin_result(sw1, sw2)
+
+
+def verify_pin_enciphered(pin):
+    "verify an offline PIN enciphered under the ICC public key (EMV Book 2, 7.1)"
+    import os
+
+    if not ICCKey:
+        print("Enciphered PIN needs the ICC public key - run with -c (and a card that")
+        print("exposes an ICC PK certificate).")
+        return False
+    # ICC Unpredictable Number, bound into the block so it cannot be replayed
+    challenge, sw1, sw2 = send_apdu(GET_CHALLENGE + [0x00])
+    if not check_return(sw1, sw2) or len(challenge) < 8:
+        print("GET CHALLENGE failed %02x%02x" % (sw1, sw2))
+        return False
+    icc_un = list(challenge[0:8])
+    # plaintext to encipher: 7F || PIN block(8) || ICC UN(8) || random padding,
+    # left-padded by the 0x7F header so the value is always < the ICC modulus
+    klen = (ICCKey["mod"].bit_length() + 7) // 8
+    message = [0x7F] + build_pin_block(pin) + icc_un
+    padlen = klen - len(message)
+    if padlen < 0:
+        print("ICC key too small to carry the enciphered PIN block")
+        return False
+    message += list(os.urandom(padlen))
+    cipher = pow(int.from_bytes(bytes(message), "big"), ICCKey["exp"], ICCKey["mod"])
+    data = list(cipher.to_bytes(klen, "big"))
+    print("Verifying enciphered PIN:", pin)
+    # VERIFY with P2 = 0x88 (enciphered PIN)
+    _response, sw1, sw2 = send_apdu([0x00, 0x20, 0x00, 0x88, len(data)] + data)
+    return _pin_result(sw1, sw2)
 
 
 # def update_pin_try_counter(tries):
@@ -1793,7 +1830,7 @@ class _LibNFCService:
 
 try:
     # 'args' will be set to remaining arguments (if any)
-    opts, args = getopt.getopt(sys.argv[1:], "aAcdefgnoprtv")
+    opts, args = getopt.getopt(sys.argv[1:], "aAcdeEfgnoprtv")
     for o, a in opts:
         if o == "-n":
             UseLibNFC = True
@@ -1801,6 +1838,9 @@ try:
             RecoverCerts = True
         if o == "-g":
             GenerateAC = True
+        if o == "-E":
+            EncipheredPIN = True
+            RecoverCerts = True  # enciphered PIN needs the recovered ICC public key
         if o == "-a":
             BruteforceAID = True
         if o == "-A":
@@ -1981,10 +2021,12 @@ try:
                     #       ret, sw1, sw2= send_apdu(UNBLOCK_PIN)
                     #       hexprint([sw1,sw2])
                 if PIN:
-                    if verify_pin(PIN):
-                        sys.exit(False)
+                    print("  *** sending VERIFY - this decrements the PIN Try Counter ***")
+                    if EncipheredPIN:
+                        ok = verify_pin_enciphered(PIN)
                     else:
-                        sys.exit(True)
+                        ok = verify_pin(PIN)
+                    sys.exit(not ok)
                 ret, length, atc = get_primitive(ATC)
                 if ret:
                     atcval = (atc[0] << 8) + atc[1]
