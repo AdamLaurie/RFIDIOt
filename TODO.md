@@ -91,9 +91,13 @@ top to bottom.
    decode_service_code() expands the 3-digit service code (ISO 7813). decode_cid()
    decodes 9F27 CID bits (AAC/TC/ARQC + CDA) in the TLV path, and the log shows the
    type inline, e.g. "40 (TC)". Verified live on Visa/Mastercard + unit-tested.
-6. **GENERATE AC** (opt-in, intrusive).** Code exists but is commented out (~L1042).
-   Running a transaction to get an ARQC/TC/AAC **increments the ATC** and writes card
-   state - put it behind an explicit flag + warning, like the PIN path.
+6. **[DONE] GENERATE AC + CDA verification** (opt-in, intrusive). `-g` sends GENERATE
+   AC (ARQC + CDA requested) built from the CDOL1 with a random UN, decodes the
+   response (CID/ATC/cryptogram) and verifies the returned Signed Dynamic
+   Application Data (9F4B) against the recovered ICC key via _verify_sdad. This
+   completes offline-auth coverage for CDA cards (the common modern type). Behind an
+   explicit flag with an ATC-increment warning. VERIFIED live on a CDA Debit
+   Mastercard - so SDA/DDA/fDDA/CDA are all hardware-verified now.
 7. **Enciphered offline PIN** - `verify_pin()` only does plaintext; add RSA-enciphered
    PIN using the recovered ICC key.
 

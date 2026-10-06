@@ -63,6 +63,7 @@ RawOutput = False
 Verbose = False
 UseLibNFC = False
 RecoverCerts = False  # -c : recover/verify the SDA-DDA certificate chain
+GenerateAC = False  # -g : send GENERATE AC (CDA) - intrusive, increments the ATC
 Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
 EMVData = {}  # tag -> value(list of ints) collected while decoding the current app
 SDA_INPUT = []  # static data to be authenticated, accumulated from the AFL records
@@ -724,6 +725,8 @@ def printhelp():
     print("\t-d\t\tDebug - Show PC/SC APDU data")
     print("\t-e\t\tBruteforce EMV AIDs")
     print("\t-f\t\tBruteforce files")
+    print("\t-g\t\tGENERATE AC with CDA to verify the dynamic signature")
+    print("\t\t\t  (WARNING: this increments the card's ATC)")
     print("\t-h\t\tPrint detailed help message")
     print("\t-n\t\tUse libnfc reader (device 0) instead of PC/SC")
     print("\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)")
@@ -1558,6 +1561,50 @@ def verify_dda():
     _verify_sdad(sdad, ddol_data, "DDA (dynamic)")
 
 
+def generate_ac():
+    "send GENERATE AC requesting CDA, then verify the returned dynamic signature"
+    import os
+
+    cdol1 = EMVData.get(0x8C)
+    if not cdol1:
+        print("  GENERATE AC: card has no CDOL1 (tag 8C) - cannot build the command")
+        return
+    print()
+    print("  *** GENERATE AC (CDA) - this WRITES to the card and increments its ATC ***")
+    # request an ARQC (online authorisation) with CDA requested (P1 bit 0x10). The
+    # transaction is never taken online, so nothing is actually authorised, but the
+    # card still returns a CDA-signed response we can verify.
+    un = os.urandom(4)
+    saved = PDOL_DEFAULTS.get("9F37")
+    PDOL_DEFAULTS["9F37"] = un.hex().upper()
+    try:
+        cdol_data = build_dol(cdol1)
+    finally:
+        if saved is None:
+            PDOL_DEFAULTS.pop("9F37", None)
+        else:
+            PDOL_DEFAULTS["9F37"] = saved
+    p1 = 0x80 | 0x10  # ARQC + CDA requested
+    apdu = GENERATE_AC + [p1, 0x00, len(cdol_data)] + cdol_data + [0x00]
+    response, sw1, sw2 = send_apdu(apdu)
+    if not check_return(sw1, sw2):
+        print("  GENERATE AC failed: %02x%02x %s" % (sw1, sw2, ERRORS.get("%02x%02x" % (sw1, sw2), "")))
+        return
+    print("  GENERATE AC response:")
+    decode_pse(response)  # populates EMVData with 9F27 (CID), 9F36 (ATC), 9F4B, ...
+    cid = EMVData.get(0x9F27, [0])
+    actype = {0x00: "AAC (declined)", 0x40: "TC (approved)", 0x80: "ARQC (online)"}.get(cid[0] & 0xC0, "?")
+    print("    cryptogram type returned: %s" % actype)
+    sdad = EMVData.get(0x9F4B)
+    if not sdad:
+        print("    (no CDA signature returned - card generated a plain cryptogram, no CDA)")
+        return
+    if not ICCKey:
+        print("    CDA signature present but ICC key not recovered (run with -c)")
+        return
+    _verify_sdad(sdad, un, "CDA (dynamic)", require_hash=False)
+
+
 def decode_ber_tlv_field(data):
     x = 0
     while x < len(data):
@@ -1715,12 +1762,14 @@ class _LibNFCService:
 
 try:
     # 'args' will be set to remaining arguments (if any)
-    opts, args = getopt.getopt(sys.argv[1:], "aAcdefnoprtv")
+    opts, args = getopt.getopt(sys.argv[1:], "aAcdefgnoprtv")
     for o, a in opts:
         if o == "-n":
             UseLibNFC = True
         if o == "-c":
             RecoverCerts = True
+        if o == "-g":
+            GenerateAC = True
         if o == "-a":
             BruteforceAID = True
         if o == "-A":
@@ -1889,6 +1938,8 @@ try:
                     )
                 if RecoverCerts:
                     recover_certificates()
+                if GenerateAC:
+                    generate_ac()
                 ret, length, pins = get_primitive(PIN_TRY_COUNTER)
                 if ret:
                     ptc = int(pins[0])
