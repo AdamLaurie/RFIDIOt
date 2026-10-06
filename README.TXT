@@ -42,7 +42,10 @@ a:
   - libnfc readers (PN53x based: ACR122U, SCL3711, etc.) - use '-R READER_LIBNFC'
     or '-f <n>', and see '-N' to list them. libnfc must be installed separately.
   - PC/SC readers via pyscard + pcscd ('-R READER_PCSC', auto-detects the
-    subtype: ACS / OMNIKEY / SCM). This is the default.
+    subtype: ACS / OMNIKEY / SCM). This is the default. Both T=0 and T=1 cards
+    are handled. Note: the OMNIKEY CardMan 5321's *contact* slot works with the
+    open libccid driver, but its *contactless* (13.56 MHz) interface needs HID's
+    proprietary OMNIKEY driver - libccid only exposes the contact slot.
   - the original ACG and Frosch serial readers ('-R READER_ACG' / '-R READER_FROSCH',
     serial port via '-l', e.g. /dev/ttyUSB0).
   Run any tool with '-h' for the full list of options.
@@ -51,9 +54,12 @@ q: How do I install it?
 a:
   pip install -r requirements.txt       # pycryptodome, pyscard, cryptography
   sudo python3 ./setup.py install
-Install libnfc for libnfc readers, and run pcscd for PC/SC readers. Some tools
-have extra needs (e.g. mrpkey.py uses PIL/Pillow to display passport photos,
-and openssl for certificate handling).
+System packages: install libnfc for libnfc readers; for PC/SC readers install
+the daemon and CCID driver and make sure the daemon is running, e.g. on Debian/
+Ubuntu:
+  sudo apt install pcscd libccid pcsc-tools
+Some tools have extra needs: mrpkey.py uses PIL/Pillow to display passport
+photos and openssl for certificate handling; jcoptool.py needs pyasn1.
 
 q: Anything new in the Python 3 version?
 a: Besides the port itself: rfidiot-cli.py and ChAP.py read contactless EMV cards

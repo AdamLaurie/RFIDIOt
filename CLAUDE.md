@@ -23,9 +23,12 @@ sudo python3 ./setup.py install     # installs the 'rfidiot' library + scripts
 ```
 
 Some tools need extras: `mrpkey.py` uses Pillow (PIL) to display passport photos and
-`openssl` for certificate handling; `passiveauth.py` uses `cryptography` + `openssl`.
-libnfc must be installed (shared library) for libnfc readers; `pcscd` must run for
-PC/SC readers.
+`openssl` for certificate handling; `passiveauth.py` uses `cryptography` + `openssl`;
+`jcoptool.py` needs `pyasn1`. libnfc must be installed (shared library) for libnfc
+readers; PC/SC readers need the daemon + CCID driver and the daemon running
+(`sudo apt install pcscd libccid pcsc-tools` on Debian/Ubuntu). The PC/SC path
+handles both T=0 and T=1 cards. Note: the OMNIKEY CardMan 5321's contact slot works
+with libccid, but its contactless interface needs HID's proprietary driver.
 
 There is no unit-test suite and no CI. The `test*.sh` scripts are hardware
 smoke-tests against a physically-connected reader. The `Makefile` only automates
