@@ -1997,29 +1997,27 @@ try:
                     print("Brute forcing files")
                     bruteforce_files()
                 ret, response = get_processing_options()
-                if ret:
-                    print("  Processing Options:", end="")
-                    decode_pse(response)
-                    decode_processing_options(response)
-                else:
+                if not ret:
+                    # GPO failed - this AID is not a usable application (e.g. a bare
+                    # RID that only returns a directory FCI). Skip the transaction
+                    # steps (incl. VERIFY) and move on to the next AID.
                     print(
                         "  Could not get processing options:",
                         response,
                         ERRORS.get(response, "unknown error"),
                     )
+                    current += 1
+                    continue
+                print("  Processing Options:", end="")
+                decode_pse(response)
+                decode_processing_options(response)
                 if RecoverCerts:
                     recover_certificates()
                 if GenerateAC:
                     generate_ac()
-                ret, length, pins = get_primitive(PIN_TRY_COUNTER)
-                if ret:
-                    ptc = int(pins[0])
-                    print("  PIN tries left:", ptc)
-                    # if ptc == 0:
-                    #       print 'unblocking PIN'
-                    #       update_pin_try_counter(3)
-                    #       ret, sw1, sw2= send_apdu(UNBLOCK_PIN)
-                    #       hexprint([sw1,sw2])
+                pret, length, pins = get_primitive(PIN_TRY_COUNTER)
+                if pret:
+                    print("  PIN tries left:", int(pins[0]))
                 if PIN:
                     print("  *** sending VERIFY - this decrements the PIN Try Counter ***")
                     if EncipheredPIN:
@@ -2027,14 +2025,12 @@ try:
                     else:
                         ok = verify_pin(PIN)
                     sys.exit(not ok)
-                ret, length, atc = get_primitive(ATC)
-                if ret:
-                    atcval = (atc[0] << 8) + atc[1]
-                    print("  Application Transaction Counter:", atcval)
-                ret, length, latc = get_primitive(LAST_ATC)
-                if ret:
-                    latcval = (latc[0] << 8) + latc[1]
-                    print("  Last ATC:", latcval)
+                aret, length, atc = get_primitive(ATC)
+                if aret:
+                    print("  Application Transaction Counter:", (atc[0] << 8) + atc[1])
+                lret, length, latc = get_primitive(LAST_ATC)
+                if lret:
+                    print("  Last ATC:", (latc[0] << 8) + latc[1])
                 read_transaction_log()
                 current += 1
             else:
