@@ -588,12 +588,15 @@ TAGS = {
     0x9F1A: ["Terminal Country Code", BINARY, VALUE],
     0x9F1F: ["Track 1 Discretionary Data", TEXT, ITEM],
     0x9F20: ["Track 2 Discretionary Data", TEXT, ITEM],
+    0x9F21: ["Transaction Time", BINARY, VALUE],
     0x9F26: ["Application Cryptogram", BINARY, ITEM],
+    0x9F27: ["Cryptogram Information Data", BINARY, ITEM],
     0x9F32: ["Issuer Public Key Exponent", BINARY, ITEM],
     0x9F36: ["Application Transaction Counter", BINARY, ITEM],
     0x9F37: ["Unpredictable Number", BINARY, VALUE],
     0x9F38: ["Processing Options Data Object List (PDOL)", BINARY, TEMPLATE],
     0x9F42: ["Application Currency Code", NUMERIC, ITEM],
+    0x9F4E: ["Merchant Name and Location", TEXT, ITEM],
     0x9F44: ["Application Currency Exponent", NUMERIC, ITEM],
     0x9F45: ["Data Authentication Code", BINARY, ITEM],
     0x9F46: ["ICC Public Key Certificate", BINARY, ITEM],
@@ -996,6 +999,100 @@ def read_record(sfi, record):
         return True, response
     # else:
     return False, ""
+
+
+# ISO 4217 numeric currency codes seen in transaction logs (common subset)
+CURRENCY_CODES = {
+    "0036": "AUD", "0124": "CAD", "0156": "CNY", "0208": "DKK", "0344": "HKD",
+    "0356": "INR", "0392": "JPY", "0702": "SGD", "0756": "CHF", "0826": "GBP",
+    "0840": "USD", "0978": "EUR", "0049": "COP", "0484": "MXN", "0710": "ZAR",
+}
+
+TRANSACTION_TYPES = {
+    0x00: "Purchase", 0x01: "Cash advance", 0x09: "Purchase with cashback",
+    0x20: "Refund", 0x30: "Balance enquiry",
+}
+
+
+def parse_dol(dol):
+    "parse a DOL (list of ints) into a list of (tag:int, length:int) pairs"
+    out = []
+    i = 0
+    while i < len(dol):
+        t0 = dol[i]
+        tag = t0
+        i += 1
+        if t0 & 0x1F == 0x1F:
+            while i < len(dol):
+                tag = (tag << 8) | dol[i]
+                more = dol[i] & 0x80
+                i += 1
+                if not more:
+                    break
+        if i >= len(dol):
+            break
+        out.append((tag, dol[i]))
+        i += 1
+    return out
+
+
+def format_log_field(tag, val):
+    "render one transaction-log field value for display"
+    hexval = "".join("%02X" % b for b in val)
+    if tag in (0x9F02, 0x9F03) and val:  # amounts: BCD minor units
+        try:
+            return "%.2f" % (int(hexval) / 100.0)
+        except ValueError:
+            return hexval
+    if tag == 0x9A and len(val) == 3:  # Transaction Date YYMMDD
+        return "20%02X-%02X-%02X" % (val[0], val[1], val[2])
+    if tag == 0x9F21 and len(val) == 3:  # Transaction Time HHMMSS
+        return "%02X:%02X:%02X" % (val[0], val[1], val[2])
+    if tag == 0x5F2A:  # Transaction Currency Code
+        return CURRENCY_CODES.get(hexval, hexval)
+    if tag in (0x9F1A, 0x5F28, 0x9F42):  # country codes
+        try:
+            return hexval + " (" + ISO3166CountryCodes["%03d" % int(hexval)] + ")"
+        except (KeyError, ValueError):
+            return hexval
+    if tag == 0x9C:  # Transaction Type
+        return "%s (%s)" % (hexval, TRANSACTION_TYPES.get(val[0] if val else -1, "?"))
+    if tag == 0x9F36:  # ATC
+        return str(int(hexval, 16)) if hexval else "0"
+    if tag == 0x9F4E:  # Merchant Name and Location (text)
+        return "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in val)
+    return hexval
+
+
+def read_transaction_log():
+    "read and decode the card's transaction log (Log Entry 9F4D + Log Format 9F4F)"
+    entry = EMVData.get(0x9F4D)
+    if not entry or len(entry) < 2:
+        return  # card advertises no transaction log
+    sfi, count = entry[0], entry[1]
+    ret, _length, logfmt = get_primitive(LOG_FORMAT)
+    fmt = parse_dol(logfmt) if ret else []
+    print("  Transaction log (SFI %02X, up to %d records):" % (sfi, count))
+    if fmt:
+        print("    format:", ", ".join("%X" % t for t, _ in fmt))
+    found = 0
+    for rec in range(1, count + 1):
+        ok, data = read_record(sfi, rec)
+        if not ok or not data or all(b == 0 for b in data):
+            continue  # empty / unused log slot
+        found += 1
+        print("    record %d:" % rec)
+        if fmt:
+            i = 0
+            for tag, length in fmt:
+                val = data[i : i + length]
+                i += length
+                name = TAGS[tag][0] if tag in TAGS else "Tag %X" % tag
+                print("      %-34s %s" % (name + ":", format_log_field(tag, val)))
+        else:
+            hexprint(data)
+    if not found:
+        print("    (log is empty)")
 
 
 def bruteforce_files():
@@ -1731,10 +1828,7 @@ try:
                 if ret:
                     latcval = (latc[0] << 8) + latc[1]
                     print("  Last ATC:", latcval)
-                ret, length, logf = get_primitive(LOG_FORMAT)
-                if ret:
-                    print("Log Format: ", end="")
-                    hexprint(logf)
+                read_transaction_log()
                 current += 1
             else:
                 if Verbose:

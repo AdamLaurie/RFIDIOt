@@ -70,10 +70,11 @@ top to bottom.
      Authentication Related Data (9F69). VERIFIED on a contactless Visa.
    Also fixed two general bugs: the GPO template body offset for long (>127-byte)
    BER lengths, and storing the AIP from a Format-1 GPO into EMVData[0x82].
-2. **Transaction log reading.** Currently fetches LOG FORMAT (9F4F) and only
-   hexprints it. Follow Log Entry (9F4D) -> SFI + record count, READ RECORD the log
-   SFI, decode each entry per the format template (amount/date/time/currency/ATC).
-   Fully read-only; scaffolding half-exists.
+2. **[DONE] Transaction log reading.** `read_transaction_log()` follows Log Entry
+   (9F4D) -> SFI + count, reads the Log Format (9F4F) DOL, READ RECORDs the log SFI
+   and decodes each entry (amount, currency, date, time, ATC, txn type, country via
+   format_log_field). VERIFIED on a Debit Mastercard - decoded its real purchase
+   history. Also added tags 9F21/9F27/9F4E to TAGS so the log labels cleanly.
 3. **Fill in the tag dictionary.** Missing (shown as "Unknown TAG"): 9F27
    (Cryptogram Information Data), 9F6C (Card Transaction Qualifiers), 9F6E (Form
    Factor Indicator / 3rd-party), 9F10 (Issuer Application Data), 9F6B (contactless
