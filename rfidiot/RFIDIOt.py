@@ -154,6 +154,9 @@ class rfidiot:
                 # create a connection
                 try:
                     self.pcsc_connection.connect()
+                    # use the negotiated protocol (T=0 or T=1) rather than
+                    # forcing T=1, so T=0 cards (many JavaCards/SIMs) work
+                    self.pcsc_protocol = self.pcsc_connection.getProtocol()
                     if self.DEBUG:
                         print("pcsc_connection successful")
                 except:
@@ -1179,6 +1182,8 @@ class rfidiot:
                 # start a new connection in case TAG has been switched
                 self.pcsc_connection.disconnect()
                 self.pcsc_connection.connect()
+                # track the negotiated protocol (T=0 or T=1) for transmit()
+                self.pcsc_protocol = self.pcsc_connection.getProtocol()
                 time.sleep(0.6)
                 self.pcsc_atr = self.ListToHex(self.pcsc_connection.getATR())
                 atslen = 2 * int(self.pcsc_atr[3], 16)
