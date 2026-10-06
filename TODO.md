@@ -75,13 +75,17 @@ top to bottom.
    and decodes each entry (amount, currency, date, time, ATC, txn type, country via
    format_log_field). VERIFIED on a Debit Mastercard - decoded its real purchase
    history. Also added tags 9F21/9F27/9F4E to TAGS so the log labels cleanly.
-3. **Fill in the tag dictionary.** Missing (shown as "Unknown TAG"): 9F27
-   (Cryptogram Information Data), 9F6C (Card Transaction Qualifiers), 9F6E (Form
-   Factor Indicator / 3rd-party), 9F10 (Issuer Application Data), 9F6B (contactless
-   MSD Track 2), 9F5A (Application Program ID), 9F4F (Log Format), 9F13 (Last Online
-   ATC), 9F17 (PIN Try Counter).
-4. **Bug: 0x9F66 is mislabeled** "Card Production Life Cycle" (that's 9F7F). 9F66 is
-   **Terminal Transaction Qualifiers (TTQ)**. Correct it.
+3. **[DONE] Fill in the tag dictionary.** Added, with names verified against public
+   EMV tag references (EFTLab/emvlab): 9F21 (Transaction Time), 9F27 (Cryptogram
+   Information Data), 9F4E (Merchant Name and Location), 9F10 (Issuer Application
+   Data), 9F0A (Application Selection Registered Proprietary Data), 9F5A (Application
+   Program Identifier), 9F6C (Card Transaction Qualifiers), 9F6E (Form Factor
+   Indicator / Third Party Data), 9F69 (Card Authentication Related Data), 9F7C
+   (Customer Exclusive Data). Deliberately left as hex: DF3E (issuer-proprietary
+   DFxx), 9F52 and 9F65 (conflicting cross-scheme/version definitions - a wrong name
+   is worse than hex).
+4. **[DONE] Bug: 0x9F66 was mislabeled** "Card Production Life Cycle" (that's 9F7F) -
+   corrected to **Terminal Transaction Qualifiers (TTQ)**.
 5. **Decode Track 2 into fields** - split the raw Track 2 Equivalent into PAN /
    expiry / service code (decode the 3-digit service code) / discretionary data.
    Same for 9F27 CID bits (ARQC/TC/AAC).
