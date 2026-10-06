@@ -208,6 +208,7 @@ try:
                 nfcreader,
             )
             card.pcsc_listreaders()
+            sys.stdout.flush()
             os._exit(True)
         if o == "-s":
             speed = int(a)
