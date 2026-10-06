@@ -45,7 +45,9 @@ a:
     subtype: ACS / OMNIKEY / SCM). This is the default. Both T=0 and T=1 cards
     are handled. Note: the OMNIKEY CardMan 5321's *contact* slot works with the
     open libccid driver, but its *contactless* (13.56 MHz) interface needs HID's
-    proprietary OMNIKEY driver - libccid only exposes the contact slot.
+    proprietary OMNIKEY driver (ifdokccid) - libccid only exposes the contact
+    slot. With the HID driver installed the contactless interface appears as a
+    second PC/SC slot, i.e. reader index 1 ('-r 1').
   - the original ACG and Frosch serial readers ('-R READER_ACG' / '-R READER_FROSCH',
     serial port via '-l', e.g. /dev/ttyUSB0).
   Run any tool with '-h' for the full list of options.

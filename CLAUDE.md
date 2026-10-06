@@ -28,7 +28,8 @@ Some tools need extras: `mrpkey.py` uses Pillow (PIL) to display passport photos
 readers; PC/SC readers need the daemon + CCID driver and the daemon running
 (`sudo apt install pcscd libccid pcsc-tools` on Debian/Ubuntu). The PC/SC path
 handles both T=0 and T=1 cards. Note: the OMNIKEY CardMan 5321's contact slot works
-with libccid, but its contactless interface needs HID's proprietary driver.
+with libccid, but its contactless interface needs HID's proprietary driver
+(ifdokccid); once installed the contactless appears as a second PC/SC slot (`-r 1`).
 
 There is no unit-test suite and no CI. The `test*.sh` scripts are hardware
 smoke-tests against a physically-connected reader. The `Makefile` only automates
