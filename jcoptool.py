@@ -299,7 +299,7 @@ if card.select():
 else:
     print("    No RFID card present")
     print()
-    # sys.exit(True)
+    sys.exit(True)
 
 # print '    ATR: ' + card.pcsc_atr
 # print
