@@ -1362,6 +1362,35 @@ def _rsa_recover(cert, mod_int, exp):
     return r.to_bytes((mod_int.bit_length() + 7) // 8, "big")
 
 
+def _ca_key_validates(key, cert):
+    "does this CA key recover the Issuer PK cert to a valid, hash-correct structure?"
+    import hashlib
+
+    if not key:
+        return False
+    rec = _rsa_recover(cert, int(key["mod"], 16), key["exp"])
+    if not (rec[0] == 0x6A and rec[1] == 0x02 and rec[-1] == 0xBC):
+        return False
+    rem = EMVData.get(0x92)
+    iexp = EMVData.get(0x9F32, [])
+    hin = bytes(rec[1:-21]) + (bytes(rem) if rem else b"") + bytes(iexp)
+    return hashlib.sha1(hin).digest() == bytes(rec[-21:-1])
+
+
+def find_ca_key(rid, index, cert):
+    "the CA key for (rid, index); else any key of that index that validates the cert"
+    key = CA_PUBLIC_KEYS.get((rid, index))
+    if _ca_key_validates(key, cert):
+        return key, rid
+    # companion/alias AIDs (e.g. LINK A000000029) carry no CA keys of their own -
+    # their certs are signed by the primary scheme's CA. The recovery is self-
+    # validating (6A..BC + hash), so search other RIDs at the same index.
+    for (krid, kidx), kkey in CA_PUBLIC_KEYS.items():
+        if kidx == index and krid != rid and _ca_key_validates(kkey, cert):
+            return kkey, krid
+    return None, rid
+
+
 def recover_certificates():
     "recover & verify the SDA/DDA certificate chain from the collected EMVData"
     import hashlib
@@ -1377,12 +1406,14 @@ def recover_certificates():
     rid = CurrentAID[:10].upper()
     index = idx[0]
     print("  -- Offline Data Authentication --")
-    key = CA_PUBLIC_KEYS.get((rid, index))
+    key, key_rid = find_ca_key(rid, index, cert)
     if not key:
         print("    no CA public key for RID %s index %02X (add it to CA_PUBLIC_KEYS)" % (rid, index))
         return
     ca_mod = int(key["mod"], 16)
-    print("    CA key: RID %s index %02X (%d-bit)" % (rid, index, ca_mod.bit_length()))
+    if key_rid != rid:
+        print("    RID %s has no CA key of its own; cert verifies under RID %s (companion AID)" % (rid, key_rid))
+    print("    CA key: RID %s index %02X (%d-bit)" % (key_rid, index, ca_mod.bit_length()))
 
     # 1. Issuer Public Key certificate (tag 90), signed by the CA key
     rec = _rsa_recover(cert, ca_mod, key["exp"])

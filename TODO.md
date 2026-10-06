@@ -48,10 +48,11 @@ paths that can't be hardware-tested with the current SCL3711 (libnfc) setup.
   each new key is checked against the published EMVCo CAPK checksum
   SHA1(RID|index|modulus|exp) before adding, and self-validates via the `6A..BC`
   + SHA-1 cert recovery when used.
-- Companion/alias AIDs (e.g. LINK `A000000029`) report "no CA public key" because
-  the lookup uses the AID's own RID, but their certs are signed by the primary
-  scheme's CA. A proper fix would map a companion AID to its signing scheme's RID
-  (separate from just growing the key table).
+- Companion/alias AIDs (e.g. LINK `A000000029`) have no CA keys of their own - their
+  certs are signed by the primary scheme's CA. [DONE] recover_certificates() now
+  falls back to searching CA keys of the same index across all RIDs and uses
+  whichever validates the Issuer cert (6A..BC + hash, so a false match is
+  impossible). Confirmed: a card's LINK app verifies under the Mastercard CA.
 
 ## 5. ChAP.py feature enhancements (implement in order)
 Survey of what ChAP.py could do that it doesn't yet. Work these one at a time,
