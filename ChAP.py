@@ -40,7 +40,16 @@ from smartcard.Exceptions import CardRequestTimeoutException
 
 
 # local imports
+# rfidiot's package __init__ parses sys.argv on import (building a default
+# rfidiot.card) and aborts on any option it doesn't recognise - including ChAP's
+# own flags (-c, -a, -A, -e, -o, -p, -v). Import it under a neutral argv so it
+# doesn't choke, then restore argv for our own getopt below. We build our own
+# reader instances (PC/SC or libnfc) later and never use rfidiot.card.
+_saved_argv = sys.argv
+sys.argv = [sys.argv[0], "-R", "READER_NONE"]
 from rfidiot.iso3166 import ISO3166CountryCodes
+import rfidiot  # noqa: E402  - load package + globals under the neutral argv
+sys.argv = _saved_argv
 
 # default global options
 BruteforcePrimitives = False
@@ -931,14 +940,17 @@ def decode_ber_tlv_item(data):
     tag = data[0] & TLV_TAG_NUMBER_MASK
     i = 1
     if tag == TLV_TAG_NUMBER_MASK:
-        tag = ""
+        # high-tag-number form: the tag number continues in the following
+        # byte(s). Each subsequent byte with bit 8 (0x80) set is followed by
+        # another; the byte with bit 8 clear is the last. Build the full tag as
+        # an int - in Py3 indexing a bytes/bytearray yields ints, not str, so
+        # the original str accumulation ("" + int) raised a TypeError.
+        tag = data[0]
         while data[i] & TLV_TAG_MASK:
             # another tag byte follows
-            # tag.append(xor(data[i], TLV_TAG_MASK))
-            tag = tag + xor(data[i], TLV_TAG_MASK)
+            tag = (tag << 8) | data[i]
             i += 1
-        # tag.append(data[i])
-        tag = tag + data[i]
+        tag = (tag << 8) | data[i]
         i += 1
     if data[i] & TLV_LENGTH_MASK:
         # this byte tells us the number of subsequent bytes that describe the length
