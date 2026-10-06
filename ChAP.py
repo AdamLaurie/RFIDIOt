@@ -1745,8 +1745,9 @@ def verify_pin_enciphered(pin):
         print("Enciphered PIN needs the ICC public key - run with -c (and a card that")
         print("exposes an ICC PK certificate).")
         return False
-    # ICC Unpredictable Number, bound into the block so it cannot be replayed
-    challenge, sw1, sw2 = send_apdu(GET_CHALLENGE + [0x00])
+    # ICC Unpredictable Number, bound into the block so it cannot be replayed.
+    # GET CHALLENGE: 00 84 00 00 00 (P2=00, Le=00 -> card returns 8 bytes)
+    challenge, sw1, sw2 = send_apdu([0x00, 0x84, 0x00, 0x00, 0x00])
     if not check_return(sw1, sw2) or len(challenge) < 8:
         print("GET CHALLENGE failed %02x%02x" % (sw1, sw2))
         return False
