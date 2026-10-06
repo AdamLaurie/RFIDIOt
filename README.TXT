@@ -64,11 +64,30 @@ Some tools have extra needs: mrpkey.py uses PIL/Pillow to display passport
 photos and openssl for certificate handling; jcoptool.py needs pyasn1.
 
 q: Anything new in the Python 3 version?
-a: Besides the port itself: rfidiot-cli.py and ChAP.py read contactless EMV cards
-over libnfc (ChAP.py '-c' recovers and verifies the SDA/DDA certificate chain
-against a CA master list), mrpkey.py reads ePassports and passiveauth.py performs
-Passive Authentication (data-group integrity + DS/CSCA trust) against a public
-CSCA master list, flagging a passport SAFE / TAMPERED / UNTRUSTED.
+a: Besides the port itself:
+
+ChAP.py ("Chip And PIN") is a contactless/contact EMV reader that works over both
+PC/SC and libnfc ('-n'). It walks the card (PPSE -> AID -> GPO -> records), decodes
+the EMV BER-TLV (AIP, AFL, CVM list, CDOL/DDOL, Track 2 split into PAN / expiry /
+service code, cryptogram information, etc.) and reads the card's transaction log
+(amount / date / time / currency / ATC per entry). With '-c' it performs full
+offline data authentication - it recovers the CA -> Issuer -> ICC certificate chain
+(a bundled table of 26 scheme CA keys: Visa, Mastercard, Amex, CB, JCB, Discover,
+UnionPay, RuPay, each checked against its EMVCo CAPK checksum) and then verifies the
+card's signature by whichever method the card supports:
+  - SDA  - Signed Static Application Data (tag 93)
+  - DDA  - INTERNAL AUTHENTICATE with a random challenge (contact)
+  - fDDA - the fast-DDA signature returned in the GPO (contactless)
+  - CDA  - the signature combined with the cryptogram ('-g' sends GENERATE AC;
+           intrusive - it increments the card's ATC)
+Companion/alias applications (e.g. LINK) verify under the primary scheme's CA. The
+recovery is self-validating, so a wrong or missing key fails cleanly. Run with no
+PIN argument to stay read-only; a PIN argument sends an offline VERIFY (plaintext,
+or RSA-enciphered with '-E'), which updates the PIN Try Counter.
+
+mrpkey.py reads ePassports and passiveauth.py performs Passive Authentication
+(data-group integrity + DS/CSCA trust) against a public CSCA master list, flagging a
+passport SAFE / TAMPERED / UNTRUSTED. rfidiot-cli.py also reads contactless EMV.
 
 q: So what exactly is here?
 a: Please see http://www.rfidiot.org/documentation.html
