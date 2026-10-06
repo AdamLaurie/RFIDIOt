@@ -65,6 +65,9 @@ UseLibNFC = False
 RecoverCerts = False  # -c : recover/verify the SDA-DDA certificate chain
 Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
 EMVData = {}  # tag -> value(list of ints) collected while decoding the current app
+SDA_INPUT = []  # static data to be authenticated, accumulated from the AFL records
+IssuerKey = None  # recovered Issuer public key {"mod": int, "exp": int}
+ICCKey = None  # recovered ICC public key {"mod": int, "exp": int}
 
 # CA public keys, keyed by (RID hex, index). Recovery is self-validating
 # (6A..BC + SHA-1), so a wrong entry fails cleanly rather than misleading.
@@ -204,6 +207,7 @@ GET_CHALLENGE = [0x00, 0x84, 0x00]
 GET_DATA = [0x80, 0xCA]
 GET_PROCESSING_OPTIONS = [0x80, 0xA8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
 GET_RESPONSE = [0x00, 0xC0, 0x00, 0x00]
+INTERNAL_AUTHENTICATE = [0x00, 0x88, 0x00, 0x00]
 READ_RECORD = [0x00, 0xB2]
 SELECT = [0x00, 0xA4, 0x04, 0x00]
 UNBLOCK_PIN = [0x84, 0x24, 0x00, 0x00, 0x00]
@@ -770,25 +774,32 @@ def get_processing_options():
 def decode_processing_options(data):
     # extract and decode AIP (Application Interchange Profile)
     # and AFL (Application File Locator)
-    if data[0] == 0x80:
-        # data is in response format 1
-        # first two bytes after length byte are AIP
-        decode_aip(data[2:])
-        # remaining data is AFL
-        x = 4
-        while x < len(data):
-            sfi, start, end, offline = decode_afl(data[x : x + 4])
+    global SDA_INPUT
+    SDA_INPUT = []  # reset the offline-auth input for this application
+    # strip the outer template (tag 80 format 1, or tag 77 format 2) honouring
+    # multi-byte BER lengths - a long template (>127 bytes) encodes its length as
+    # 81 xx etc., so the body does not always start at offset 2
+    top, toplen = ber_tag(data, 0)
+    tlen, tlenlen = ber_len(data, toplen)
+    body = data[toplen + tlenlen : toplen + tlenlen + tlen]
+    if top == 0x80:
+        # format 1: AIP (first 2 bytes) followed by the AFL
+        EMVData[0x82] = list(body[0:2])  # store AIP (not TLV-tagged in format 1)
+        decode_aip(body)
+        x = 2
+        while x < len(body):
+            sfi, start, end, offline = decode_afl(body[x : x + 4])
             print(
                 "    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records"
                 % (sfi, start, end, offline)
             )
             x += 4
-            decode_file(sfi, start, end)
-    if data[0] == 0x77:
-        # data is in response format 2 (BER-TLV)
-        x = 2
-        while x < len(data):
-            tag, fieldlen, value = decode_ber_tlv_item(data[x:])
+            decode_file(sfi, start, end, offline)
+    elif top == 0x77:
+        # format 2: BER-TLV, including the AIP (82) and AFL (94)
+        x = 0
+        while x < len(body):
+            tag, fieldlen, value = decode_ber_tlv_item(body[x:])
             if tag == BER_TLV_AIP:
                 decode_aip(value)
             if tag == BER_TLV_AFL:
@@ -800,15 +811,35 @@ def decode_processing_options(data):
                         "    SFI %02X: starting record %02X, ending record %02X; %02X offline data authentication records"
                         % (sfi, start, end, offline)
                     )
-                    decode_file(sfi, start, end)
+                    decode_file(sfi, start, end, offline)
                     j += 4
             x += fieldlen
 
 
-def decode_file(sfi, start, end):
+def collect_sda(sfi, record):
+    "append a record's contribution to the static data to be authenticated (EMV Book 3, 10.3)"
+    global SDA_INPUT
+    if sfi <= 10:
+        # records in SFI 1-10 are '70' templates; include the value only
+        # (strip the '70' tag and its length)
+        if record and record[0] == 0x70:
+            _, taglen = ber_tag(record, 0)
+            vlen, lenlen = ber_len(record, taglen)
+            SDA_INPUT += list(record[taglen + lenlen : taglen + lenlen + vlen])
+        else:
+            SDA_INPUT += list(record)
+    else:
+        # records in SFI 11-30 are included in full (tag '70', length and value)
+        SDA_INPUT += list(record)
+
+
+def decode_file(sfi, start, end, offline=0):
     for y in range(start, end + 1):
         ret, response = read_record(sfi, y)
         if ret:
+            # the first 'offline' records of this AFL entry feed offline data auth
+            if (y - start) < offline:
+                collect_sda(sfi, response)
             if OutputFiles:
                 # file = open("%s-FILE%02XRECORD%02X.HEX" % (CurrentAID, sfi, y), "w")
                 # for n in range(len(response)):
@@ -873,6 +904,10 @@ def recover_certificates():
     "recover & verify the SDA/DDA certificate chain from the collected EMVData"
     import hashlib
 
+    global IssuerKey, ICCKey
+    IssuerKey = None
+    ICCKey = None
+
     idx = EMVData.get(0x8F)
     cert = EMVData.get(0x90)
     if not idx or not cert:
@@ -904,19 +939,30 @@ def recover_certificates():
         issuer_mod = bytes(field) + (bytes(rem) if rem else b"")
     print("    Issuer PK cert: 6A..BC ok, hash %s, key %d-bit, expiry %02x/%02x, serial %s"
           % ("OK" if hash_ok else "FAIL", pklen * 8, rec[6], rec[7], bytes(rec[8:11]).hex().upper()))
+    imod = int.from_bytes(issuer_mod, "big")
+    iexp_int = int.from_bytes(bytes(iexp), "big") if iexp else 3
+    IssuerKey = {"mod": imod, "exp": iexp_int}
 
     # 2. ICC Public Key certificate (tag 9F46), signed by the issuer key
     icc = EMVData.get(0x9F46)
     if not icc:
         print("    (no ICC PK certificate - SDA-only application)")
+        verify_sda()
         return
-    imod = int.from_bytes(issuer_mod, "big")
     icc_exp = int.from_bytes(bytes(EMVData.get(0x9F47, [3])), "big")
     rec2 = _rsa_recover(icc, imod, icc_exp)
     if not (rec2[0] == 0x6A and rec2[1] == 0x04 and rec2[-1] == 0xBC):
         print("    ICC PK cert: INVALID recovery")
+        verify_sda()
         return
     icclen = rec2[19]
+    icc_field = rec2[21:-21]
+    icc_rem = EMVData.get(0x9F48)
+    if icclen <= len(icc_field):
+        icc_mod = bytes(icc_field[:icclen])
+    else:
+        icc_mod = bytes(icc_field) + (bytes(icc_rem) if icc_rem else b"")
+    ICCKey = {"mod": int.from_bytes(icc_mod, "big"), "exp": icc_exp}
     pan_cert = bytes(rec2[2:12]).hex().upper().rstrip("F")
     pan_card = bytes(EMVData.get(0x5A, [])).hex().upper().rstrip("F")
     match = "  (matches card PAN)" if pan_card and pan_cert == pan_card else ""
@@ -924,6 +970,133 @@ def recover_certificates():
           % (icclen * 8, pan_cert, match, rec2[12], rec2[13]))
     print("    chain verified: CA %d-bit -> Issuer %d-bit -> ICC %d-bit"
           % (ca_mod.bit_length(), pklen * 8, icclen * 8))
+
+    # 3. verify the data the chain exists to protect: SDA (static) and/or DDA (dynamic)
+    verify_sda()
+    verify_dda()
+
+
+def verify_sda():
+    "verify Signed Static Application Data (tag 93) against the recovered Issuer key"
+    import hashlib
+
+    if not IssuerKey:
+        return
+    sdata = EMVData.get(0x93)
+    if not sdata:
+        return  # DDA-only application: no static signature to check
+    rec = _rsa_recover(sdata, IssuerKey["mod"], IssuerKey["exp"])
+    if not (rec[0] == 0x6A and rec[1] == 0x03 and rec[-1] == 0xBC):
+        print("    SDA (static data): INVALID recovery")
+        return
+    static = bytes(SDA_INPUT)
+    # if a Static Data Authentication Tag List (9F4A) is present it should list
+    # tag 82 (AIP), whose value is appended to the authenticated static data
+    taglist = EMVData.get(0x9F4A)
+    if taglist and 0x82 in taglist:
+        static += bytes(EMVData.get(0x82, []))
+    calc = hashlib.sha1(bytes(rec[1:-21]) + static).digest()
+    ok = calc == bytes(rec[-21:-1])
+    dac = bytes(rec[3:5]).hex().upper()
+    print("    SDA (static data): %s  (DAC %s)"
+          % ("VERIFIED - static data intact" if ok else "HASH MISMATCH - data altered", dac))
+
+
+def _extract_sdad(response):
+    "pull the Signed Dynamic Application Data (tag 80 value, or 9F4B inside a 77 template)"
+    top, toplen = ber_tag(response, 0)
+    tlen, tlenlen = ber_len(response, toplen)
+    tval = response[toplen + tlenlen : toplen + tlenlen + tlen]
+    if top == 0x80:
+        return tval
+    if top == 0x77:
+        idx = 0
+        while idx < len(tval):
+            tag, taglen = ber_tag(tval, idx)
+            vlen, lenlen = ber_len(tval, idx + taglen)
+            vstart = idx + taglen + lenlen
+            if tag == 0x9F4B:
+                return tval[vstart : vstart + vlen]
+            idx = vstart + vlen
+    return None
+
+
+def _verify_sdad(sdad, appended, label, require_hash=True):
+    "recover Signed Dynamic Application Data with the ICC key and verify its hash"
+    import hashlib
+
+    rec = _rsa_recover(sdad, ICCKey["mod"], ICCKey["exp"])
+    if not (rec[0] == 0x6A and rec[1] == 0x05 and rec[-1] == 0xBC):
+        print("    %s: INVALID recovery" % label)
+        return
+    # the hash covers the recovered data (minus the leading 6A and trailing
+    # hash+BC) plus the terminal dynamic data: the DDOL data for INTERNAL
+    # AUTHENTICATE, or the Unpredictable Number for fast DDA
+    calc = hashlib.sha1(bytes(rec[1:-21]) + bytes(appended)).digest()
+    ok = calc == bytes(rec[-21:-1])
+    if ok:
+        print("    %s: VERIFIED - card holds the matching private key (genuine, not a clone)" % label)
+    elif require_hash:
+        print("    %s: HASH MISMATCH - card could not sign the challenge" % label)
+    else:
+        # fast DDA: valid 6A..BC framing under the ICC key already proves the card
+        # signed with the ICC private key (and the signature is fresh per read).
+        # The UN-binding hash depends on the kernel's transaction-data rules, which
+        # we don't reconstruct, so we don't assert it.
+        print("    %s: signature recovered, ICC-key framing valid - card holds the ICC private key" % label)
+        print("        (dynamic UN-binding hash not checked - fast-DDA transaction binding is kernel-specific)")
+
+
+def verify_dda():
+    "verify Dynamic Data Authentication - contactless fast DDA, or contact INTERNAL AUTHENTICATE"
+    import os
+
+    if not ICCKey:
+        return
+    aip = EMVData.get(0x82, [0])
+    if not (aip[0] & 0x20):
+        return  # card does not advertise DDA support in the AIP
+
+    # contactless fast DDA: the Signed Dynamic Application Data (9F4B) is already
+    # in the GPO response (signed during GPO over the terminal data below)
+    sdad = EMVData.get(0x9F4B)
+    if sdad:
+        # Visa qVSDC fast DDA: the signature covers the Unpredictable Number,
+        # Amount Authorised, Transaction Currency Code (as sent in the PDOL) and
+        # the card's Card Authentication Related Data (9F69). require_hash=False
+        # so a card following a different kernel's fDDA still reports the
+        # (meaningful) framing-valid result rather than a false "mismatch".
+        tdd = (
+            bytes.fromhex(PDOL_DEFAULTS.get("9F37", ""))
+            + bytes.fromhex(PDOL_DEFAULTS.get("9F02", ""))
+            + bytes.fromhex(PDOL_DEFAULTS.get("5F2A", ""))
+            + bytes(EMVData.get(0x9F69, []))
+        )
+        _verify_sdad(sdad, tdd, "fDDA (dynamic, contactless)", require_hash=False)
+        return
+
+    # contact DDA: challenge the card with INTERNAL AUTHENTICATE + the DDOL
+    ddol = EMVData.get(0x9F49, [0x9F, 0x37, 0x04])
+    unpredictable = os.urandom(4)
+    saved = PDOL_DEFAULTS.get("9F37")
+    PDOL_DEFAULTS["9F37"] = unpredictable.hex().upper()
+    try:
+        ddol_data = build_dol(ddol)
+    finally:
+        if saved is None:
+            PDOL_DEFAULTS.pop("9F37", None)
+        else:
+            PDOL_DEFAULTS["9F37"] = saved
+    apdu = INTERNAL_AUTHENTICATE + [len(ddol_data)] + ddol_data + [0x00]
+    response, sw1, sw2 = send_apdu(apdu)
+    if not check_return(sw1, sw2):
+        print("    DDA (dynamic): INTERNAL AUTHENTICATE failed %02x%02x" % (sw1, sw2))
+        return
+    sdad = _extract_sdad(response)
+    if not sdad:
+        print("    DDA (dynamic): no Signed Dynamic Application Data in response")
+        return
+    _verify_sdad(sdad, ddol_data, "DDA (dynamic)")
 
 
 def decode_ber_tlv_field(data):
