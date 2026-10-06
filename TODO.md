@@ -86,9 +86,11 @@ top to bottom.
    is worse than hex).
 4. **[DONE] Bug: 0x9F66 was mislabeled** "Card Production Life Cycle" (that's 9F7F) -
    corrected to **Terminal Transaction Qualifiers (TTQ)**.
-5. **Decode Track 2 into fields** - split the raw Track 2 Equivalent into PAN /
-   expiry / service code (decode the 3-digit service code) / discretionary data.
-   Same for 9F27 CID bits (ARQC/TC/AAC).
+5. **[DONE] Decode Track 2 into fields** - decode_track2() splits the Track 2
+   Equivalent (tag 57) into PAN / expiry / service code / discretionary, and
+   decode_service_code() expands the 3-digit service code (ISO 7813). decode_cid()
+   decodes 9F27 CID bits (AAC/TC/ARQC + CDA) in the TLV path, and the log shows the
+   type inline, e.g. "40 (TC)". Verified live on Visa/Mastercard + unit-tested.
 6. **GENERATE AC** (opt-in, intrusive).** Code exists but is commented out (~L1042).
    Running a transaction to get an ARQC/TC/AAC **increments the ATC** and writes card
    state - put it behind an explicit flag + warning, like the PIN path.

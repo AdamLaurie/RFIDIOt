@@ -879,6 +879,12 @@ def decode_pse(data, indent=""):
             hexprint(value)
         elif tag == CVM_LIST:
             decode_cvm(value)
+        elif tag == 0x57:  # Track 2 Equivalent Data
+            hexprint(value)
+            decode_track2(value, indent)
+        elif tag == 0x9F27:  # Cryptogram Information Data
+            hexprint(value)
+            decode_cid(value, indent)
         else:
             fmt = TAGS[tag][1]
             if fmt == TEXT:
@@ -1068,6 +1074,9 @@ def format_log_field(tag, val):
         return str(int(hexval, 16)) if hexval else "0"
     if tag == 0x9F4E:  # Merchant Name and Location (text)
         return "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in val)
+    if tag == 0x9F27 and val:  # Cryptogram Information Data
+        actype = {0x00: "AAC", 0x40: "TC", 0x80: "ARQC", 0xC0: "RFU"}[val[0] & 0xC0]
+        return "%s (%s%s)" % (hexval, actype, ", CDA" if val[0] & 0x10 else "")
     return hexval
 
 
@@ -1266,6 +1275,73 @@ def decode_cvm(data):
         print("      %d. %s  [%s]  (%s)" % (n, mname, cname, tail))
         i += 2
         n += 1
+
+
+# service-code digit meanings (ISO 7813)
+SERVICE_CODE_1 = {
+    "1": "International", "2": "International, ICC preferred", "5": "National",
+    "6": "National, ICC preferred", "7": "Private/no interchange", "9": "Test",
+}
+SERVICE_CODE_2 = {
+    "0": "Normal authorisation", "2": "Authorise online by issuer",
+    "4": "Authorise online by issuer unless bilateral agreement",
+}
+SERVICE_CODE_3 = {
+    "0": "No restrictions, PIN required", "1": "No restrictions",
+    "2": "Goods and services only", "3": "ATM only, PIN required",
+    "4": "Cash only", "5": "Goods and services only, PIN required",
+    "6": "No restrictions, prompt for PIN if PED present",
+    "7": "Goods and services only, prompt for PIN if PED present",
+}
+
+
+def decode_service_code(code):
+    "return the three ISO 7813 service-code digit meanings"
+    return [
+        "interchange:   " + SERVICE_CODE_1.get(code[0], code[0]),
+        "authorisation: " + SERVICE_CODE_2.get(code[1], code[1]),
+        "services:      " + SERVICE_CODE_3.get(code[2], code[2]),
+    ]
+
+
+def decode_track2(value, indent=""):
+    "split Track 2 Equivalent Data (tag 57) into PAN / expiry / service code / discretionary"
+    h = "".join("%02X" % b for b in value).upper()
+    sep = h.find("D")  # field separator is the hex nibble 'D'
+    if sep < 1:
+        return
+    pan = h[:sep]
+    rest = h[sep + 1 :]
+    expiry = rest[0:4]  # YYMM
+    service = rest[4:7]
+    disc = rest[7:].rstrip("F")
+    pad = indent + "        "
+    print(pad + "PAN:            " + pan)
+    if len(expiry) == 4:
+        print(pad + "Expiry:         20%s-%s" % (expiry[0:2], expiry[2:4]))
+    if len(service) == 3:
+        print(pad + "Service code:   " + service)
+        for line in decode_service_code(service):
+            print(pad + "  " + line)
+    if disc:
+        print(pad + "Discretionary:  " + disc)
+
+
+def decode_cid(value, indent=""):
+    "decode the Cryptogram Information Data (tag 9F27)"
+    if not value:
+        return
+    b = value[0]
+    actype = {
+        0x00: "AAC - declined offline",
+        0x40: "TC - approved offline",
+        0x80: "ARQC - online authorisation requested",
+        0xC0: "RFU",
+    }
+    line = actype.get(b & 0xC0, "?")
+    if b & 0x10:
+        line += ", CDA signature requested"
+    print(indent + "        cryptogram: " + line)
 
 
 def decode_afl(data):
