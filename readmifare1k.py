@@ -34,8 +34,6 @@ except ConnectionAbortedError as _e:
     sys.exit(True)
 
 
-print("CONN")  ## PMS
-
 card.info("readmifare1k v0.1j")
 x = card.select()
 
@@ -68,8 +66,6 @@ for ctype in ["AA", "BB", "FF"]:
             )
         )
 print()
-
-print("----")  ## PMS
 
 sector = 1
 while sector < 16:
