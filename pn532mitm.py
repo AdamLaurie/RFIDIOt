@@ -425,7 +425,10 @@ try:
         # relay tag's response back via emulator
         if not remote or remote_type == "READER":
             status = emulator.acs_send_apdu(PN532_APDU["TG_SET_DATA"] + [data] + [errorcode])
-except:
+except Exception:
+    # NB: catch only real errors - a bare 'except:' also swallows the SystemExit
+    # from the clean "EMULATOR released by Initiator" (0x29) exit above, turning a
+    # normal session-end into a spurious error.
     if logfile:
         logfile.close()
         logfile = None
