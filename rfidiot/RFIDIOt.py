@@ -1222,6 +1222,7 @@ class rfidiot:
                     if result:
                         self.atr = result.atr
                         self.uid = result.uid
+                        self.tagtype = "ISO 14443A"
                         if self.DEBUG:
                             print("UID: " + self.uid)
                         return True
@@ -1238,6 +1239,7 @@ class rfidiot:
                         self.appdata = result.appdata
                         self.protocol = result.protocol
                         self.cid = result.cid
+                        self.tagtype = "ISO 14443B"
                         if self.DEBUG:
                             print("PUPI: " + self.pupi)
                             print("ATR: " + self.atr)
