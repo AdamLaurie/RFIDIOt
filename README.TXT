@@ -54,7 +54,7 @@ a:
 
 q: How do I install it?
 a:
-  pip install -r requirements.txt       # pycryptodome, pyscard, cryptography
+  pip install -r requirements.txt       # pycryptodome, pyscard (passiveauth uses openssl CLI)
   sudo python3 ./setup.py install
 System packages: install libnfc for libnfc readers; for PC/SC readers install
 the daemon and CCID driver and make sure the daemon is running, e.g. on Debian/

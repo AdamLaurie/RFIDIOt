@@ -23,7 +23,8 @@ sudo python3 ./setup.py install     # installs the 'rfidiot' library + scripts
 ```
 
 Some tools need extras: `mrpkey.py` uses Pillow (PIL) to display passport photos and
-`openssl` for certificate handling; `passiveauth.py` uses `cryptography` + `openssl`;
+`openssl` for certificate handling; `passiveauth.py` uses `openssl` for all
+certificate/CMS handling (no third-party crypto lib);
 `jcoptool.py` needs `pyasn1`. libnfc must be installed (shared library) for libnfc
 readers; PC/SC readers need the daemon + CCID driver and the daemon running
 (`sudo apt install pcscd libccid pcsc-tools` on Debian/Ubuntu). The PC/SC path
@@ -122,8 +123,10 @@ file holds a single line of options exactly as on the command line.
 ## Dependencies
 
 Python 3 with `pycryptodome` (`Crypto.Cipher.DES/DES3`, `Crypto.Hash.SHA` — ePassport
-BAC and EMV offline crypto), `pyscard` (PC/SC; needs `pcscd`), and `cryptography`
-(X.509/CSCA handling in `passiveauth.py`). `pyserial` is imported lazily for serial
+BAC and EMV offline crypto) and `pyscard` (PC/SC; needs `pcscd`). `passiveauth.py`
+does all its X.509/CMS/CSCA handling by shelling out to `openssl` (no Python crypto
+library), which also makes it tolerant of real-world passport cert encoding quirks.
+`pyserial` is imported lazily for serial
 readers (ACG/Frosch/DemoTag). libnfc (shared library) is required for `READER_LIBNFC`.
 Missing pyscard/pcscd only warns at import time.
 
