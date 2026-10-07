@@ -94,7 +94,10 @@ nfcreader = None
 def printoptions():
     print("\nRFIDIOt Options:\n")
     print("\t-d\t\tDebug on")
-    print("\t-f <num>\tUse LibNFC device number <num> (implies -R READER_LIBNFC)")
+    print("\t-f <num|conn>\tUse LibNFC device number <num>, or a libnfc connstring such")
+    print("\t\t\tas 'pn53x_usb' or 'pn53x_usb:003:087' to open that device")
+    print("\t\t\tdirectly without probing (and grabbing) other readers")
+    print("\t\t\t(implies -R READER_LIBNFC)")
     print("\t-g\t\tNo GUI")
     print("\t-h\t\tPrint detailed help message")
     print("\t-n\t\tNo Init - do not initialise hardware")
@@ -221,7 +224,13 @@ try:
         if o == "-d":
             rfidiotglobals.Debug = True
         if o == "-f":
-            nfcreader = int(a)
+            # a device number, or a libnfc connstring (e.g. "pn53x_usb") which is
+            # opened directly without the intrusive nfc_list_devices probe that
+            # would grab other readers (e.g. acr122 devices shared with PC/SC)
+            try:
+                nfcreader = int(a)
+            except ValueError:
+                nfcreader = a
             readertype = RFIDIOt.rfidiot.READER_LIBNFC
         if o == "-g":
             nogui = True

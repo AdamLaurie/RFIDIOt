@@ -237,7 +237,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.0b"
+    VERSION = "3.0c"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02

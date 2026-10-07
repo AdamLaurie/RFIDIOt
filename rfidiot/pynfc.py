@@ -472,19 +472,28 @@ class NFC():
         return None   # ???  Missing return VAl
 
     def configure(self, nfcreader):
-        if rfidiotglobals.Debug:
-            self.log.debug("NFC Readers:")
-            self.listreaders(None)
-            self.log.debug(
-                "Connecting to NFC reader number: %s" % repr(nfcreader)
-            )  # nfcreader may be none
-        if not nfcreader is None:
-            target = self.listreaders(nfcreader)
+        if isinstance(nfcreader, str):
+            # nfcreader is a libnfc connstring, e.g. "pn53x_usb" (driver only -
+            # opens the first such device) or a full "pn53x_usb:003:087". Open it
+            # directly. This deliberately skips nfc_list_devices, whose intrusive
+            # probe opens - and so grabs - every other reader, including acr122
+            # devices that may be in use at the same time via PC/SC.
+            cs = ctypes.create_string_buffer(nfcreader.encode("ascii"), NFC_CONNSTRING_LENGTH)
+            self.device = self.libnfc.nfc_open(self.context, cs)
         else:
-            target = None
-        if target:
-            target = ctypes.byref(target)
-        self.device = self.libnfc.nfc_open(self.context, target)
+            if rfidiotglobals.Debug:
+                self.log.debug("NFC Readers:")
+                self.listreaders(None)
+                self.log.debug(
+                    "Connecting to NFC reader number: %s" % repr(nfcreader)
+                )  # nfcreader may be none
+            if not nfcreader is None:
+                target = self.listreaders(nfcreader)
+            else:
+                target = None
+            if target:
+                target = ctypes.byref(target)
+            self.device = self.libnfc.nfc_open(self.context, target)
 
         if self.device is None:
             raise ConnectionAbortedError("Error opening NFC reader")
