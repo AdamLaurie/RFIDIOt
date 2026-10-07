@@ -2,3 +2,5 @@
 build/
 __pycache__/
 PYLINT.txt
+.venv/
+mitm.log
