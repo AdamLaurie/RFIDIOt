@@ -2723,6 +2723,16 @@ class rfidiot:
         # ignore the rest - CRC etc.
         return "%016x" % int(out, 2)
 
+    def pcsc_tag_type(self) -> str:
+        "concise tag type from the PC/SC ATR (SS level + card name), or SMARTCARD"
+        atr = self.pcsc_atr
+        if atr[8:12] != self.PCSC_CSC:
+            return "SMARTCARD"
+        ss = atr[24:26]
+        sstype = self.PCSC_SS.get(ss, "SS %s" % ss)
+        name = self.PCSC_NAME.get(atr[26:30], "unknown (%s)" % atr[26:30])
+        return "%s - %s" % (sstype, name)
+
     def iso14443a_type(self) -> str:
         "describe an ISO 14443-A tag from its SAK (sel_res) and ATQA (sens_res)"
         sak = self.sel_res.upper()

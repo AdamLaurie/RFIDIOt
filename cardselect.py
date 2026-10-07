@@ -43,10 +43,14 @@ else:
 if card.select():
     print("    Card ID: " + card.uid)
     if card.readertype == card.READER_PCSC:
+        print("    Type: " + card.pcsc_tag_type())
         print("    ATR: " + card.pcsc_atr)
     elif card.readertype == card.READER_LIBNFC and card.sel_res:
         print("    ATQA: " + card.sens_res + "   SAK: " + card.sel_res)
         print("    Type: ISO 14443A - " + card.iso14443a_type())
+        # ISO 14443-4 cards answer SELECT with an ATS; storage cards do not
+        if card.atr:
+            print("    ATS: " + card.atr)
 else:
     if card.errorcode:
         print("    " + card.get_error_str(card.errorcode))
