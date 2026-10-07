@@ -78,9 +78,13 @@ if card.readertype == card.READER_PCSC:
 if card.readertype == card.READER_LIBNFC:
     if card.select("A"):
         print("     ID: " + card.uid)
+        if card.sens_res:
+            print("   ATQA: " + card.sens_res)
+        if card.sel_res:
+            print("    SAK: " + card.sel_res)
         if card.atr:
-            print("     ATS: " + card.atr)
-        print("       Tag is ISO 14443A")
+            print("    ATS: " + card.atr)
+        print("       Tag is ISO 14443A - " + card.iso14443a_type())
         typed = True
     if card.select("B"):
         print("   PUPI: " + card.pupi)

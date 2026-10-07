@@ -1223,6 +1223,9 @@ class rfidiot:
                         self.atr = result.atr
                         self.uid = result.uid
                         self.tagtype = "ISO 14443A"
+                        # ATQA (SENS_RES) and SAK (SEL_RES) identify the chip
+                        self.sens_res = getattr(result, "atqa", "")
+                        self.sel_res = getattr(result, "sak", "")
                         if self.DEBUG:
                             print("UID: " + self.uid)
                         return True
@@ -2719,6 +2722,32 @@ class rfidiot:
             out += y[x : x + 8]
         # ignore the rest - CRC etc.
         return "%016x" % int(out, 2)
+
+    def iso14443a_type(self) -> str:
+        "describe an ISO 14443-A tag from its SAK (sel_res) and ATQA (sens_res)"
+        sak = self.sel_res.upper()
+        try:
+            sakval = int(sak, 16)
+        except ValueError:
+            return "unknown (no SAK)"
+        # SAK bit 5 (0x20) set -> ISO 14443-4 (ISO-DEP / APDU) capable
+        if sakval & 0x20:
+            return {
+                "20": "ISO 14443-4 (ISO-DEP) - DESFire / JCOP / EMV / ePassport etc.",
+                "28": "SmartMX with MIFARE Classic 1K",
+                "38": "SmartMX with MIFARE Classic 4K",
+                "60": "MIFARE Plus 2K/4K (SL3)",
+            }.get(sak, "ISO 14443-4 (ISO-DEP)")
+        return {
+            "00": "MIFARE Ultralight / NTAG (Type 2)",
+            "08": "MIFARE Classic 1K",
+            "09": "MIFARE Mini",
+            "10": "MIFARE Plus 2K (SL2)",
+            "11": "MIFARE Plus 4K (SL2)",
+            "18": "MIFARE Classic 4K",
+            "88": "Infineon MIFARE Classic 1K",
+            "98": "Gemplus MPCOS",
+        }.get(sak, "unknown (SAK %s)" % sak)
 
     @staticmethod
     def PCSCGetTagType(atr) -> str:
