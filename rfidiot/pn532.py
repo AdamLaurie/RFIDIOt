@@ -127,20 +127,21 @@ def pn532_print_firmware(data):
 # print pn532 antenna status and return number of tags in field
 def pn532_print_status(data):
     print("  Reader PN532 Status:")
-    print("      Last error:", PN532_ERRORS[int(data[4:6])])
-    print("     External RF:", PN532_RF[int(data[6:8], 16)])
+    err = int(data[4:6], 16)
+    print("      Last error:", PN532_ERRORS.get(err, "Unknown (0x%02x)" % err))
+    rf = int(data[6:8], 16)
+    print("     External RF:", PN532_RF.get(rf, "Unknown (0x%02x)" % rf))
     tags = int(data[8:10], 16)
     print("    TAGS present:", tags)
     for n in range(tags):
         print("    Tag number %d:" % (n + 1))
         print("      Logical number:", data[10 + n * 2 : 12 + n * 2])
-        print( "         RX Baudrate:",
-            PN532_BAUDRATES[int(data[12 + n * 2 : 14 + n * 2], 16)],
-        )
-        print( "         TX Baudrate:", PN532_BAUDRATES[int(data[14 + n * 2 : 16 + n * 2], 16)],
-        )
-        print( "          Modulation:", PN532_MODULATION[int(data[16 + n * 2 : 18 + n * 2], 16)],
-        )
+        rxb = int(data[12 + n * 2 : 14 + n * 2], 16)
+        print("         RX Baudrate:", PN532_BAUDRATES.get(rxb, "Unknown (0x%02x)" % rxb))
+        txb = int(data[14 + n * 2 : 16 + n * 2], 16)
+        print("         TX Baudrate:", PN532_BAUDRATES.get(txb, "Unknown (0x%02x)" % txb))
+        mod = int(data[16 + n * 2 : 18 + n * 2], 16)
+        print("          Modulation:", PN532_MODULATION.get(mod, "Unknown (0x%02x)" % mod))
         print("      SAM Status:", data[18 + n * 2 : 20 + n * 2])
     print()
     return tags
