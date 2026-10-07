@@ -879,6 +879,11 @@ class rfidiot:
     def info(self, caller) -> None:
         if len(caller) > 0:
             print(caller + " (using RFIDIOt v" + self.VERSION + ")")
+        if getattr(self, "help", False):
+            # -h: the global options were printed during import; just identify
+            # the tool and stop, without touching a reader. A tool with its own
+            # help prints it (checking rfidiot.help) before calling info().
+            sys.exit(True)
         if not self.NoInit:
             self.reset()
             self.version()

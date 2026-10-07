@@ -1147,7 +1147,6 @@ Nogui = rfidiot.nogui
 DEBUG = rfidiot.rfidiotglobals.Debug
 
 myver = "mrpkey v0.1u"
-passport.info(myver)
 
 TEST = False
 FILES = False
@@ -1194,6 +1193,8 @@ def print_help():
 
 if len(args) == 0 or Help:
     print_help()
+
+passport.info(myver)
 
 arg0 = args[0].upper()
 

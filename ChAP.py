@@ -36,15 +36,9 @@ from operator import xor
 # ChAP is an ordinary RFIDIOt client: importing rfidiot parses the standard
 # global reader options (-R/-r/-f/-d/-N/-L) and builds rfidiot.card. Any option
 # it doesn't recognise - ChAP's own flags - and the optional PIN are handed back
-# in rfidiot.args for the getopt further down.
-#
-# The package prints the global reader options and exits on '-h' (before this
-# import returns), which would hide ChAP's own options. So intercept '-h' here
-# and import under a no-reader argv; we then print both option sets ourselves
-# (see the _want_help block below) without touching any hardware.
-_want_help = ("-h" in sys.argv[1:]) or ("--help" in sys.argv[1:])
-if _want_help:
-    sys.argv = [sys.argv[0], "-R", "READER_NONE"]
+# in rfidiot.args for the getopt further down. On '-h' the package prints the
+# global options, sets rfidiot.help and selects no reader; ChAP then prints its
+# own options (see the rfidiot.help block below).
 from rfidiot.iso3166 import ISO3166CountryCodes
 import rfidiot  # noqa: E402
 
@@ -1823,9 +1817,9 @@ def verify_pin_enciphered(pin):
 aidlist = KNOWN_AIDS
 
 
-if _want_help:
-    # print the global reader options followed by ChAP's own, then stop
-    rfidiot.printoptions()
+if rfidiot.help:
+    # the global reader options were already printed by the rfidiot import;
+    # add ChAP's own, then stop
     printhelp()
     sys.exit(False)
 

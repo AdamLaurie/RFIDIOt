@@ -226,11 +226,13 @@ try:
         if o == "-g":
             nogui = True
         if o == "-h":
-            # print the global reader options and stop (no reader needed),
-            # consistent with -N/-L. A tool's own help lives in the tool.
+            # print the global reader options, flag help, and select no reader
+            # so no hardware is touched. Do NOT exit: control returns to the
+            # tool, which prints its own help (if any) by checking rfidiot.help
+            # and then exits.
             printoptions()
-            sys.stdout.flush()
-            os._exit(True)
+            help = True
+            readertype = RFIDIOt.rfidiot.READER_NONE
         if o == "-n":
             noinit = True
         if o == "-N":
@@ -282,6 +284,8 @@ try:
         noinit,
         nfcreader,
     )
+    # expose the help flag on the card so card.info() can stop after the banner
+    card.help = help
 except getopt.GetoptError as e:
     print("RFIDIOtconfig module ERROR: %s" % e)
     printoptions()

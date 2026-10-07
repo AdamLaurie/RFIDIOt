@@ -336,5 +336,8 @@ if __name__ == '__main__':
     import rfidiot
     rfi = rfidiot.card
 
+    if rfidiot.help:
+        sys.exit(True)
+
     test_rfidiot_lib()
 

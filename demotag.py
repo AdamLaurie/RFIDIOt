@@ -32,5 +32,8 @@ except:
 
 args = rfidiot.args
 
+if rfidiot.help:
+    sys.exit(True)
+
 print("Setting ID to: " + args[0])
 print(card.demotag(card.DT_SET_UID, card.ToBinary(args[0])))
