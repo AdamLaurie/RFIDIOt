@@ -67,7 +67,8 @@ q: Anything new in the Python 3 version?
 a: Besides the port itself:
 
 ChAP.py ("Chip And PIN") is a contactless/contact EMV reader that works over both
-PC/SC and libnfc ('-n'). It walks the card (PPSE -> AID -> GPO -> records), decodes
+PC/SC and libnfc (pick the reader with the standard options - e.g. '-f 0' for libnfc,
+'-r 1' for a PC/SC contactless slot). It walks the card (PPSE -> AID -> GPO -> records), decodes
 the EMV BER-TLV (AIP, AFL, CVM list, CDOL/DDOL, Track 2 split into PAN / expiry /
 service code, cryptogram information, etc.) and reads the card's transaction log
 (amount / date / time / currency / ATC per entry). With '-c' it performs full

@@ -69,8 +69,11 @@ Three layers:
    - `rfidiot.args` — the remaining non-option command-line arguments
    Scripts consume these; they do not construct the reader themselves. NB: importing
    `rfidiot` (or any submodule, e.g. `from rfidiot.iso3166 import ...`) runs this and
-   builds `rfidiot.card` from the current `sys.argv` — see the `ChAP.py` libnfc
-   backend for how to get a specific reader without inheriting that default.
+   builds `rfidiot.card` from the current `sys.argv`. The parser only consumes the
+   global reader options it knows (`_GLOBAL_OPTS`) and passes anything else through
+   into `rfidiot.args`, so a tool can define its own options on top (it then
+   `getopt`s `rfidiot.args` itself — see `ChAP.py`). `-h` prints the global options
+   and exits (no reader needed).
 
 3. **Client scripts** (repo root). Standard pattern:
    ```python
@@ -86,10 +89,12 @@ Three layers:
      with a Passive Authentication hook (see below).
    - `rfidiot-cli.py` — general command dispatcher (`IDENTIFY`, `APDU`, `DUMP`,
      `MF AUTH/READ/WRITE/CLONE`, `SELECT`, `SCRIPT`); good reference for driving the library.
-   - `ChAP.py` — "Chip And PIN": contactless EMV reader. `-n` uses a libnfc reader (via
-     an adapter that mimics a pyscard `CardConnection`); otherwise PC/SC. Decodes the
-     full EMV BER-TLV (PDOL-driven GPO, CVM list, etc.) and, with `-c`, recovers and
-     verifies the SDA/DDA certificate chain against a bundled `CA_PUBLIC_KEYS` table.
+   - `ChAP.py` — "Chip And PIN": contact/contactless EMV reader. An ordinary client:
+     it uses `rfidiot.card`, so reader selection is the standard global options
+     (`-f <n>` libnfc, `-r <n>` PC/SC, `-R`); its own feature flags are parsed from
+     `rfidiot.args`. Decodes the full EMV BER-TLV (PDOL-driven GPO, CVM list, etc.)
+     and, with `-c`, recovers and verifies the SDA/DDA certificate chain against a
+     bundled `CA_PUBLIC_KEYS` table.
      Run with no PIN argument to stay read-only (no `VERIFY`).
    - `passiveauth.py` — ePassport Passive Authentication: `passiveauth.py <EF_SOD.BIN>
      <masterlist.ml> [DG_DIR]`. Verifies DG hashes + SOD←DS signature + DS←CSCA against

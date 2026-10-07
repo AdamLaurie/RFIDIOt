@@ -155,9 +155,64 @@ if len(extraopts) > 0:
     if extraopts[0][0] == "#":
         extraopts = []
 
+# RFIDIOt's own global reader options. A client script may define its own
+# options on top of these (e.g. ChAP.py); those are not known here, so rather
+# than abort on them we parse only the options below and hand everything else
+# (unknown options and positional arguments) back to the script in 'args'. This
+# lets a tool do a plain 'import rfidiot' and then getopt rfidiot.args itself.
+_GLOBAL_OPTS = "df:ghjnNr:R:l:Ls:t:"
+
+
+def _partition_opts(tokens, optstring):
+    "split tokens into our known options (for getopt) and everything else"
+    witharg, noarg, i = set(), set(), 0
+    while i < len(optstring):
+        c = optstring[i]
+        if i + 1 < len(optstring) and optstring[i + 1] == ":":
+            witharg.add(c)
+            i += 2
+        else:
+            noarg.add(c)
+            i += 1
+    known, rest, i, n = [], [], 0, len(tokens)
+    while i < n:
+        t = tokens[i]
+        if t == "--":
+            rest.extend(tokens[i + 1:])
+            break
+        if len(t) >= 2 and t[0] == "-" and t[1] != "-":
+            j = 1
+            while j < len(t):
+                c = t[j]
+                if c in witharg:
+                    arg = t[j + 1:]
+                    if arg:
+                        known += ["-" + c, arg]
+                    elif i + 1 < n:
+                        known += ["-" + c, tokens[i + 1]]
+                        i += 1
+                    else:
+                        known.append("-" + c)
+                    j = len(t)
+                elif c in noarg:
+                    known.append("-" + c)
+                    j += 1
+                else:
+                    # not one of ours - hand the rest of the cluster to the script
+                    rest.append("-" + t[j:])
+                    j = len(t)
+            i += 1
+        else:
+            # first positional argument ends option processing (POSIX-style)
+            rest.extend(tokens[i:])
+            break
+    return known, rest
+
+
 # 'args' will be set to remaining arguments (if any)
 try:
-    opts, args = getopt.getopt(extraopts + sys.argv[1:], "df:ghjnNr:R:l:Ls:t:")
+    _known, args = _partition_opts(extraopts + sys.argv[1:], _GLOBAL_OPTS)
+    opts, _ = getopt.getopt(_known, _GLOBAL_OPTS)
 
     for o, a in opts:
         if o == "-j":
@@ -171,8 +226,11 @@ try:
         if o == "-g":
             nogui = True
         if o == "-h":
-            chelp = True
+            # print the global reader options and stop (no reader needed),
+            # consistent with -N/-L. A tool's own help lives in the tool.
             printoptions()
+            sys.stdout.flush()
+            os._exit(True)
         if o == "-n":
             noinit = True
         if o == "-N":

@@ -32,24 +32,15 @@ import sys
 from operator import xor
 # from operator import *
 
-from smartcard.CardType import AnyCardType
-from smartcard.CardRequest import CardRequest
-from smartcard.CardConnection import CardConnection
-from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
-from smartcard.Exceptions import CardRequestTimeoutException
-
-
 # local imports
-# rfidiot's package __init__ parses sys.argv on import (building a default
-# rfidiot.card) and aborts on any option it doesn't recognise - including ChAP's
-# own flags (-c, -a, -A, -e, -o, -p, -v). Import it under a neutral argv so it
-# doesn't choke, then restore argv for our own getopt below. We build our own
-# reader instances (PC/SC or libnfc) later and never use rfidiot.card.
-_saved_argv = sys.argv
-sys.argv = [sys.argv[0], "-R", "READER_NONE"]
+# ChAP is an ordinary RFIDIOt client: importing rfidiot parses the standard
+# global reader options (-R/-r/-f/-d/-N/-L, '-h' prints them and exits) and
+# builds rfidiot.card. Any option it doesn't recognise - ChAP's own flags - and
+# the optional PIN are handed back in rfidiot.args for the getopt further down.
 from rfidiot.iso3166 import ISO3166CountryCodes
-import rfidiot  # noqa: E402  - load package + globals under the neutral argv
-sys.argv = _saved_argv
+import rfidiot  # noqa: E402
+
+card = rfidiot.card
 
 # default global options
 BruteforcePrimitives = False
@@ -57,13 +48,11 @@ BruteforceFiles = False
 BruteforceAID = False
 BruteforceEMV = False
 OutputFiles = False
-Debug = False
-Protocol = CardConnection.T0_protocol
+Debug = rfidiot.rfidiotglobals.Debug  # set by the global -d option
 RawOutput = False
 Verbose = False
-UseLibNFC = False
 RecoverCerts = False  # -c : recover/verify the SDA-DDA certificate chain
-GenerateAC = False  # -g : send GENERATE AC (CDA) - intrusive, increments the ATC
+GenerateAC = False  # -G : send GENERATE AC (CDA) - intrusive, increments the ATC
 EncipheredPIN = False  # -E : offline PIN as RSA-enciphered (vs plaintext) VERIFY
 Pdol = []  # PDOL (tag 9F38) captured from the selected application's FCI
 EMVData = {}  # tag -> value(list of ints) collected while decoding the current app
@@ -714,29 +703,34 @@ BER_TLV_AFL = 0x14
 
 def printhelp():
     print("\nChAP.py - Chip And PIN in Python")
-    print("Ver 0.1c\n")
-    print("usage:\n\n ChAP.py [options] [PIN]")
+    print("Ver 0.1d\n")
+    print("usage:\n\n ChAP.py [reader-options] [ChAP-options] [PIN]")
+    print()
+    print("Reader selection uses the standard RFIDIOt global options, e.g.:")
+    print("\t-f <n>\t\tlibnfc device <n> (contactless)")
+    print("\t-r <n>\t\tPC/SC reader <n> (e.g. OMNIKEY contactless slot is 1)")
+    print("\t-R <type>\tREADER_PCSC (default) / READER_LIBNFC / ...")
+    print("\t-N / -L\t\tlist libnfc / PC/SC readers")
+    print("\t-d\t\tDebug - show APDU traffic")
+    print("\t-h\t\tPrint the full global reader-option list and exit")
     print()
     print("If the optional numeric PIN argument is given, the PIN will be verified (note that this")
     print("updates the PIN Try Counter and may result in the card being PIN blocked).")
-    print("\nOptions:\n")
+    print("\nChAP options:\n")
     print("\t-a\t\tBruteforce AIDs")
     print("\t-A\t\tPrint list of known AIDs")
     print("\t-c\t\tRecover & verify the SDA/DDA certificate chain")
-    print("\t-d\t\tDebug - Show PC/SC APDU data")
     print("\t-e\t\tBruteforce EMV AIDs")
     print("\t-E\t\tSend the PIN as an RSA-enciphered offline PIN (needs a PIN")
     print("\t\t\t  argument; implies -c. WARNING: updates the PIN Try Counter)")
-    print("\t-f\t\tBruteforce files")
-    print("\t-g\t\tGENERATE AC with CDA to verify the dynamic signature")
+    print("\t-F\t\tBruteforce files")
+    print("\t-G\t\tGENERATE AC with CDA to verify the dynamic signature")
     print("\t\t\t  (WARNING: this increments the card's ATC)")
-    print("\t-h\t\tPrint detailed help message")
-    print("\t-n\t\tUse libnfc reader (device 0) instead of PC/SC")
     print("\t-o\t\tOutput to files ([AID]-FILExxRECORDxx.HEX)")
     print("\t-p\t\tBruteforce primitives")
-    print("\t-r\t\tRaw output - do not interpret EMV data")
-    print("\t-t\t\tUse T1 protocol (default is T0)")
+    print("\t-x\t\tRaw output - do not interpret EMV data")
     print("\t-v\t\tVerbose on")
+    print("\nT=0/T=1 is auto-negotiated for PC/SC.")
     print()
 
 
@@ -956,9 +950,29 @@ def check_return(sw1, sw2):
     return False
 
 
+def _transceive(apdu):
+    # low-level APDU exchange over whichever reader rfidiot.card opened (PC/SC or
+    # libnfc), returning (response-bytes-as-list-of-ints, sw1, sw2). T=0/T=1 is
+    # negotiated by the library for PC/SC.
+    hexapdu = "".join("%02X" % b for b in apdu)
+    if card.readertype == card.READER_LIBNFC:
+        ok, resp = card.nfc.sendAPDU(hexapdu, card.timeout)
+        if not ok or len(resp) < 4:
+            return [], 0x6F, 0x00
+        data = [int(resp[i : i + 2], 16) for i in range(0, len(resp) - 4, 2)]
+        return data, int(resp[-4:-2], 16), int(resp[-2:], 16)
+    # PC/SC: pcsc_send_apdu stores the response body in card.data and the status
+    # word in card.errorcode ("SW1SW2")
+    card.pcsc_send_apdu([hexapdu])
+    resp = card.data or ""
+    ec = card.errorcode or "6F00"
+    data = [int(resp[i : i + 2], 16) for i in range(0, len(resp), 2)]
+    return data, int(ec[0:2], 16), int(ec[2:4], 16)
+
+
 def send_apdu(apdu):
     # send apdu and get additional data if required
-    response, sw1, sw2 = cardservice.connection.transmit(apdu, Protocol)
+    response, sw1, sw2 = _transceive(apdu)
     if sw1 == SW1_WRONG_LENGTH:
         # command used wrong length. retry with correct length.
         apdu = apdu[: len(apdu) - 1] + [sw2]
@@ -966,7 +980,7 @@ def send_apdu(apdu):
     if sw1 == SW1_RESPONSE_BYTES:
         # response bytes available.
         apdu = GET_RESPONSE + [sw2]
-        response, sw1, sw2 = cardservice.connection.transmit(apdu, Protocol)
+        response, sw1, sw2 = _transceive(apdu)
     return response, sw1, sw2
 
 
@@ -1801,43 +1815,14 @@ def verify_pin_enciphered(pin):
 aidlist = KNOWN_AIDS
 
 
-# libnfc backend: adapter presenting the same interface as a pyscard
-# CardConnection (transmit/connect/addObserver) so the rest of ChAP.py is
-# unchanged, but APDUs go over RFIDIOt's libnfc transceive.
-class _LibNFCConnection:
-    def __init__(self, card):
-        self._card = card
-
-    def addObserver(self, observer):
-        pass
-
-    def connect(self, *args, **kwargs):
-        if not self._card.select():
-            raise RuntimeError("No card on libnfc reader")
-
-    def transmit(self, apdu, protocol=None):
-        h = "".join("%02X" % b for b in apdu)
-        ok, resp = self._card.nfc.sendAPDU(h, self._card.timeout)
-        if not ok or len(resp) < 4:
-            return [], 0x6F, 0x00
-        data = [int(resp[i : i + 2], 16) for i in range(0, len(resp) - 4, 2)]
-        return data, int(resp[-4:-2], 16), int(resp[-2:], 16)
-
-
-class _LibNFCService:
-    def __init__(self, card):
-        self.connection = _LibNFCConnection(card)
-
-
 try:
-    # 'args' will be set to remaining arguments (if any)
-    opts, args = getopt.getopt(sys.argv[1:], "aAcdeEfgnoprtv")
+    # reader options were already consumed by the rfidiot import; parse ChAP's
+    # own options (and the optional trailing PIN) out of rfidiot.args.
+    opts, pinargs = getopt.getopt(rfidiot.args, "aAceEFGopxv")
     for o, a in opts:
-        if o == "-n":
-            UseLibNFC = True
         if o == "-c":
             RecoverCerts = True
-        if o == "-g":
+        if o == "-G":
             GenerateAC = True
         if o == "-E":
             EncipheredPIN = True
@@ -1846,72 +1831,45 @@ try:
             BruteforceAID = True
         if o == "-A":
             print()
-            # for x in range(len(aidlist)):
-            #     print("% 20s: " % aidlist[x][0], end="")
-            #     hexprint(aidlist[x][1:])
             for x in aidlist:
-                print("{x[0]:20s}: ", end="")
+                print(f"{x[0]:20s}: ", end="")
                 hexprint(x[1:])
             print()
             sys.exit(False)
-        if o == "-d":
-            Debug = True
         if o == "-e":
             BruteforceAID = True
             BruteforceEMV = True
-        if o == "-f":
+        if o == "-F":
             BruteforceFiles = True
         if o == "-o":
             OutputFiles = True
         if o == "-p":
             BruteforcePrimitives = True
-        if o == "-r":
+        if o == "-x":
             RawOutput = True
-        if o == "-t":
-            Protocol = CardConnection.T1_protocol
         if o == "-v":
             Verbose = True
 
 except getopt.GetoptError:
-    # -h will cause an exception as it doesn't exist!
     printhelp()
     sys.exit(True)
 
 PIN = ""
-if args:
-    if not args[0].isdigit():
-        print("Invalid PIN", args[0])
+if pinargs:
+    if not pinargs[0].isdigit():
+        print("Invalid PIN", pinargs[0])
         sys.exit(True)
     else:
-        PIN = args[0]
+        PIN = pinargs[0]
 
 try:
-    if UseLibNFC:
-        # rfidiot is already imported (top-of-file iso3166 import runs its
-        # __init__, which builds a default rfidiot.card from *our* argv). Don't
-        # reuse that; build a dedicated libnfc instance (device 0) here.
-        import rfidiot  # noqa: E402
-
-        _R = rfidiot.RFIDIOt.rfidiot
-        libcard = _R(0, _R.READER_LIBNFC, "", 9600, 1, rfidiot.rfidiotglobals.Debug, False, 0)
-        print("using libnfc reader:", getattr(libcard, "readername", "libnfc"))
-        cardservice = _LibNFCService(libcard)
-        cardservice.connection.connect(Protocol)
-    else:
-        # request any card type
-        cardtype = AnyCardType()
-        # request card insertion
-        print("insert a card within 10s")
-        cardrequest = CardRequest(timeout=10, cardType=cardtype)
-        cardservice = cardrequest.waitforcard()
-
-        # attach the console tracer
-        if Debug:
-            observer = ConsoleCardConnectionObserver()
-            cardservice.connection.addObserver(observer)
-
-        # connect to the card
-        cardservice.connection.connect(Protocol)
+    print("using reader:", getattr(card, "readername", "unknown"))
+    if card.readertype == card.READER_LIBNFC:
+        # contactless: run ISO 14443-A anticollision/select to power and select
+        # the card before exchanging APDUs (PC/SC is already connected on import)
+        if not card.select():
+            print("no card on the reader")
+            sys.exit(True)
 
     # get_challenge(0)
 
@@ -1946,12 +1904,12 @@ try:
                     p2 = (y << 3) + 4
                     le = 0x00
                     apdu = READ_RECORD + [p1] + [p2, le]
-                    response, sw1, sw2 = cardservice.connection.transmit(apdu)
+                    response, sw1, sw2 = _transceive(apdu)
                     if sw1 == 0x6C:
                         print(f"  Record {x:02x}, File {y:02x}: length {sw2}")
                         le = sw2
                         apdu = READ_RECORD + [p1] + [p2, le]
-                        response, sw1, sw2 = cardservice.connection.transmit(apdu)
+                        response, sw1, sw2 = _transceive(apdu)
                         print("  ", end="")
                         aid = ""
                         if Verbose:
@@ -2041,8 +1999,10 @@ try:
     else:
         print("no PSE: %02x %02x" % (sw1, sw2))
 
-except CardRequestTimeoutException:
-    print("time-out: no card inserted during last 10s")
+except Exception as emsg:  # pylint: disable=broad-except
+    print("card communication error:", emsg)
+    if rfidiot.rfidiotglobals.Debug:
+        raise
 
 if "win32" == sys.platform:
     print("press Enter to continue")
