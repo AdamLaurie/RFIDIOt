@@ -1871,6 +1871,10 @@ if pinargs:
     else:
         PIN = pinargs[0]
 
+if EncipheredPIN and not PIN:
+    print("-E (enciphered offline PIN) requires a PIN argument")
+    sys.exit(True)
+
 try:
     print("using reader:", getattr(card, "readername", "unknown"))
     if card.readertype == card.READER_LIBNFC:
