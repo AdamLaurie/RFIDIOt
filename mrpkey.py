@@ -1295,9 +1295,13 @@ if TEST:
     print("Test MRZ: " + TEST_MRZ)
 if not TEST and not FILES and MRZ:
     key = arg0
-    # expands short MRZ version if needed
+    # expands short MRZ version if needed. The optional-data field (positions
+    # 29-42) must be padded with the MRZ filler '<' (value 0), not 'X' (value 33),
+    # or the recomputed optional and composite check digits come out wrong (#11).
+    # The check-digit positions themselves are recomputed, so their padding is
+    # immaterial; '<' is used throughout for a faithful "Corrected MRZ" display.
     if len(key) == 21:
-        key = key[0:9] + "XXXX" + key[9:15] + "XX" + key[15:21] + "XXXXXXXXXXXXXXXXX"
+        key = key[0:9] + "<" * 4 + key[9:15] + "<" * 2 + key[15:21] + "<" * 17
     elif len(key) == 90:
         # Handles full MRZ needed for Passport cards
         key = key[5:15] + "XXX" + key[30:45] + "XXXXXXXXXXXXXXXX"
