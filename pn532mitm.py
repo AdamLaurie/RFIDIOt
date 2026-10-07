@@ -39,12 +39,12 @@ def connect_to(chost, cport, ctype):
     first = True
     while 42:
         peer.settimeout(random.randint(1, 10))
-        print("  Paging {chost} {cport}                    \r", end="")
+        print(f"  Paging {chost} {cport}                    \r", end="")
         sys.stdout.flush()
         time.sleep(1)
         try:
             if peer.connect((chost, cport)) == 0:
-                print("  Connected to {chost}s cport {port}                  ")
+                print(f"  Connected to {chost} {cport}                  ")
                 send_data(peer, ctype)
                 cdata = recv_data(peer)
                 connection = peer
@@ -87,19 +87,19 @@ def connect_to(chost, cport, ctype):
 def send_data(chost, cdata):
     lrc = 0
     length = "%03x" % (len(cdata) + 2)
-    for i in length + data:
+    for i in length + cdata:
         lrc ^=  ord(i)
         # lrc = operator.xor(lrc, ord(x))
-    chost.send(length)
-    chost.send(cdata)
-    chost.send("%02x" % lrc)
+    chost.send(length.encode("latin-1"))
+    chost.send(cdata.encode("latin-1"))
+    chost.send(("%02x" % lrc).encode("latin-1"))
 
 
 # receive data of specified length and check CRC
 def recv_data(chost):
     out = ""
     while len(out) < 3:
-        out += chost.recv(3 - len(out))
+        out += chost.recv(3 - len(out)).decode("latin-1")
     length = int(out, 16)
     lrc = 0
     for x in out:
@@ -107,7 +107,7 @@ def recv_data(chost):
         lrc ^=  ord(x)
     out = ""
     while len(out) < length:
-        out += chost.recv(length - len(out))
+        out += chost.recv(length - len(out)).decode("latin-1")
     for x in out[:-2]:
         # lrc = operator.xor(lrc, ord(x))
         lrc ^=  ord(x)
@@ -126,7 +126,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532mitm v3.0a")
+card.info("pn532mitm v3.0b")
 
 if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")
@@ -288,13 +288,13 @@ print()
 felica = ["01fea2a3a4a5a6a7c0c1c2c3c4c5c6c7ffff"]
 nfcid = ["aa998877665544332211"]
 try:
-    lengt = ["%02x" % (len(args[6]) / 2)]
+    lengt = ["%02x" % (len(args[6]) // 2)]
     gt = [args[6]]
 except:
     lengt = ["00"]
     gt = [""]
 try:
-    lentk = ["%02x" % (len(args[7]) / 2)]
+    lentk = ["%02x" % (len(args[7]) // 2)]
     tk = [args[7]]
 except:
     lentk = ["00"]

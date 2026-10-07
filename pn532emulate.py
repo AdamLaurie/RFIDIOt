@@ -34,7 +34,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532emulate v3.0a")
+card.info("pn532emulate v3.0b")
 
 if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")
@@ -123,13 +123,13 @@ sel_res = [args[3]]
 felica = [args[4]]
 nfcid = [args[5]]
 try:
-    lengt = ["%02x" % (len(args[6]) / 2)]
+    lengt = ["%02x" % (len(args[6]) // 2)]
     gt = [args[6]]
 except:
     lengt = ["00"]
     gt = [""]
 try:
-    lentk = ["%02x" % (len(args[7]) / 2)]
+    lentk = ["%02x" % (len(args[7]) // 2)]
     tk = [args[7]]
 except:
     lentk = ["00"]
