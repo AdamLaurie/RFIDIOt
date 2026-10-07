@@ -32,7 +32,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("send_apdu v0.1a")
+card.info("send_apdu v3.0a")
 card.select()
 print("\nID: " + card.uid)
 print("  Data:")

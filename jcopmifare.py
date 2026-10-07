@@ -48,7 +48,7 @@ READ = "02"
 RANDOM = "03"
 MIFARE_AID = "DC4420060606"
 
-card.info("jcopmifare v0.1e")
+card.info("jcopmifare v3.0a")
 
 if Help or len(args) < 2:
     print("\nUsage:\n\n\t%s [OPTIONS] <READ|WRITE|RANDOM> <MIFARE_PWD> [SECTOR] [HEX DATA]" % sys.argv[0])

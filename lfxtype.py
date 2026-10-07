@@ -31,7 +31,7 @@ except:
     sys.exit(True)
 
 
-card.info("lfxtype v0.1j")
+card.info("lfxtype v3.0a")
 card.select()
 ID = card.uid
 if ID:

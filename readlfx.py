@@ -48,7 +48,7 @@ Q5Mod = {
     "111": "NRZ / direct",
 }
 
-card.info("readlfx v0.1m")
+card.info("readlfx v3.0a")
 
 # force card type if specified
 if len(args) > 0:

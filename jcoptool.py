@@ -276,7 +276,7 @@ def decode_gp_registry_data(data, padding, dat_filter):
     return True
 
 
-card.info("jcoptool v0.1d")
+card.info("jcoptool v3.0a")
 if Help or len(args) < 1:
     print("\nUsage:\n\n\t%s [OPTIONS] <COMMAND> [ARGS] [ENC Key] [MAC Key] [KEK Key]" % sys.argv[0])
     print()

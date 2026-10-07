@@ -29,7 +29,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("loginall v0.1h")
+card.info("loginall v3.0a")
 
 card.select()
 print("\ncard id: " + card.uid)

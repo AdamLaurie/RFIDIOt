@@ -34,7 +34,7 @@ except:
 
 args = rfidiot.args
 
-card.info("multiselect v0.1n")
+card.info("multiselect v3.0a")
 
 # force card type if specified
 if len(args) == 1:

@@ -98,7 +98,7 @@ except:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v0.1")
+card.info("rfidiot-cli v3.1a")
 
 # globals
 Mifare_Key = None

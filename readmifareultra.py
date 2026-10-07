@@ -40,7 +40,7 @@ if rf_help:
     print()
     sys.exit(True)
 
-card.info("readmifareultra v0.1b")
+card.info("readmifareultra v3.0a")
 card.waitfortag("Waiting for Mifare Ultralight...")
 
 blocks = 16

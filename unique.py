@@ -40,7 +40,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("unique v0.1l")
+card.info("unique v3.0a")
 
 # Q5 config block
 Q5CFB = "e601f004"

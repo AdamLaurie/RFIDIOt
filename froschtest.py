@@ -29,7 +29,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("froschtest v0.1d")
+card.info("froschtest v3.0a")
 print()
 print("Trying Hitag1: ", end="")
 if card.frosch(card.FR_HT1_Get_Snr, ""):

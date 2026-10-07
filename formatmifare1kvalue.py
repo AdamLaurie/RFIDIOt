@@ -32,7 +32,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("formatmifare1k v0.1c")
+card.info("formatmifare1k v3.0a")
 card.select()
 print("Card ID: " + card.data)
 while True:

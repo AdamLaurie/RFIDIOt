@@ -34,7 +34,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("transit v0.1b")
+card.info("transit v3.0a")
 
 precoded = False
 

@@ -33,7 +33,7 @@ except:
 
 args = rfidiot.args
 
-card.info("cardselect v0.1m")
+card.info("cardselect v3.1a")
 # force card type if specified
 if len(args) == 1:
     card.settagtype(args[0])

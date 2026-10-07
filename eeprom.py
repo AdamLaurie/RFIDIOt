@@ -30,7 +30,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("eeprom v0.1e")
+card.info("eeprom v3.0a")
 print("Station:\t" + card.station())
 print("Protocol:\t" + card.PCON())
 print("Protocol2:\t" + card.PCON2())

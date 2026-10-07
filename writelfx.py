@@ -43,7 +43,7 @@ Q5Mod = {
     "111": "NRZ / direct",
 }
 
-card.info("writelfx v0.1c")
+card.info("writelfx v3.0a")
 
 # force card type if specified
 if len(args) > 0:

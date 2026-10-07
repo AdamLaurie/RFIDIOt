@@ -34,7 +34,7 @@ except ConnectionAbortedError as _e:
     sys.exit(True)
 
 
-card.info("readmifare1k v0.1j")
+card.info("readmifare1k v3.0a")
 x = card.select()
 
 if not x:

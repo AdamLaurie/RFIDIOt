@@ -36,7 +36,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("writemifare1k v0.1f")
+card.info("writemifare1k v3.0a")
 card.select()
 print("Card ID: " + card.uid)
 while True:

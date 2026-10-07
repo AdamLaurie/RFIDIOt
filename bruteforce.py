@@ -36,7 +36,7 @@ except Exception as _e:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("bruteforce v0.1i")
+card.info("bruteforce v3.0a")
 card.select()
 print(f"Card ID: {card.uid}")
 

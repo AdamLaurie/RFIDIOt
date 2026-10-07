@@ -126,7 +126,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532mitm v0.1e")
+card.info("pn532mitm v3.0a")
 
 if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")

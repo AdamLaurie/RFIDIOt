@@ -34,7 +34,7 @@ except:
 args = rfidiot.args
 help = rfidiot.help
 
-card.info("hitag2reset v0.1e")
+card.info("hitag2reset v3.0a")
 
 # standard config block
 # CFB='06' + card.HITAG2_TRANSPORT_TAG

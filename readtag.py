@@ -33,7 +33,7 @@ if __name__ == '__main__':
         print("Couldn't open reader!")
         sys.exit(True)
 
-    card.info("readtag v0.1f")
+    card.info("readtag v3.0a")
     card.select()
     print(f"\nID: {card.uid}")
     print("  Data:")

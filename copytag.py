@@ -33,7 +33,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("copytag v0.1d")
+card.info("copytag v3.0a")
 card.select()
 print(f"\nID: {card.uid}")
 print("  Reading:")

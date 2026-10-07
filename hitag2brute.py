@@ -35,7 +35,7 @@ except Exception as _e:
 
 args = rfidiot.args
 
-card.info("hitag2brute v0.1c")
+card.info("hitag2brute v3.0a")
 
 pwd = 0x00
 

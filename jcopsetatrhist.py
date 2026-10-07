@@ -89,7 +89,7 @@ def error_exit(message, error):
     sys.exit(True)
 
 
-card.info("jcopsetatrhist v0.1c")
+card.info("jcopsetatrhist v3.0a")
 
 if card.select():
     print("    Card ID: " + card.uid)

@@ -705,7 +705,7 @@ BER_TLV_AFL = 0x14
 
 def printhelp():
     print("\nChAP.py - Chip And PIN in Python")
-    print("Ver 0.1d\n")
+    print("Ver 3.1a\n")
     print("usage:\n\n ChAP.py [rfidiot-options] [ChAP-options] [PIN]")
     print()
     print("Reader selection uses the standard RFIDIOt global options above")

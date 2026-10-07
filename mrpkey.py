@@ -1146,7 +1146,7 @@ Help = rfidiot.help
 Nogui = rfidiot.nogui
 DEBUG = rfidiot.rfidiotglobals.Debug
 
-myver = "mrpkey v0.1u"
+myver = "mrpkey v3.1a"
 
 TEST = False
 FILES = False

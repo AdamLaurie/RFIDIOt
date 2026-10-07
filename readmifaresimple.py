@@ -80,7 +80,7 @@ if chelp or len(args) > 6:
     print()
     sys.exit(True)
 
-card.info("readmifaresimple v0.1h")
+card.info("readmifaresimple v3.0a")
 
 if not card.select():
     card.waitfortag("waiting for Mifare TAG...")

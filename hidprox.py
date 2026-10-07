@@ -32,7 +32,7 @@ except:
     print("Couldn't open reader!")
     sys.exit(True)
 
-card.info("hidprox v0.1f")
+card.info("hidprox v3.0a")
 
 if not card.readersubtype == card.READER_OMNIKEY:
     print("Reader type not supported!", card.ReaderSubType, card.READER_OMNIKEY)

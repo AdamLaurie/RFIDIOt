@@ -33,7 +33,7 @@ except:
     sys.exit(True)
 
 
-card.info("isotype v0.1n")
+card.info("isotype v3.1a")
 
 typed = 0
 if card.readertype == card.READER_ACG:

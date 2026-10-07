@@ -35,7 +35,7 @@ except:
 args = rfidiot.args
 arg_help = rfidiot.help
 
-card.info("fdxbnum v0.1f")
+card.info("fdxbnum v3.0a")
 
 precoded = False
 

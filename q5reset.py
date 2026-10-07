@@ -35,7 +35,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("q5reset v0.1g")
+card.info("q5reset v3.0a")
 
 # standard config block
 CFB = "e601f004"
