@@ -28,7 +28,7 @@ import shutil
 # import io
 from tkinter import (
     Frame, Canvas, Checkbutton, Radiobutton, Button, Label,
-    Tk, W, NW, NE, E
+    Tk, StringVar, W, NW, NE, E
 )
 from operator import xor, and_
 from Crypto.Hash import SHA
@@ -1945,34 +1945,40 @@ if not Nogui:
         command=do_command(drawfeatures, canvas, dg2_features),
     )
     featurebutton.grid(row=1, column=0, sticky=W, rowspan=1)
+    # a single shared control variable makes the four a mutually-exclusive group
+    stylevar = StringVar(value=Style)
     featurestyle = Radiobutton(
         frame,
         text="Arrow",
+        variable=stylevar,
+        value="Arrow",
         command=do_command(changestyle, "Arrow", canvas, dg2_features),
     )
     featurestyle.grid(row=1, column=0, rowspan=1)
-    featurestyle.select()
     featurestyle2 = Radiobutton(
         frame,
         text="Cross",
+        variable=stylevar,
+        value="Cross",
         command=do_command(changestyle, "Cross", canvas, dg2_features),
     )
     featurestyle2.grid(row=2, column=0, rowspan=1)
-    featurestyle2.deselect()
     featurestyle3 = Radiobutton(
         frame,
         text="Circle ",
+        variable=stylevar,
+        value="Circle",
         command=do_command(changestyle, "Circle", canvas, dg2_features),
     )
     featurestyle3.grid(row=1, column=0, rowspan=1, sticky=E)
-    featurestyle3.deselect()
     featurestyle4 = Radiobutton(
         frame,
         text="Target",
+        variable=stylevar,
+        value="Target",
         command=do_command(changestyle, "Target", canvas, dg2_features),
     )
     featurestyle4.grid(row=2, column=0, rowspan=1, sticky=E)
-    featurestyle4.deselect()
     quitbutton = Button(frame, text="Quit", command=root.quit)
     quitbutton.grid(row=1, column=3, sticky=NE, rowspan=2)
     Label(frame, text="Type").grid(row=1, sticky=W, column=1)
