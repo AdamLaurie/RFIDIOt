@@ -87,7 +87,8 @@ Three layers:
    ```
    Notable tools:
    - `mrpkey.py` — flagship ePassport reader/decoder (BAC, secure messaging, DG1/DG2/…),
-     with a Passive Authentication hook (see below).
+     with a Passive Authentication hook (see below). Add the `PACE` keyword after the
+     MRZ to access the chip with PACE instead of BAC (via `rfidiot/pace.py`).
    - `rfidiot-cli.py` — general command dispatcher (`IDENTIFY`, `APDU`, `DUMP`,
      `MF AUTH/READ/WRITE/CLONE`, `SELECT`, `SCRIPT`); good reference for driving the library.
    - `ChAP.py` — "Chip And PIN": contact/contactless EMV reader. An ordinary client:
@@ -105,6 +106,9 @@ Three layers:
      passport SAFE/UNSAFE.
 
 ### Support modules in `rfidiot/`
+- `pace.py` — PACE (ICAO 9303 Part 11) access protocol: ECDH with Generic Mapping,
+  3DES-CBC/AES secure messaging. Reader-agnostic (drives an `rfidiot.card`); uses
+  pycryptodome's `ECC` for the curve maths. `mrpkey.py` calls it on the `PACE` keyword.
 - `pynfc.py` — ctypes wrapper around the native **libnfc** shared library
   (`READER_LIBNFC`); libnfc enums/structs, aligned to libnfc 1.8. `sendAPDU()` is the
   raw transceive used for everything over libnfc.

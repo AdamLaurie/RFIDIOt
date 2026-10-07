@@ -38,6 +38,7 @@ from PIL import Image, ImageTk
 # import PIL.Image as Image
 # import PIL.ImageTk as ImageTk
 import rfidiot
+from rfidiot import pace
 
 
 STRIP_INDEX = True
@@ -422,14 +423,12 @@ def changestyle(style, face, features):
         drawfeatures(face, features)
 
 
-def secure_select_file(keyenc, keymac, file):
-    "secure select file"
+def secure_select_file(keyenc, keymac, file, p1="02", p2="0c"):
+    "secure select file (p1=02/p2=0c selects an EF by id; p1=04 selects a DF by name)"
     global SSC
 
     cla = "0c"
     ins = passport.ISOAPDU["SELECT_FILE"]
-    p1 = "02"
-    p2 = "0c"
     command = passport.PADBlock(passport.ToBinary(cla + ins + p1 + p2))
     data = passport.PADBlock(passport.ToBinary(file))
     tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
@@ -1161,12 +1160,14 @@ BAC = True
 SETBAC = False
 UNSETBAC = False
 PACE = False
+UsePACE = False
+pace_authenticated = False
 
 
 def print_help():
     print()
     print("Usage:")
-    print("\t" + sys.argv[0] + " [OPTIONS] <MRZ (Lower)|PLAIN|CHECK|[PATH]> [WRITE|WRITELOCK|SLOWBRUTE]")
+    print("\t" + sys.argv[0] + " [OPTIONS] <MRZ (Lower)|PLAIN|CHECK|[PATH]> [WRITE|WRITELOCK|SLOWBRUTE|PACE]")
     print()
     print("\tSpecify the Lower MRZ as a quoted string or the word TEST to use sample data.")
     print("\tLower MRZ can be full line or shortened to the essentials: chars 1-9;14-19;22-27")
@@ -1183,6 +1184,7 @@ def print_help():
     print("\tSpecify '?' in the passport number field for bruteforce of that portion.")
     print("\tNote: only one contiguous portion of the field may be bruteforced.")
     print("\tSpecify the option SLOWBRUTE after MRZ to force reset between attempts (required on some new passports)")
+    print("\tSpecify the option PACE after the MRZ to use PACE instead of BAC (if the chip supports it).")
     print("\tPadding character '<' should be used for unknown fields.")
     print()
     print("\tPassive Authentication: set $RFIDIOT_MASTERLIST to a CSCA master list (.ml)")
@@ -1220,7 +1222,9 @@ if (
 
 if len(args) == 2:
     arg1 = args[1].upper()
-    if arg1 in ('WRITE', 'WRITELOCK', 'SLOWBRUTE'):
+    if arg1 == "PACE":
+        UsePACE = True
+    elif arg1 in ('WRITE', 'WRITELOCK', 'SLOWBRUTE'):
         help()
 
 print()
@@ -1318,37 +1322,77 @@ if not FILES and not TEST:
     print("Device supports %s Byte transfers" % passport.ISO_FRAMESIZE[passport.framesize])
     print()
     print("Checking presence of EF_CardAccess (PACE):")
+    pace_infos = []
     status, data = read_file(TAG_FID[EF_CardAccess])
     if status:
-        # TODO CardAccess parsing
         print("  Stored in", tempfiles + TAG_FILE[EF_CardAccess])
 
         with open(tempfiles + TAG_FILE[EF_CardAccess], "wb+") as outfile:
             outfile.write(data)
             outfile.flush()
-        print("ePP supports PACE! (but we don't :p)")
         PACE = True
+        pace_infos = pace.parse_cardaccess(data)
+        for pinfo in pace_infos:
+            print("  PACEInfo: %s  domain parameter %s%s"
+                  % (pinfo[0], pinfo[2], "" if pace.supported(pinfo) else "  (not implemented)"))
+        if not UsePACE:
+            print("ePP supports PACE (add the PACE keyword after the MRZ to use it)")
     else:
         print("ePP doesn't support PACE")
 
-    print("Select Passport Application (AID): ", end="")
-    if passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"):
+    if UsePACE:
+        if not pace_infos or not pace.supported(pace_infos[0]):
+            print("Cannot use PACE: no supported PACEInfo in EF.CardAccess")
+            sys.exit(True)
+        if not MRZ:
+            print("Please provide a MRZ to use PACE!")
+            sys.exit(True)
+        oid_dotted, oid_hex, param_id = pace_infos[0]
+        passport.MRPnumbercd = calculate_check_digit(passport.MRPnumber)
+        passport.MRPdobcd = calculate_check_digit(passport.MRPdob)
+        passport.MRPexpirycd = calculate_check_digit(passport.MRPexpiry)
+        kmrz = (passport.MRPnumber + passport.MRPnumbercd + passport.MRPdob
+                + passport.MRPdobcd + passport.MRPexpiry + passport.MRPexpirycd)
+        print()
+        print("Performing PACE (%s, domain parameter %d):" % (oid_dotted, param_id))
+        try:
+            KSenc, KSmac, SSC, pace_sm = pace.perform_pace(
+                passport, kmrz, oid_dotted, oid_hex, param_id,
+                password_ref=1, debug=DEBUG)
+        except pace.PACEError as pmsg:
+            print("PACE failed:", pmsg)
+            sys.exit(True)
+        print("PACE established secure messaging (%s)" % pace_sm)
+        print("  Session Key ENC: ", end="")
+        passport.HexPrint(KSenc)
+        print("  Session Key MAC: ", end="")
+        passport.HexPrint(KSmac)
+        print("Select Passport Application (AID) under SM: ", end="")
+        status, _d = secure_select_file(KSenc, KSmac, passport.AID_MRTD, p1="04")
+        if not status:
+            passport.iso_7816_fail(passport.errorcode)
         print("OK")
+        BAC = True
+        pace_authenticated = True
     else:
-        passport.iso_7816_fail(passport.errorcode)
-
-    print("Select Master File: ", end="")
-    if passport.iso_7816_select_file(TAG_FID[EF_COM], passport.ISO_7816_SELECT_BY_EF, "0C"):
-
-        # try forcing BAC by reading a file
-        status, data = read_file(TAG_FID[EF_DG1])
-        if not status and passport.errorcode == APDU_BAC:
-            BAC = True
+        print("Select Passport Application (AID): ", end="")
+        if passport.iso_7816_select_file(passport.AID_MRTD, passport.ISO_7816_SELECT_BY_NAME, "0C"):
+            print("OK")
         else:
-            print("No Basic Access Control!")
-            print(passport.errorcode)
-            BAC = False
-if BAC:
+            passport.iso_7816_fail(passport.errorcode)
+
+        print("Select Master File: ", end="")
+        if passport.iso_7816_select_file(TAG_FID[EF_COM], passport.ISO_7816_SELECT_BY_EF, "0C"):
+
+            # try forcing BAC by reading a file
+            status, data = read_file(TAG_FID[EF_DG1])
+            if not status and passport.errorcode == APDU_BAC:
+                BAC = True
+            else:
+                print("No Basic Access Control!")
+                print(passport.errorcode)
+                BAC = False
+if BAC and not pace_authenticated:
     print("Basic Access Control Enforced!")
 
 if SETBAC:
@@ -1363,7 +1407,7 @@ if BAC and not MRZ:
     print("Please provide a MRZ!")
     sys.exit(True)
 
-if not FILES and BAC:
+if not FILES and BAC and not pace_authenticated:
     print("Passport number: " + passport.MRPnumber)
     # if passport.MRPnumber.find("?") >= 0:
     if "?" in passport.MRPnumber:
@@ -1588,6 +1632,20 @@ if not FILES and BAC:
     with open(tempfiles + TAG_FILE[EF_COM], "wb+") as efcom:
         efcom.write(data)
         # efcom.flush()
+    print("EF.COM stored in", tempfiles + TAG_FILE[EF_COM])
+
+if not FILES and pace_authenticated:
+    # PACE has already established secure messaging; read EF.COM under SM
+    status, data = secure_read_file(KSenc, KSmac, TAG_FID[EF_COM])
+    if not status:
+        passport.iso_7816_fail(data)
+    print("EF.COM: ", end="")
+    if DEBUG:
+        passport.HexPrint(data)
+    eflist = decode_ef_com(data)
+    raw_efcom = data
+    with open(tempfiles + TAG_FILE[EF_COM], "wb+") as efcom:
+        efcom.write(data)
     print("EF.COM stored in", tempfiles + TAG_FILE[EF_COM])
 
 if not FILES and not BAC:
