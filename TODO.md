@@ -136,3 +136,22 @@ Caveats: client console output is version-sensitive (pin to one Iceman release a
 parse defensively); higher latency than a native transceive; needs the Iceman client
 built with Python support on the host. Minimum viable = 14443A select + APDU, which
 is enough for ChAP/mrpkey/rfidiot-cli over the pm3.
+
+## 7. Work through the open GitHub issues until they're all closed
+Ongoing housekeeping: on a regular basis, pick up
+<https://github.com/AdamLaurie/RFIDIOt/issues> and clear issues until the list is
+empty. For each: reproduce or verify against `master`, then fix-and-close,
+close-as-resolved/obsolete (with a comment explaining why and inviting a reopen),
+or close-as-wontfix. Use `gh issue list/view/comment/close`.
+
+Closed in the 2026-10-07 session: #11 (Corrected-MRZ check digits, fixed), #12
+(pynfc timeout - `-t 0` = infinite), #13 (libnfc 1.7.0, obsolete -> 1.8), #21
+(`.ser` AttributeError, silent-init path removed), #25 (`smartcard` NameError,
+guarded import), #40 (Py3 switch, done).
+
+Remaining are mostly hardware-specific (ACR122/ACR122U support #30/#46/#49, serial
+readers, specific tags: NTAG213 #24, iClass #28), writeblock gaps (#20/#26 - libnfc
+writeblock not implemented), and meta/feature requests (PyPI #22, examples dir #8,
+license #14, Windows #39, cannot-detect-reader #16, nfckey #47, acg.de gone #18,
+transaction failed #23). Tackle the hardware ones when the matching reader/card is
+to hand; the writeblock gaps tie into section 3; the meta ones can be done anytime.
