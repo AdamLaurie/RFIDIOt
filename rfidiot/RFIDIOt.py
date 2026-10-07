@@ -1134,6 +1134,32 @@ class rfidiot:
                 time.sleep(0.1)
         return True
 
+    def _pcsc_wait_present(self, timeout_s=4.0) -> bool:
+        "wait for a card to be reported present, waking a dozing contactless reader"
+        scard = smartcard.scard
+        try:
+            reader = self.pcsc_connection.getReader()
+        except Exception:
+            return False
+        hresult, hcontext = scard.SCardEstablishContext(scard.SCARD_SCOPE_USER)
+        if hresult != scard.SCARD_S_SUCCESS:
+            return False
+        try:
+            states = [(reader, scard.SCARD_STATE_UNAWARE)]
+            deadline = time.time() + timeout_s
+            while time.time() < deadline:
+                hresult, newstates = scard.SCardGetStatusChange(hcontext, 400, states)
+                if hresult == scard.SCARD_S_SUCCESS:
+                    _r, eventstate, _atr = newstates[0]
+                    if eventstate & scard.SCARD_STATE_PRESENT:
+                        return True
+                    states = [(reader, eventstate & ~scard.SCARD_STATE_CHANGED)]
+                elif hresult != scard.SCARD_E_TIMEOUT:
+                    return False
+            return False
+        finally:
+            scard.SCardReleaseContext(hcontext)
+
     def select(self, cardtype="A") -> bool:
         if self.DEBUG:
             print("in select")
@@ -1185,8 +1211,23 @@ class rfidiot:
                 print("selecting card using PCSC")
             try:
                 # start a new connection in case TAG has been switched
-                self.pcsc_connection.disconnect()
-                self.pcsc_connection.connect()
+                try:
+                    self.pcsc_connection.disconnect()
+                except smartcard.Exceptions.CardConnectionException:
+                    pass
+                # a contactless reader/field that has gone to sleep can report no
+                # card on the first connect; wait for a card-present event (which
+                # also wakes pcscd's polling) before connecting, then connect with
+                # a short retry as a backstop
+                self._pcsc_wait_present()
+                for _attempt in range(5):
+                    try:
+                        self.pcsc_connection.connect()
+                        break
+                    except smartcard.Exceptions.NoCardException:
+                        if _attempt == 4:
+                            raise
+                        time.sleep(0.2)
                 # track the negotiated protocol (T=0 or T=1) for transmit()
                 self.pcsc_protocol = self.pcsc_connection.getProtocol()
                 time.sleep(0.6)
