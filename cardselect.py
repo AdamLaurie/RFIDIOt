@@ -44,6 +44,9 @@ if card.select():
     print("    Card ID: " + card.uid)
     if card.readertype == card.READER_PCSC:
         print("    ATR: " + card.pcsc_atr)
+    elif card.readertype == card.READER_LIBNFC and card.sel_res:
+        print("    ATQA: " + card.sens_res + "   SAK: " + card.sel_res)
+        print("    Type: ISO 14443A - " + card.iso14443a_type())
 else:
     if card.errorcode:
         print("    " + card.get_error_str(card.errorcode))

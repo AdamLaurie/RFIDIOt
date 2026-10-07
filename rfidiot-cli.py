@@ -221,6 +221,9 @@ while args:
                 print(card.LFXTags[card.tagtype])
             else:
                 print(card.tagtype)
+            if card.readertype == card.READER_LIBNFC and card.sel_res:
+                print("      ATQA:", card.sens_res, "  SAK:", card.sel_res)
+                print("      Type: ISO 14443A -", card.iso14443a_type())
             if card.readertype == card.READER_PCSC:
                 if card.tagtype.find("ISO 15693") >= 0:
                     print()
