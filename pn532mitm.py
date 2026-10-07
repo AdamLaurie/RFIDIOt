@@ -31,48 +31,41 @@ import rfidiot
 from rfidiot.pn532 import *
 
 
-# try to connect to remote host. if that fails, alternately listen and connect.
+# Rendezvous with the remote end. Deterministic roles keep this simple and make
+# it work both host-to-host and over loopback (where both ends share a port):
+# the side whose remote is the EMULATOR listens, the other connects. (On Python 3
+# a single socket can't connect() and then listen() the way 2.7 tolerated, and on
+# loopback a symmetric "both bind + both connect" design self-connects - both are
+# avoided here.) 'ctype' is the remote's type; the two ends are always opposite.
 def connect_to(chost, cport, ctype):
     print("host", chost, "port", cport, "type", ctype)
-    peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    random.seed()
-    first = True
-    while 42:
-        peer.settimeout(random.randint(1, 10))
-        print(f"  Paging {chost} {cport}                    \r", end="")
-        sys.stdout.flush()
-        time.sleep(1)
-        try:
-            if peer.connect((chost, cport)) == 0:
-                print(f"  Connected to {chost} {cport}                  ")
-                send_data(peer, ctype)
-                cdata = recv_data(peer)
-                connection = peer
+    if ctype == "EMULATOR":
+        # our remote is the emulator, so we are the reader - listen for it
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("0.0.0.0", cport))
+        srv.listen(1)
+        print("  Listening on port %s ..." % cport)
+        connection, addr = srv.accept()
+        srv.close()
+        cdata = recv_data(connection)       # acceptor: receive then send
+        send_data(connection, ctype)
+        print("  Connected to %s %d" % (addr[0], addr[1]))
+    else:
+        # our remote is the reader - connect to it (retry until it is listening)
+        while True:
+            connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                connection.connect((chost, cport))
                 break
-        except Exception as exc:
-            # connection refused - the other end isn't up yet
-            if exc.errno == 111:
-                pass
-            else:
-                print("Could not open local socket:                    ")
-                print(exc)
-                sys.exit(True)
-        try:
-            print("  Listening for REMOTE on cport %s              \r" % port, end="")
-            sys.stdout.flush()
-            if first:
-                peer.bind(("0.0.0.0", cport))
-                peer.listen(1)
-                first = False
-            conn, addr = peer.accept()
-            if conn:
-                print("  Connected to %s cport %d                  " % (addr[0], addr[1]))
-                cdata = recv_data(conn)
-                send_data(conn, ctype)
-                connection = conn
-                break
-        except socket.timeout:
-            pass
+            except (ConnectionRefusedError, OSError):
+                connection.close()
+                print("  Paging %s %s ...          \r" % (chost, cport), end="")
+                sys.stdout.flush()
+                time.sleep(1)
+        send_data(connection, ctype)         # connector: send then receive
+        cdata = recv_data(connection)
+        print("  Connected to %s %s" % (chost, cport))
     if cdata == ctype:
         print("  Handshake failed - both ends are set to", ctype)
         time.sleep(1)
@@ -126,7 +119,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532mitm v3.0b")
+card.info("pn532mitm v3.0c")
 
 if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")
@@ -157,6 +150,17 @@ if chelp or len(args) < 1:
     print("\t    Use device no. 2 as the EMULATOR and remote system on 192.168.1.3 port 5000 as the READER:")
     print()
     print("\t      " + sys.argv[0] + " -r 2 reader:192.168.1.3:5000")
+    print()
+    print("\t  NB: the EMULATOR couples to the genuine target reader only over the air,")
+    print("\t  so reliability is a matter of antenna coupling, not of how many devices")
+    print("\t  share a host. All three (READER, EMULATOR, target reader) can run on one")
+    print("\t  machine, as long as the target is a PC/SC reader that couples well to the")
+    print("\t  EMULATOR (the OMNIKEY CardMan 5321 couples poorly and fails the larger")
+    print("\t  transfers; most other PC/SC readers are fine). The one combination that")
+    print("\t  does NOT work is this PC/SC MITM tooling alongside a libnfc target reader")
+    print("\t  on the SAME machine - they contend for the device. Splitting READER +")
+    print("\t  EMULATOR onto one machine with the target reader on another, or the socket")
+    print("\t  form across two machines to any remote target, works fine.")
     print()
     sys.exit(True)
 
@@ -279,6 +283,12 @@ if remote:
         send_data(connection, card.sens_res)
         send_data(connection, card.sel_res)
 
+# TgInitAsTarget mode (bitfield): 00=any, 01=passive, 02=DEP, 04=PICC-only.
+# A plain reader (e.g. OMNIKEY) activates the emulator as an ISO/IEC 14443-4 PICC
+# with mode 00. NB: a PN53x initiator (SCL3711/PN533) negotiates NFC-DEP with a
+# PN532 emulator and fails ("DEP protocol - invalid device state") for modes
+# 00/01, and the ACR122U firmware rejects PICC-only (04) with 637F - so an
+# ACR122U emulator can't currently be read by a PN53x; use a non-NXP reader.
 mode = ["00"]
 print("         UID:", full_uid)
 uid = [full_uid[2:]]
