@@ -112,3 +112,27 @@ Lower priority:
   result).
 - Load `CA_PUBLIC_KEYS` from an external file instead of editing source (ties into #4
   above).
+
+## 6. Add Proxmark3 (pm3) as a supported reader
+Deferred until after the command-line tools have all been exercised and verified
+over PC/SC and libnfc - do that pass first, then come back to this.
+
+Approach: **drive the Iceman/RRG pm3 client** (not the native wire protocol). The
+Iceman fork ships a `pm3` Python module - `p = pm3.pm3(); p.console("hf 14a apdu -s
+<hex>"); p.grabbed_output` - so we issue client commands and parse the text output.
+`hf 14a apdu` is exactly the ISO-7816 transceive the APDU tools (EMV/ePassport/JCOP)
+need, so that path lights up first; add MIFARE (`hf mf`) and LF (`lf ...`) after.
+
+Integration surface (mirrors the libnfc branches):
+- new `READER_PM3` constant in `RFIDIOt.py`; a `READER_PM3` branch in the ~10 methods
+  libnfc touches: `__init__`, `info`, `reset`, `select`, `hsselect`, `send_apdu`,
+  `login`, `readblock`, `readMIFAREblock`, `shutdown`.
+- new `rfidiot/pypm3.py` support module (the pm3-client analog of `pynfc.py`):
+  open/close the client, select 14443A (UID/ATQA/SAK), APDU transceive, later MIFARE.
+- option wiring in `rfidiot/__init__.py` (a `-R READER_PM3` / device option, mirroring
+  the `-f` libnfc handler).
+
+Caveats: client console output is version-sensitive (pin to one Iceman release and
+parse defensively); higher latency than a native transceive; needs the Iceman client
+built with Python support on the host. Minimum viable = 14443A select + APDU, which
+is enough for ChAP/mrpkey/rfidiot-cli over the pm3.
