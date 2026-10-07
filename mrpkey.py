@@ -23,6 +23,7 @@
 
 import sys
 import os
+import shutil
 # import subprocess
 # import io
 from tkinter import (
@@ -1187,6 +1188,9 @@ def print_help():
     print("\tPassive Authentication: set $RFIDIOT_MASTERLIST to a CSCA master list (.ml)")
     print("\t(e.g. the BSI GermanMasterList) to verify the passport and flag it SAFE/UNSAFE,")
     print("\tor place one at ~/.rfidiot/masterlist.ml or /etc/rfidiot/masterlist.ml.")
+    print("\tWithout a master list it still checks data-group integrity and any CSCA the")
+    print("\tdocument itself carries. Set $RFIDIOT_CSCA_FETCH=1 to also follow the URLs the")
+    print("\tdocument names (AIA/CPS) to fetch a CSCA - result stays UNTRUSTED (DUT-chosen).")
     print()
     sys.exit(True)
 
@@ -1626,8 +1630,11 @@ for tag in eflist:
     print("Reading:", TAG_NAME[tag])
     if not FILES:
         if tag in [EF_DG3, EF_DG4]:
-            # if we try and fail, we need to establish a new BAC session
-            print("skipping (requires PACE auth)")
+            # DG3 (fingerprints) / DG4 (iris) are EAC-protected: reading them needs
+            # Terminal Authentication with a country-signed inspection-system
+            # certificate, which we don't have (and a failed attempt would drop the
+            # secure-messaging session and force a new BAC).
+            print("skipping (requires EAC Terminal Authentication - country-signed inspection-system certificate)")
             continue
         if BAC:
             status, data = secure_read_file(KSenc, KSmac, TAG_FID[tag])
@@ -1806,24 +1813,32 @@ if os.path.exists(_pa_sod):
     print()
     if _pa_ml:
         print("===== Passive Authentication (%s) =====" % _pa_ml)
-        try:
-            import passiveauth
-
-            _pa_verdict = passiveauth.passive_authenticate(_pa_sod, _pa_ml, tempfiles)
-        except Exception as _pa_e:
-            _pa_verdict = None
-            print("Passive Authentication error:", _pa_e)
-        print()
-        if _pa_verdict == "SAFE":
-            print("***** PASSPORT SAFE - signed by a CSCA in the master list, data groups intact *****")
-        elif _pa_verdict == "TAMPERED":
-            print("##### PASSPORT UNSAFE - TAMPERED: data altered and not validly re-signed #####")
-        elif _pa_verdict == "UNTRUSTED":
-            print("##### PASSPORT UNSAFE - UNTRUSTED: internally consistent but signer NOT in the master list (unknown CSCA) #####")
-        else:
-            print("----- Passport trust UNVERIFIED - could not run Passive Authentication -----")
     else:
-        print("(Passive Authentication skipped - set $RFIDIOT_MASTERLIST to a CSCA master list .ml to enable)")
+        print("===== Passive Authentication (no master list - content + self-provided CSCA only) =====")
+    _pa_fetch = os.environ.get("RFIDIOT_CSCA_FETCH", "").lower() in ("1", "true", "yes", "on")
+    try:
+        import passiveauth
+
+        _pa_verdict = passiveauth.passive_authenticate(_pa_sod, _pa_ml or None, tempfiles, fetch=_pa_fetch)
+    except Exception as _pa_e:
+        _pa_verdict = None
+        print("Passive Authentication error:", _pa_e)
+    print()
+    if _pa_verdict == "SAFE":
+        print("***** PASSPORT SAFE - signed by a CSCA in the master list, data groups intact *****")
+    elif _pa_verdict == "TAMPERED":
+        print("##### PASSPORT UNSAFE - TAMPERED: data altered and not validly re-signed #####")
+    elif _pa_verdict == "SELFSIGNED":
+        print("##### PASSPORT UNSAFE - UNTRUSTED: data groups intact and the DS chains to a CSCA, but that")
+        print("      CSCA was supplied by the document itself (circular) - NO proof of authenticity #####")
+        if not _pa_ml:
+            print("      (set $RFIDIOT_MASTERLIST to a CSCA master list .ml to establish real trust)")
+    elif _pa_verdict == "UNTRUSTED":
+        print("##### PASSPORT UNSAFE - UNTRUSTED: internally consistent but no trusted CSCA for the signer #####")
+        if not _pa_ml:
+            print("      (set $RFIDIOT_MASTERLIST to a CSCA master list .ml to establish real trust)")
+    else:
+        print("----- Passport trust UNVERIFIED - could not run Passive Authentication -----")
 
 # image read is nasty hacky bodge to see if image display without interpreting the headers
 # start of image location may change - look for JPEG header bytes 'FF D8 FF E0'
@@ -1849,15 +1864,17 @@ if not Nogui:
     frame = Frame(root, colormap="new", visual="truecolor").grid()
     root.title(f"{myver} (RFIDIOt v{passport.VERSION})")
     if Filetype == "JP2":
-        # nasty hack to deal with JPEG 2000 until PIL support comes along
-        exitstatus = os.system("convert %sJP2 %sJPG" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
-        print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
+        # nasty hack to deal with JPEG 2000 until PIL support comes along.
+        # ImageMagick 7 renamed 'convert' to 'magick'; prefer it when present.
+        _im = "magick" if shutil.which("magick") else "convert"
+        exitstatus = os.system("%s %sJP2 %sJPG" % (_im, tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
         if exitstatus:
             print("Could not convert JPEG 2000 image (%d) - please install ImageMagick" % exitstatus)
             sys.exit(True)
-        elif Display_DG7:
-            os.system("convert %sJP2 %sJPG" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7."))
-            print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7."))
+        print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG2.", tempfiles + "EF_DG2."))
+        if Display_DG7:
+            if not os.system("%s %sJP2 %sJPG" % (_im, tempfiles + "EF_DG7.", tempfiles + "EF_DG7.")):
+                print("      (converted %sJP2 to %sJPG for display)" % (tempfiles + "EF_DG7.", tempfiles + "EF_DG7."))
         Filetype = "JPG"
     # TODO need to open EF_DG2_* in case of multiple images??
     imagedata = ImageTk.PhotoImage(file=tempfiles + "EF_DG2." + Filetype)
