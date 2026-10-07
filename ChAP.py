@@ -1739,6 +1739,11 @@ def _pin_result(sw1, sw2):
         print("wrong PIN - %d tries left" % (int(sw2) & 0x0F))
     elif [sw1, sw2] == SW12_NOT_SUPORTED:
         print("Function not supported")
+    elif [sw1, sw2] == SW12_COND_NOT_SAT:
+        print("conditions of use not satisfied (6985) - the card would not run the")
+        print("  VERIFY in this context. Offline PIN is a contact-interface function:")
+        print("  use the contact slot, not contactless. If already on contact, the")
+        print("  card may need re-inserting to reset its state.")
     else:
         print("command failed! ", end="")
         hexprint([sw1, sw2])
