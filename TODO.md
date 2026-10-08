@@ -273,6 +273,59 @@ before assuming the MITM target role. Minimum viable here: the reader back-end
 (HF14A_SCAN + HF14A_RAW) so ChAP/mrpkey/rfidiot-cli work over a Chameleon, plus the
 `chameleon.py` UID/dump loader.
 
+## 11. ACR122U long-response reads over libnfc - **[DONE]**
+The ACR122U's PN532 reassembles ISO 14443-4 (T=CL) chained responses in a small
+internal buffer and overflows on long records, aborting the transceive with
+pseudo-status `63 27` ("RF Transmission Error" at the libnfc layer). Any 14443-4
+response that chains was unreadable on this reader: an EMV issuer-public-key-
+certificate record (248 bytes) and an ePassport DG2 (18 KB) both failed, so `ChAP.py`
+offline auth (`-c`) and `mrpkey.py` DG reads broke over an ACR122U while working on a
+PN53x. Records that fit one frame succeeded, which made it look intermittent.
+
+Fix (commits `ee7eb03`/`e205f85`/`3406f17`, library `VERSION` 3.0g, `ChAP.py` Ver
+3.1b): when the opened libnfc device is an ACR122U (detected by its `acr122`
+connstring prefix - the reader name is a generic "CCID USB Reader") and a 14443-4
+card is selected (SAK bit `0x20`), turn libnfc "easy framing" **off** right after
+RATS and drive T=CL in software in `pynfc` - I-block number toggling, R(ACK) for
+receive-side chaining, S(WTX) echoes - the same engine as the Chameleon back-end
+(section 10). Two parts were needed:
+- `enable_software_tcl()` (in `select()`, which `hsselect()` delegates to): each raw
+  I-block now stays within one frame, so the PN532 never overflows.
+- raise `NP_TIMEOUT_COM` to 3000 ms while software T=CL is active. libnfc's default
+  raw-transceive (InCommunicateThru) timeout is ~52 ms; with easy framing on libnfc
+  extends it itself for ISO 14443-4, but with it off we own T=CL, so a card's S(WTX)
+  waiting-time-extension request (e.g. ePassport BAC's `EXTERNAL AUTHENTICATE`, which
+  runs 3DES on-chip) would otherwise RF-error at ~52 ms. EMV didn't surface this (its
+  reads return quickly); mrpkey's BAC did.
+
+Scoped to the ACR122U only - other libnfc readers (the SCL3711/PN53x, which chain in
+firmware) are byte-for-byte unchanged; `sendAPDU`'s raw transceive was factored into
+`_raw_frame()` and shared by both paths.
+
+Hardware-verified on an ACR122U/Touchatag (libnfc `acr122_usb`):
+- `ChAP.py -f 0 -c`: full contactless EMV read, 0 driver/read errors, SDA/DDA cert
+  chain recovered and verified (CA 1984-bit -> Issuer 1408-bit -> ICC 1024-bit,
+  including the 248-byte chained issuer cert).
+- `mrpkey.py -f 0 <MRZ>`: full ePassport BAC + secure messaging, EF.COM/SOD/DG1/DG2/
+  DG14, the 18,417-byte EF.DG2 JPEG read in full via T=CL chaining.
+
+Affected tools (the 14443-4 APDU path over an ACR122U via libnfc): `ChAP.py` and
+`mrpkey.py` (both verified above); `rfidiot-cli.py` APDU/SELECT/IDENTIFY;
+`jcopsetatrhist.py`/`jcopmifare.py` contactless JCOP; `nfcid.py` (enables the mode but
+only reads the UID). NOT affected: any non-ACR122U libnfc reader; PC/SC-only tools
+(`send_apdu.py` uses `pcsc_send_apdu` directly; `pn532mitm.py`/`pn532emulate.py` use
+the ACS path); serial readers; all MIFARE Classic/Ultralight tools (SAK lacks `0x20`
+and/or go via `configMifare`, which forces software T=CL off); LF tools.
+
+Known limitation: software T=CL sends each command as a single I-block (no SEND-side
+chaining), matching the Chameleon back-end. A command APDU whose data field exceeds
+one frame (extended-length / >~255-byte command) over an ACR122U+14443-4 wouldn't be
+chained. The read flows (passport, EMV, IDENTIFY, JCOP select/auth) never do this; the
+only realistic trigger is loading a large data/applet block to a JavaCard via
+`jcopmifare`/`jcoptool` - and GP load blocks are <=255 bytes and normally done over
+contact PC/SC. If ever needed, send-side chaining is a small addition. May relate to
+the open "ACR122 reader support" issue #30 (section 7) - check it against this.
+
 Existing tools the reader back-end would unlock (exposes 14443-A select + ISO-7816
 APDU transceive + MIFARE Classic auth/read/write, and LF EM410x read; NO 14443-B,
 15693 or Hitag):
