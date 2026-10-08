@@ -194,3 +194,61 @@ either. It also cannot emulate raw MIFARE Classic. So the realistic win is a
 convenient APDU-level target for the eMRTD/EMV MITM path, not full low-level control;
 confirm what a current Android release exposes before committing. Minimum viable: an
 HCE app speaking the existing `pn532mitm` socket protocol as the EMULATOR end.
+
+## 10. Chameleon Ultra helper app (reader + emulator back-end over serial)
+Add support for the Proxgrind/RRG **Chameleon Ultra** (and Lite) as both a reader
+and an emulator. Unlike the PN532 it drives its own anti-collision, so it can emulate
+an **arbitrary 4- or 7-byte UID** (no forced `08` first byte - see the note in
+`pn532emulate.py`/`pn532mitm.py`), which also makes it a strong emulator candidate for
+the MITM/clone use in sections 8-9.
+
+Protocol (from RfidResearchGroup/ChameleonUltra `software/script/chameleon_com.py` +
+`firmware/application/src/data_cmd.h`): USB CDC-ACM serial at 115200. Binary frame,
+all multi-byte fields big-endian:
+
+    SOF(1)=0x11 | LRC1(1) of SOF (always 0xEF) | CMD(2) | STATUS(2) | LEN(2) |
+    LRC2(1) over SOF..LEN | DATA(LEN) | LRC3(1) over SOF..DATA
+
+where each LRC = `(0x100 - (sum(preceding bytes) & 0xFF)) & 0xFF`. A response reuses
+the same frame (CMD echoed, STATUS = result code, DATA = payload). Auto-detect the
+port by the device's USB VID/PID, as the official client does.
+
+Key command IDs (decimal):
+- device/mode: GET_APP_VERSION 1000, GET_DEVICE_CHIP_ID 1011, GET_DEVICE_MODE 1002,
+  CHANGE_DEVICE_MODE 1001 (reader vs. tag/emulator).
+- reader HF: HF14A_SCAN 2000 (UID/ATQA/SAK), HF14A_RAW 2010 (arbitrary APDU
+  transceive - the ISO-7816 path ChAP/mrpkey/rfidiot-cli need), MF1_AUTH 2007 /
+  MF1_READ 2008 / MF1_WRITE 2009. reader LF: EM410X_SCAN 3000.
+- emulation/slots: SET_ACTIVE_SLOT 1003, SET_SLOT_TAG_TYPE 1004, SET_SLOT_ENABLE 1006,
+  SLOT_DATA_CONFIG_SAVE 1009; HF14A_SET_ANTI_COLL_DATA 4001 (set emulated UID/ATQA/SAK
+  - the arbitrary-UID win), MF1_WRITE_EMU_BLOCK_DATA 4000 (load a MIFARE dump block by
+  block), EM410X_SET_EMU_ID 5000.
+
+Integration surface (mirrors the libnfc / planned pm3 branches in section 6):
+- `rfidiot/pychameleon.py` support module (analog of `pynfc.py`): pyserial open/close
+  + port auto-detect, the frame codec above, `send(cmd, data) -> (status, resp)`, and
+  typed helpers for the commands listed. Defensive parsing (validate each LRC) and a
+  firmware-version pin, since command IDs can shift across releases.
+- new `READER_CHAMELEON` constant in `RFIDIOt.py`; a branch in the ~10 reader methods
+  (`__init__`, `info`, `reset`, `select`, `hsselect`, `send_apdu`, `login`,
+  `readblock`, `readMIFAREblock`, `shutdown`), using CHANGE_DEVICE_MODE->reader +
+  HF14A_SCAN for select and HF14A_RAW for APDU transceive.
+- option wiring in `rfidiot/__init__.py`: `-R READER_CHAMELEON` with the serial port
+  via `-l` (or auto-detect), mirroring the `-f` libnfc handler.
+- new root tool, e.g. `chameleon.py`, for the emulator/loader side:
+  - `SLOT <n> UID <hex> [ATQA <hex> SAK <hex>]` -> active slot + 14A type +
+    HF14A_SET_ANTI_COLL_DATA + save (arbitrary UID, incl. 7-byte).
+  - `SLOT <n> MFLOAD <dump.bin|.mct>` -> MF1_WRITE_EMU_BLOCK_DATA per block + anti-coll
+    from block 0 + save (clone a dumped MIFARE Classic 1K/4K into a slot).
+  - `SLOT <n> EM410X <id>` -> EM410X_SET_EMU_ID + save.
+  This also lets `rfidiot-cli.py DUMP` (read a card via the reader back-end) feed
+  straight into a Chameleon slot - i.e. "clone to Chameleon".
+
+Caveat for the MITM (section 9 context): the Chameleon's HF emulation is **slot/data
+based** (it answers from stored anti-coll + MIFARE block data), not a live
+ISO-14443-4 APDU relay like the PN532's `TgInitAsTarget`. So it is ideal for cloning a
+dumped card or a chosen UID, but is **not** a drop-in live-relay emulator for
+`pn532mitm` unless the firmware exposes an APDU-forwarding emulation mode - check
+before assuming the MITM target role. Minimum viable here: the reader back-end
+(HF14A_SCAN + HF14A_RAW) so ChAP/mrpkey/rfidiot-cli work over a Chameleon, plus the
+`chameleon.py` UID/dump loader.
