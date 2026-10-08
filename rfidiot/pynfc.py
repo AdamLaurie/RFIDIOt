@@ -422,6 +422,11 @@ class NFC():
             ctypes.c_int,
             ctypes.c_bool,
         ]
+        self.libnfc.nfc_device_set_property_int.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
         self.libnfc.nfc_close.argtypes = [ctypes.c_void_p]
         self.libnfc.nfc_perror.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p]
         self.libnfc.nfc_initiator_list_passive_targets.argtypes = [
@@ -645,10 +650,17 @@ class NFC():
         overflow (see configure()).
         """
         self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, False)
+        # libnfc's default raw-transceive (InCommunicateThru) RF timeout is ~52 ms.
+        # With easy framing on, libnfc extends it itself for ISO 14443-4 / WTX; with
+        # it off we own T=CL, so a card's S(WTX) waiting-time-extension request (e.g.
+        # ePassport BAC crypto, which needs longer than one frame time) would RF-error
+        # at ~52 ms. Give raw frames a generous timeout so slow responses complete.
+        # (A larger ceiling never slows fast responses - they return immediately.)
+        self.libnfc.nfc_device_set_property_int(self.device, NP_TIMEOUT_COM, 3000)
         self._iblock = 0
         self.software_tcl = True
         if rfidiotglobals.Debug:
-            self.log.debug("software T=CL enabled (easy framing off)")
+            self.log.debug("software T=CL enabled (easy framing off, COM timeout 3000ms)")
 
     def disable_software_tcl(self):
         "restore reader-firmware ISO 14443-4 framing"
