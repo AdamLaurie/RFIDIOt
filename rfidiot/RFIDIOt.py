@@ -198,6 +198,25 @@ class rfidiot:
             elif self.readertype == self.READER_LIBNFC:
                 self.nfc = pynfc.NFC(self.NFCReader)
                 self.readername = self.nfc.LIBNFC_READER
+            # Chameleon Ultra (serial), used as an ISO 14443-A reader
+            elif self.readertype == self.READER_CHAMELEON:
+                from . import pychameleon
+
+                # auto-detect the Chameleon's USB CDC port by default; honor an
+                # explicit -l only when it names an ACM port (the default -l is a
+                # serial reader's /dev/ttyUSB0, which is not a Chameleon)
+                cu_port = None
+                if isinstance(self.NFCReader, str):
+                    cu_port = self.NFCReader
+                elif port and "ACM" in str(port):
+                    cu_port = port
+                try:
+                    self.chameleon = pychameleon.Chameleon(port=cu_port, debug=self.DEBUG)
+                except pychameleon.ChameleonError as e:
+                    print("Chameleon: %s" % e)
+                    sys.exit(True)
+                self.chameleon.set_reader_mode()
+                self.readername = self.chameleon.readername
             # Andoid reader
             elif self.readertype == self.READER_ANDROID:
                 self.android = pyandroid.Android()
@@ -244,7 +263,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.0e"
+    VERSION = "3.0f"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -256,6 +275,7 @@ class rfidiot:
     READER_LIBNFC = 0x08
     READER_NONE = 0x09
     READER_ANDROID = 0x10
+    READER_CHAMELEON = 0x11
     # TAG related globals
     errorcode = ""
     binary = ""
@@ -1336,6 +1356,22 @@ class rfidiot:
                 self.errorcode = "Error selecting card using LIBNFC" + str(e)
                 return False
 
+        if self.readertype == self.READER_CHAMELEON:
+            if cardtype != "A":
+                if self.DEBUG:
+                    print("Chameleon reader supports ISO 14443-A only")
+                return False
+            tag = self.chameleon.scan()
+            if tag:
+                self.uid, self.sens_res, self.sel_res, self.ats = tag
+                self.tagtype = "ISO 14443A"
+                if self.DEBUG:
+                    print("UID: " + self.uid)
+                return True
+            if self.DEBUG:
+                print("No TAG present!")
+            return False
+
         if self.readertype == self.READER_ANDROID:
             try:
                 if self.DEBUG:
@@ -1803,6 +1839,21 @@ class rfidiot:
             ret, result = self.nfc.sendAPDU(cla + ins + p1 + p2 + lc + data + le, self.timeout)
             if not ret:
                 self.errorcode = "PN00"
+                return False
+            self.data = result[0:-4]
+            self.errorcode = result[len(result) - 4 : len(result)]
+            if self.errorcode != self.ISO_OK:
+                return False
+            return True
+        if self.readertype == self.READER_CHAMELEON:
+            if self.DEBUG:
+                print("In send_apdu - for Chameleon:", cla + ins + p1 + p2 + lc + data + le)
+            try:
+                ret, result = self.chameleon.sendAPDU(cla + ins + p1 + p2 + lc + data + le, self.timeout)
+            except Exception as e:
+                self.errorcode = "CU00"
+                if self.DEBUG:
+                    print("Chameleon APDU error:", e)
                 return False
             self.data = result[0:-4]
             self.errorcode = result[len(result) - 4 : len(result)]

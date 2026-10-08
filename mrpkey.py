@@ -710,7 +710,7 @@ def secure_read_file(keyenc, keymac, file):
             toread = readlen
         status, rapdu = secure_read_binary(keymac, toread, offset)
         if not status:
-            return rapdu
+            return False, rapdu
         do87 = rapdu[6 : (toread + (8 - toread % 8)) * 2 + 6]
         tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
         decdo87 += tdes.decrypt(passport.ToBinary(do87))[:toread]
@@ -1146,7 +1146,7 @@ Help = rfidiot.help
 Nogui = rfidiot.nogui
 DEBUG = rfidiot.rfidiotglobals.Debug
 
-myver = "mrpkey v3.1a"
+myver = "mrpkey v3.1b"
 
 TEST = False
 FILES = False

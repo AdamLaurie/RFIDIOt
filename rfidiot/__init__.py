@@ -107,6 +107,7 @@ def printoptions():
     print("\t\t\t\tREADER_ACG:\tACG Serial")
     print("\t\t\t\tREADER_ACS:\tPC/SC Subtype ACS")
     print("\t\t\t\tREADER_ANDROID:\tAndroid")
+    print("\t\t\t\tREADER_CHAMELEON:\tChameleon Ultra (serial, ISO 14443-A reader)")
     print("\t\t\t\tREADER_DEMOTAG:\tDemoTag")
     print("\t\t\t\tREADER_FROSCH:\tFrosch Hitag")
     print("\t\t\t\tREADER_LIBNFC:\tlibnfc")

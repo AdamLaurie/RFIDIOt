@@ -4,3 +4,5 @@ pycryptodome>=3.20.0
 #   needs only the openssl command-line tool (no Python crypto library)
 # jcoptool.py (JCOP / GlobalPlatform card tool)
 pyasn1
+# serial readers: ACG / Frosch / DemoTag, and the Chameleon Ultra (READER_CHAMELEON)
+pyserial
