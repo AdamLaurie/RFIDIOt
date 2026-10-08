@@ -149,12 +149,20 @@ Closed in the 2026-10-07 session: #11 (Corrected-MRZ check digits, fixed), #12
 (`.ser` AttributeError, silent-init path removed), #25 (`smartcard` NameError,
 guarded import), #40 (Py3 switch, done).
 
-Remaining are mostly hardware-specific (ACR122/ACR122U support #30/#46/#49, serial
+Closed in the 2026-10-08 session: #49 (ACR122 emulate IndexError in
+`acs_transmit_apdu` - guard short/empty SCardControl response -> clean SW 6300),
+#23 (ACR122U "Failed to control" with no card - a libccid CCID-escape config
+requirement; made the hint Linux-aware), #35 (import-time exit - `rfidiot.card`
+is now lazy via PEP 562, so `import rfidiot` has no hardware side effect), #46
+(cannot-reproduce; pcscd saw 0 readers = host driver/daemon issue, not RFIDIOt),
+#16 (usage: a libnfc PN533 reader needs `-R READER_LIBNFC`/`-f`, not PC/SC).
+
+Remaining are mostly hardware-specific (ACR122 reader support #30, serial
 readers, specific tags: NTAG213 #24, iClass #28), writeblock gaps (#20/#26 - libnfc
 writeblock not implemented), and meta/feature requests (PyPI #22, examples dir #8,
-license #14, Windows #39, cannot-detect-reader #16, nfckey #47, acg.de gone #18,
-transaction failed #23). Tackle the hardware ones when the matching reader/card is
-to hand; the writeblock gaps tie into section 3; the meta ones can be done anytime.
+license #14, Windows #39, nfckey #47, acg.de gone #18). Tackle the hardware ones
+when the matching reader/card is to hand; the writeblock gaps tie into section 3;
+the meta ones can be done anytime.
 
 ## 8. DemoTag deprecation follow-up
 `demotag.py` is now marked **DEPRECATED** (v3.0a): the IAIK TUG DemoTag is
