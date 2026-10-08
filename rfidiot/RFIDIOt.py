@@ -182,7 +182,14 @@ class rfidiot:
                         if hresult != smartcard.scard.SCARD_S_SUCCESS:
                             print("Failed to control: " + smartcard.scard.SCardGetErrorMessage(hresult))
                             if hresult == smartcard.scard.SCARD_E_NOT_TRANSACTED:
-                                print("Did you set DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED in ifdDriverOptions in libccid_Info.plist?")
+                                # issue #23: direct reader (escape) commands on the
+                                # ACR122U PICC need CCID exchange authorised in libccid.
+                                print("  This reader needs direct CCID escape commands enabled. Set")
+                                print("  ifdDriverOptions to 0x0001 (DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED)")
+                                print("  in the libccid Info.plist (on Linux usually /etc/libccid_Info.plist")
+                                print("  or /usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist), then")
+                                print("  restart pcscd - or simply present a card so a normal transaction is")
+                                print("  used instead of the direct-control fallback.")
                             sys.exit(True)
                     self.pcsc_atr = self.ListToHex(newstates[0][2])
                 if self.readersubtype == self.READER_ACS:
@@ -237,7 +244,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.0c"
+    VERSION = "3.0d"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -1458,6 +1465,12 @@ class rfidiot:
                 return "", 0x90, 0x00
             # else:
             return "", 0x63, 0x00
+        if len(response) < 2:
+            # The reader returned no status word - e.g. an empty direct-transmit
+            # response when TgInitAsTarget is rejected on an ACR122U acting as the
+            # emulator. Report a clean failure (SW 6300) rather than raising
+            # IndexError on response[-2] (issue #49).
+            return [], 0x63, 0x00
         result = response[:-2]
         sw1 = response[-2]
         sw2 = response[-1]
