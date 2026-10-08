@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 #  demotag.py - test IAIK TUG DemoTag`
 #
+#  DEPRECATED: the IAIK TUG DemoTag is long-obsolete research hardware and the
+#  READER_DEMOTAG path is only vestigially wired into the library. Kept for
+#  historical reference; unlikely to be usable on current systems.
+#
 #  Adam Laurie <adam@algroup.co.uk>
 #  http://rfidiot.org/
 #
@@ -31,6 +35,8 @@ except Exception as e:
     sys.exit(False)
 
 args = rfidiot.args
+
+print("demotag v3.0a - DEPRECATED (IAIK TUG DemoTag is obsolete hardware)")
 
 if rfidiot.help:
     sys.exit(True)
