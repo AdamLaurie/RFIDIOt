@@ -173,3 +173,24 @@ question: fully remove the `READER_DEMOTAG` path (the constant, the `-R` wiring,
 `DT_SET_UID`/`DT_ERROR` command set and `demotag()` method, and the tool itself)
 rather than carrying dead code, vs. keeping it for historical reference. Decide
 before the next housekeeping pass; if removing, it is a clean self-contained delete.
+
+## 9. Consider an Android emulator back-end for pn532emulate / pn532mitm
+Today the EMULATOR (target) role in `pn532emulate.py` and `pn532mitm.py` is a PN532
+driven via `TgInitAsTarget`. Investigate using an Android phone (Host Card Emulation)
+as the emulator instead - there is already precedent for Android integration
+(`READER_ANDROID` / `rfidiot/pyandroid.py`, an Android NFC device over a socket), so
+the socket-relay form of `pn532mitm` could terminate at an HCE app on the phone.
+
+Why it's worth it: cheap, ubiquitous hardware (no PN532/ACR122 needed for the target
+side); and it may sidestep the PN532's forced `08` UID first byte (the chip only
+takes a 3-byte NFCID1t and hard-wires byte 0 to `08` - see the note in
+`pn532emulate.py`/`pn532mitm.py`). Exact for ePassports, but a hard limit otherwise.
+
+Caveats to check first: Android HCE emulates an ISO/IEC 14443-4 Type A PICC at the
+**APDU** level only (SELECT-AID routed to a service) - the app does not drive
+low-level anticollision, and the UID is still OS-controlled (typically a random UID
+that also begins with `08`), so HCE may not actually buy arbitrary-UID emulation
+either. It also cannot emulate raw MIFARE Classic. So the realistic win is a
+convenient APDU-level target for the eMRTD/EMV MITM path, not full low-level control;
+confirm what a current Android release exposes before committing. Minimum viable: an
+HCE app speaking the existing `pn532mitm` socket protocol as the EMULATOR end.
