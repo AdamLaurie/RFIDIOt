@@ -119,7 +119,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532mitm v3.0c")
+card.info("pn532mitm v3.0d")
 
 if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")
@@ -291,6 +291,14 @@ if remote:
 # ACR122U emulator can't currently be read by a PN53x; use a non-NXP reader.
 mode = ["00"]
 print("         UID:", full_uid)
+# TgInitAsTarget only carries a 3-byte NFCID1t, and in target mode the PN532
+# always emits a single-size (4-byte) UID whose first byte is hard-wired to 0x08
+# (the ISO/IEC 14443-3 cascade-tag / random-UID marker). So we can only clone the
+# low 3 bytes of the source UID here; byte 0 comes out 0x08 no matter what we pass,
+# which is why it is stripped. This is exact for ICAO 9303 ePassports (their UIDs
+# are random and already start with 0x08) but will not reproduce a fixed non-0x08
+# first byte (e.g. a real MIFARE manufacturer byte) - the PN532 cannot do that;
+# an arbitrary byte 0 needs a different emulator (Proxmark3, Chameleon).
 uid = [full_uid[2:]]
 print("    sens_res:", sens_res[0])
 print("     sel_res:", sel_res[0])
