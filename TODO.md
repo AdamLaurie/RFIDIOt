@@ -196,6 +196,16 @@ confirm what a current Android release exposes before committing. Minimum viable
 HCE app speaking the existing `pn532mitm` socket protocol as the EMULATOR end.
 
 ## 10. Chameleon Ultra helper app (reader + emulator back-end over serial)
+**[DONE] Reader back-end** (`READER_CHAMELEON`, commit adds `rfidiot/pychameleon.py`):
+the Chameleon Ultra works as an ISO 14443-A reader over USB CDC serial - frame codec,
+USB auto-detect, firmware-version gate, `HF14A_SCAN_KEEP` select, and a T=CL APDU
+engine (I-block toggling, S(WTX), receive chaining) over `HF14A_RAW`. Hardware-verified
+on hw_v1 / fw v2.2.0: a full `mrpkey.py -R READER_CHAMELEON` ePassport read (BAC +
+secure messaging + EF.COM/SOD/DG1/DG2/DG14, incl. the 18 KB DG2 JPEG via chaining;
+Passive Auth confirms the DG hashes). **Remaining:** the emulator/loader side
+(`chameleon.py` for UID/dump loading) below, plus MIFARE Classic reader ops
+(`MF1_AUTH/READ/WRITE`) and LF EM410x if wanted.
+
 Add support for the Proxgrind/RRG **Chameleon Ultra** (and Lite) as both a reader
 and an emulator. Unlike the PN532 it drives its own anti-collision, so it can emulate
 an **arbitrary 4- or 7-byte UID** (no forced `08` first byte - see the note in
