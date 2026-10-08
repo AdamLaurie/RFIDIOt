@@ -218,7 +218,6 @@ class Chameleon:
         # send as a single I-block (command APDUs fit a frame; send-side chaining
         # is not needed for the eMRTD/EMV read flows)
         pcb = 0x02 | self._iblock
-        self._iblock ^= 1
         resp = self._transceive_block(bytes([pcb]) + apdu_bytes, timeout_ms)
 
         inf = bytearray()
@@ -238,6 +237,12 @@ class Chameleon:
                     ack = 0xA2 | ((p & 0x01) ^ 0x01)
                     resp = self._transceive_block(bytes([ack]), timeout_ms)
                     continue
+                # final I-block: the next command's block number is this block's
+                # number toggled. Deriving it from the last received block (rather
+                # than a blind per-APDU toggle) keeps us in sync when the card
+                # chained an odd number of blocks - otherwise the next command is
+                # sent with the wrong block number and the card ignores it.
+                self._iblock = (p & 0x01) ^ 0x01
                 break
             if (p & 0xF6) == 0xF2:
                 # S(WTX) waiting-time extension request: echo it back
