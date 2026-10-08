@@ -28,8 +28,8 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(False)
 
 args = rfidiot.args
@@ -80,7 +80,7 @@ if chelp or len(args) > 6:
     print()
     sys.exit(True)
 
-card.info("readmifaresimple v3.0a")
+card.info("readmifaresimple v3.0b")
 
 if not card.select():
     card.waitfortag("waiting for Mifare TAG...")

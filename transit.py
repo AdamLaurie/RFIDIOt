@@ -27,14 +27,14 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("transit v3.0a")
+card.info("transit v3.0b")
 
 precoded = False
 

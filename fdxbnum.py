@@ -28,14 +28,14 @@ import sys
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 arg_help = rfidiot.help
 
-card.info("fdxbnum v3.0a")
+card.info("fdxbnum v3.0b")
 
 precoded = False
 

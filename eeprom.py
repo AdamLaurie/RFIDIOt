@@ -26,11 +26,11 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
-card.info("eeprom v3.0a")
+card.info("eeprom v3.0b")
 print("Station:\t" + card.station())
 print("Protocol:\t" + card.PCON())
 print("Protocol2:\t" + card.PCON2())

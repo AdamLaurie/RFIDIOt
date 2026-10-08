@@ -28,11 +28,11 @@ import sys
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
-card.info("send_apdu v3.0a")
+card.info("send_apdu v3.0b")
 card.select()
 print("\nID: " + card.uid)
 print("  Data:")

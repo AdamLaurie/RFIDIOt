@@ -29,14 +29,14 @@ import random
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("writemifare1k v3.0a")
+card.info("writemifare1k v3.0b")
 card.select()
 print("Card ID: " + card.uid)
 while True:

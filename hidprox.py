@@ -28,11 +28,11 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
-card.info("hidprox v3.0a")
+card.info("hidprox v3.0b")
 
 if not card.readersubtype == card.READER_OMNIKEY:
     print("Reader type not supported!", card.ReaderSubType, card.READER_OMNIKEY)

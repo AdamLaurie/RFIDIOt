@@ -30,8 +30,8 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
@@ -48,7 +48,7 @@ Q5Mod = {
     "111": "NRZ / direct",
 }
 
-card.info("readlfx v3.0a")
+card.info("readlfx v3.0b")
 
 # force card type if specified
 if len(args) > 0:

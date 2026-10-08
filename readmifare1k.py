@@ -28,13 +28,12 @@ try:
     import rfidiot
 
     card = rfidiot.card
-except ConnectionAbortedError as _e:
-    print("Couldn't open reader!")
-    print(_e)
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 
-card.info("readmifare1k v3.0a")
+card.info("readmifare1k v3.0b")
 x = card.select()
 
 if not x:

@@ -28,8 +28,8 @@ from pyasn1.codec.ber import decoder
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
@@ -276,7 +276,7 @@ def decode_gp_registry_data(data, padding, dat_filter):
     return True
 
 
-card.info("jcoptool v3.0a")
+card.info("jcoptool v3.0b")
 if Help or len(args) < 1:
     print("\nUsage:\n\n\t%s [OPTIONS] <COMMAND> [ARGS] [ENC Key] [MAC Key] [KEK Key]" % sys.argv[0])
     print()

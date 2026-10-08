@@ -28,11 +28,11 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
-card.info("formatmifare1k v3.0a")
+card.info("formatmifare1k v3.0b")
 card.select()
 print("Card ID: " + card.data)
 while True:

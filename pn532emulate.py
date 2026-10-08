@@ -27,14 +27,14 @@ try:
     import rfidiot
     from rfidiot.pn532 import *
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532emulate v3.0c")
+card.info("pn532emulate v3.0d")
 
 if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")

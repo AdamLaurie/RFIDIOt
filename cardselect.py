@@ -27,13 +27,13 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 
-card.info("cardselect v3.1a")
+card.info("cardselect v3.1b")
 # force card type if specified
 if len(args) == 1:
     card.settagtype(args[0])

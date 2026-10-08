@@ -29,11 +29,11 @@ if __name__ == '__main__':
 
     try:
         card = rfidiot.card
-    except:
-        print("Couldn't open reader!")
+    except Exception as e:
+        print("Couldn't open reader! (%s)" % e)
         sys.exit(True)
 
-    card.info("readtag v3.0a")
+    card.info("readtag v3.0b")
     card.select()
     print(f"\nID: {card.uid}")
     print("  Data:")

@@ -28,14 +28,13 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except Exception as _e:
-    print("Couldn't open reader!")
-    print(_e)
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 
-card.info("hitag2brute v3.0a")
+card.info("hitag2brute v3.0b")
 
 pwd = 0x00
 

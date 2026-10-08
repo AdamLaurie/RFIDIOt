@@ -26,12 +26,12 @@ import sys
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 
-card.info("lfxtype v3.0a")
+card.info("lfxtype v3.0b")
 card.select()
 ID = card.uid
 if ID:

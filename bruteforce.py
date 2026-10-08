@@ -28,15 +28,14 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except Exception as _e:
-    print("Couldn't open reader!")
-    print(_e)
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("bruteforce v3.0a")
+card.info("bruteforce v3.0b")
 card.select()
 print(f"Card ID: {card.uid}")
 

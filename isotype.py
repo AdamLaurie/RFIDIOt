@@ -28,12 +28,12 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 
-card.info("isotype v3.1a")
+card.info("isotype v3.1b")
 
 typed = 0
 if card.readertype == card.READER_ACG:

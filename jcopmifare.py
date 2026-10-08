@@ -32,8 +32,8 @@ import sys
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
@@ -48,7 +48,7 @@ READ = "02"
 RANDOM = "03"
 MIFARE_AID = "DC4420060606"
 
-card.info("jcopmifare v3.0a")
+card.info("jcopmifare v3.0b")
 
 if Help or len(args) < 2:
     print("\nUsage:\n\n\t%s [OPTIONS] <READ|WRITE|RANDOM> <MIFARE_PWD> [SECTOR] [HEX DATA]" % sys.argv[0])

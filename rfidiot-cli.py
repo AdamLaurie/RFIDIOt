@@ -93,12 +93,12 @@ if chelp or len(sys.argv) == 1:
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1a")
+card.info("rfidiot-cli v3.1b")
 
 # globals
 Mifare_Key = None

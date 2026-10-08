@@ -28,14 +28,14 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("q5reset v3.0a")
+card.info("q5reset v3.0b")
 
 # standard config block
 CFB = "e601f004"

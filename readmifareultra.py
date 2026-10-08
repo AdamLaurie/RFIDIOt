@@ -28,8 +28,8 @@ import sys
 try:
     import rfidiot
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
 rf_help = rfidiot.help
@@ -40,7 +40,7 @@ if rf_help:
     print()
     sys.exit(True)
 
-card.info("readmifareultra v3.0a")
+card.info("readmifareultra v3.0b")
 card.waitfortag("Waiting for Mifare Ultralight...")
 
 blocks = 16

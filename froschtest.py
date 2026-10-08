@@ -25,11 +25,11 @@ import rfidiot
 
 try:
     card = rfidiot.card
-except:
-    print("Couldn't open reader!")
+except Exception as e:
+    print("Couldn't open reader! (%s)" % e)
     sys.exit(True)
 
-card.info("froschtest v3.0a")
+card.info("froschtest v3.0b")
 print()
 print("Trying Hitag1: ", end="")
 if card.frosch(card.FR_HT1_Get_Snr, ""):
