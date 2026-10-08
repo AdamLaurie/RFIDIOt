@@ -202,6 +202,16 @@ an **arbitrary 4- or 7-byte UID** (no forced `08` first byte - see the note in
 `pn532emulate.py`/`pn532mitm.py`), which also makes it a strong emulator candidate for
 the MITM/clone use in sections 8-9.
 
+**Prerequisite: current firmware (>= v2.2.0, the modern command set).** The reader
+path depends on `HF14A_RAW` (2010); it and other modern commands (`HF14A_SCAN_KEEP`
+2016, `GET_GIT_VERSION`, `GET_SLOT_INFO`, `GET_DEVICE_MODEL`) are absent on old
+firmware and return status `0x67 INVALID_CMD` (verified against a unit on an ancient
+build: `GET_APP_VERSION` reported `00 01`, `HF14A_SCAN` worked but had no ATS field,
+and `HF14A_RAW` was unimplemented). So the back-end must, on open, read
+`GET_APP_VERSION`/probe `HF14A_RAW` and refuse with a clear "update the Chameleon
+firmware (RfidResearchGroup/ChameleonUltra latest release, ultra-dfu-app.zip)" message
+rather than failing obscurely. Document the firmware floor in README/CLAUDE.md too.
+
 Protocol (from RfidResearchGroup/ChameleonUltra `software/script/chameleon_com.py` +
 `firmware/application/src/data_cmd.h`): USB CDC-ACM serial at 115200. Binary frame,
 all multi-byte fields big-endian:
