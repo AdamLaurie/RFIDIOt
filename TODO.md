@@ -155,3 +155,13 @@ writeblock not implemented), and meta/feature requests (PyPI #22, examples dir #
 license #14, Windows #39, cannot-detect-reader #16, nfckey #47, acg.de gone #18,
 transaction failed #23). Tackle the hardware ones when the matching reader/card is
 to hand; the writeblock gaps tie into section 3; the meta ones can be done anytime.
+
+## 8. DemoTag deprecation follow-up
+`demotag.py` is now marked **DEPRECATED** (v3.0a): the IAIK TUG DemoTag is
+long-obsolete research hardware and `READER_DEMOTAG` is only vestigially wired in
+- it is defined as a constant (`RFIDIOt.py:244`) but has no `reset`/`version`/
+`info`/`select`/`send_apdu` branch, so the reader type is effectively a no-op. Open
+question: fully remove the `READER_DEMOTAG` path (the constant, the `-R` wiring, the
+`DT_SET_UID`/`DT_ERROR` command set and `demotag()` method, and the tool itself)
+rather than carrying dead code, vs. keeping it for historical reference. Decide
+before the next housekeeping pass; if removing, it is a clean self-contained delete.
