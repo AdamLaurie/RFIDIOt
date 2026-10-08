@@ -252,3 +252,21 @@ dumped card or a chosen UID, but is **not** a drop-in live-relay emulator for
 before assuming the MITM target role. Minimum viable here: the reader back-end
 (HF14A_SCAN + HF14A_RAW) so ChAP/mrpkey/rfidiot-cli work over a Chameleon, plus the
 `chameleon.py` UID/dump loader.
+
+Existing tools the reader back-end would unlock (exposes 14443-A select + ISO-7816
+APDU transceive + MIFARE Classic auth/read/write, and LF EM410x read; NO 14443-B,
+15693 or Hitag):
+- Works well: `rfidiot-cli.py` (best fit - IDENTIFY/APDU/DUMP/SELECT/MF *), `mrpkey.py`
+  (ePassport APDU), `ChAP.py` (contactless EMV APDU), `send_apdu.py`, `nfcid.py`; the
+  MIFARE Classic tools `readmifare1k.py`/`writemifare1k.py`/`readmifaresimple.py`/
+  `formatmifare1kvalue.py`/`loginall.py`/`bruteforce.py`/`copytag.py`/`unique.py`;
+  `readmifareultra.py` (Ultralight via raw 14A); and the select/identify tools
+  `cardselect.py`/`multiselect.py`/`isotype.py`/`readtag.py`.
+- Works but caveated: `ChAP.py`/`mrpkey.py`/`isotype.py` only for **Type A** cards
+  (EMV and ICAO also allow Type B, which the Chameleon can't read - keep PC/SC or
+  libnfc for those); `jcoptool.py`/`jcopmifare.py`/`jcopsetatrhist.py` only for
+  **contactless** JCOP (their usual contact T=0 path is out).
+- Out of scope: the 125 kHz / Hitag tools `hitag2brute.py`/`hitag2reset.py`/
+  `hidprox.py`/`fdxbnum.py`/`q5reset.py`/`lfxtype.py`/`readlfx.py`/`writelfx.py`
+  (Chameleon LF *reader* only does EM410x scan + T55xx write, not HID/Hitag/FDX-B/EM4x
+  reads); and `froschtest.py`/`demotag.py` (those are specific serial readers).
