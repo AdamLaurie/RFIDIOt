@@ -375,6 +375,12 @@ class NFC():
         self.context = ctypes.POINTER(ctypes.c_int)()
         self.poweredUp = False
         self.NFCReader = nfcreader
+        # ISO 14443-4 (T=CL) driven in software rather than by the reader firmware
+        # (see enable_software_tcl() / the ACR122U workaround in sendAPDU).
+        self.software_tcl = False
+        self._iblock = 0
+        self.is_acr122 = False
+        self.LIBNFC_CONNSTRING = ""
 
         self.initLog()
         self.LIBNFC_VER = self.initlibnfc().decode("utf-8")
@@ -407,6 +413,8 @@ class NFC():
         self.libnfc.nfc_version.restype = ctypes.c_char_p
         self.libnfc.nfc_device_get_name.restype = ctypes.c_char_p
         self.libnfc.nfc_device_get_name.argtypes = [ctypes.c_void_p]
+        self.libnfc.nfc_device_get_connstring.restype = ctypes.c_char_p
+        self.libnfc.nfc_device_get_connstring.argtypes = [ctypes.c_void_p]
         self.libnfc.nfc_open.restype = ctypes.c_void_p
         self.libnfc.nfc_initiator_init.argtypes = [ctypes.c_void_p]
         self.libnfc.nfc_device_set_property_bool.argtypes = [
@@ -500,6 +508,19 @@ class NFC():
         # else:
         # Segmentation fault if self.device is None *pnd->nam
         self.LIBNFC_READER = self.libnfc.nfc_device_get_name(self.device).decode("utf-8")
+        # The ACR122U's PN532 reassembles ISO 14443-4 (T=CL) chained responses in
+        # a small internal buffer and overflows on long records (e.g. EMV issuer-
+        # public-key-certificate records, ePassport DG2), aborting the transceive
+        # with pseudo status "63 27". The reader name is generic ("CCID USB
+        # Reader"), so detect it by its libnfc connstring driver prefix ("acr122")
+        # and, for 14443-4 cards, drive T=CL in software (see sendAPDU) so each
+        # I-block stays within a single frame.
+        try:
+            cs = self.libnfc.nfc_device_get_connstring(self.device)
+            self.LIBNFC_CONNSTRING = cs.decode("utf-8", "replace") if cs else ""
+        except Exception:
+            self.LIBNFC_CONNSTRING = ""
+        self.is_acr122 = self.LIBNFC_CONNSTRING.lower().startswith("acr122")
 
         if rfidiotglobals.Debug:
             # if self.device == None:
@@ -612,15 +633,39 @@ class NFC():
             return ICLASS(target[0].nti.nic)
         return None
 
+    # ----------------------------------------------------- software ISO 14443-4
+    def enable_software_tcl(self):
+        """Take over ISO 14443-4 (T=CL) block handling from the reader firmware.
+
+        Turns off libnfc "easy framing" so nfc_initiator_transceive_bytes carries
+        raw frames; sendAPDU then wraps each APDU in the T=CL block protocol here
+        (PCB block-number toggling, R(ACK) for receive-side chaining, S(WTX)
+        echoes). Call it once, immediately after activation/RATS, while the card's
+        block number is still 0. Used to work around the ACR122U chaining-buffer
+        overflow (see configure()).
+        """
+        self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, False)
+        self._iblock = 0
+        self.software_tcl = True
+        if rfidiotglobals.Debug:
+            self.log.debug("software T=CL enabled (easy framing off)")
+
+    def disable_software_tcl(self):
+        "restore reader-firmware ISO 14443-4 framing"
+        if self.software_tcl:
+            self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, True)
+        self.software_tcl = False
+
     # set Mifare specific parameters
     def configMifare(self):
+        # raw Mifare Classic framing - never the software T=CL path
+        self.software_tcl = False
         self.libnfc.nfc_device_set_property_bool(self.device, NP_AUTO_ISO14443_4, False)
         self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, True)
         self.selectISO14443A()
 
-    def sendAPDU(self, apdu, timeout=None):
-        # apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
-        apdu = "".join(list(apdu))
+    def _raw_frame(self, apdu, timeout=None):
+        "transceive one frame (hex in -> (ok, hex) out); returns (False, rxlen) on error"
         txData = []
         for i in range(0, len(apdu), 2):
             txData.append(int(apdu[i : i + 2], 16))
@@ -656,6 +701,61 @@ class NFC():
         if rfidiotglobals.Debug:
             self.log.debug(f"Received {rxlen} byte APDU: {rxAPDU}")
         return True, rxAPDU.upper()
+
+    def sendAPDU(self, apdu, timeout=None):
+        # apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
+        apdu = "".join(list(apdu))
+        if self.software_tcl:
+            return self._sendAPDU_tcl(apdu, timeout)
+        return self._raw_frame(apdu, timeout)
+
+    def _sendAPDU_tcl(self, apdu, timeout=None):
+        """Send one ISO 7816 APDU wrapped in the ISO 14443-4 (T=CL) block protocol.
+
+        Used when software_tcl is on (ACR122U workaround): we own the PCB, so we
+        toggle the I-block number, answer the card's receive-side chaining with
+        R(ACK)s, and echo S(WTX) waiting-time-extension requests. Command APDUs
+        are sent as a single I-block (the eMRTD/EMV read flows never need send-
+        side chaining); only the response may be chained. Returns (ok, hex) like
+        the plain path, so callers are unchanged.
+        """
+        pcb = 0x02 | self._iblock
+        ok, resp = self._raw_frame("%02X%s" % (pcb, apdu), timeout)
+        if not ok:
+            return False, resp
+        inf = ""
+        guard = 0
+        while True:
+            guard += 1
+            if guard > 4096:
+                if rfidiotglobals.Debug:
+                    self.log.error("T=CL chaining did not terminate")
+                return False, -1
+            if len(resp) < 2:
+                return False, -1
+            p = int(resp[0:2], 16)
+            if (p & 0xC0) == 0x00:
+                # I-block: collect INF; if the card is chaining, R(ACK) with the
+                # *toggled* block number so it advances to the next block
+                inf += resp[2:]
+                if p & 0x10:
+                    ok, resp = self._raw_frame("%02X" % (0xA2 | ((p & 1) ^ 1)), timeout)
+                    if not ok:
+                        return False, resp
+                    continue
+                # final I-block: next command's block number is this one toggled
+                self._iblock = (p & 1) ^ 1
+                break
+            if (p & 0xF6) == 0xF2:
+                # S(WTX) waiting-time extension request: echo the INF byte back
+                ok, resp = self._raw_frame("F2" + resp[2:4], timeout)
+                if not ok:
+                    return False, resp
+                continue
+            if rfidiotglobals.Debug:
+                self.log.error("unexpected T=CL PCB 0x%s" % resp[0:2])
+            return False, -1
+        return True, inf.upper()
 
 
 def target_is_present(self):

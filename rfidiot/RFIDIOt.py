@@ -1294,6 +1294,16 @@ class rfidiot:
                         # ATQA (SENS_RES) and SAK (SEL_RES) identify the chip
                         self.sens_res = getattr(result, "atqa", "")
                         self.sel_res = getattr(result, "sak", "")
+                        # The ACR122U's firmware overflows on long ISO 14443-4
+                        # (T=CL) chains; for 14443-4 cards (SAK bit 0x20) take
+                        # over the block protocol in software now, while the
+                        # card's block number is still 0 (see pynfc).
+                        if getattr(self.nfc, "is_acr122", False) and self.sel_res:
+                            try:
+                                if int(self.sel_res, 16) & 0x20:
+                                    self.nfc.enable_software_tcl()
+                            except ValueError:
+                                pass
                         if self.DEBUG:
                             print("UID: " + self.uid)
                         return True
