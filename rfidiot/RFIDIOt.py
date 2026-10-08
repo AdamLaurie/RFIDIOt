@@ -263,7 +263,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.0g"
+    VERSION = "3.0h"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -576,6 +576,26 @@ class rfidiot:
         "6388": "Key number not valid",
         "6389": "Key length is not correct",
         "63C": "Counter provided by X (valued from 0 to 15) (exact meaning depending on the command)",
+        # 63Cx: counter reached X (0-15). For VERIFY/authenticate (e.g. passport
+        # BAC) this is a failed verification with X retries remaining; 63C0 means
+        # no retries left. Listed explicitly so iso_7816_fail() reports a reason
+        # instead of raising KeyError on the full 4-char status word.
+        "63C0": "Verification failed - no retries left (counter = 0)",
+        "63C1": "Verification failed - 1 retry left (counter = 1)",
+        "63C2": "Verification failed - 2 retries left (counter = 2)",
+        "63C3": "Verification failed - 3 retries left (counter = 3)",
+        "63C4": "Verification failed - 4 retries left (counter = 4)",
+        "63C5": "Verification failed - 5 retries left (counter = 5)",
+        "63C6": "Verification failed - 6 retries left (counter = 6)",
+        "63C7": "Verification failed - 7 retries left (counter = 7)",
+        "63C8": "Verification failed - 8 retries left (counter = 8)",
+        "63C9": "Verification failed - 9 retries left (counter = 9)",
+        "63CA": "Verification failed - 10 retries left (counter = 10)",
+        "63CB": "Verification failed - 11 retries left (counter = 11)",
+        "63CC": "Verification failed - 12 retries left (counter = 12)",
+        "63CD": "Verification failed - 13 retries left (counter = 13)",
+        "63CE": "Verification failed - 14 retries left (counter = 14)",
+        "63CF": "Verification failed - 15 retries left (counter = 15)",
         "64": "State of non-volatile memory unchanged (SW2=00, other values are RFU)",
         "6400": "Card Execution error",
         "6500": "No information given",
