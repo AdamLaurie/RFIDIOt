@@ -64,13 +64,20 @@ Three layers:
    class attributes. Adding reader support to a method usually means adding a branch.
 
 2. **`rfidiot/__init__.py`** — the runtime entry point every client script imports.
-   On `import rfidiot` it parses `sys.argv` global options, applies config overrides,
-   instantiates the reader, and exposes two module globals:
-   - `rfidiot.card` — a ready-to-use `RFIDIOt.rfidiot` instance
+   On `import rfidiot` it parses `sys.argv` global options and applies config
+   overrides, then exposes two module globals:
+   - `rfidiot.card` — a `RFIDIOt.rfidiot` instance, built **lazily on first access**
+     via a PEP 562 module `__getattr__` and cached. The reader is opened only when a
+     script actually touches `rfidiot.card`, so `import rfidiot` itself has no
+     hardware side effect and never exits the process (a GUI/library that imports
+     the package without using a reader is not killed by an open failure — issue #35).
+     Every tool accesses `rfidiot.card` inside its own try/except guard, so an
+     open failure surfaces there exactly as before.
    - `rfidiot.args` — the remaining non-option command-line arguments
    Scripts consume these; they do not construct the reader themselves. NB: importing
-   `rfidiot` (or any submodule, e.g. `from rfidiot.iso3166 import ...`) runs this and
-   builds `rfidiot.card` from the current `sys.argv`. The parser only consumes the
+   `rfidiot` (or any submodule, e.g. `from rfidiot.iso3166 import ...`) runs the
+   option parsing and makes `rfidiot.card` available (opened on first use) from the
+   current `sys.argv`. The parser only consumes the
    global reader options it knows (`_GLOBAL_OPTS`) and passes anything else through
    into `rfidiot.args`, so a tool can define its own options on top (it then
    `getopt`s `rfidiot.args` itself — see `ChAP.py`). `-h` prints the global options

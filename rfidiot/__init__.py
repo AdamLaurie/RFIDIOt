@@ -212,6 +212,11 @@ def _partition_opts(tokens, optstring):
     return known, rest
 
 
+# set True if global-option parsing fails, so a later 'card' access reports the
+# failure (as a missing attribute the caller's guard catches) instead of building
+# a reader from half-parsed options
+_config_error = False
+
 # 'args' will be set to remaining arguments (if any)
 try:
     _known, args = _partition_opts(extraopts + sys.argv[1:], _GLOBAL_OPTS)
@@ -283,19 +288,40 @@ try:
             speed = int(a)
         if o == "-t":
             timeout = int(a)
-    card = RFIDIOt.rfidiot(
-        readernum,
-        readertype,
-        line,
-        speed,
-        timeout,
-        rfidiotglobals.Debug,
-        noinit,
-        nfcreader,
-    )
-    # expose the help flag on the card so card.info() can stop after the banner
-    card.help = help
+    # NB: the reader is NOT opened here. 'card' is built lazily on first access
+    # (see __getattr__ below) so that 'import rfidiot' has no hardware side effect
+    # and never exits the process - a GUI or any tool that imports the package
+    # without using a reader is no longer killed by an open failure (issue #35).
 except getopt.GetoptError as e:
     print("RFIDIOtconfig module ERROR: %s" % e)
     printoptions()
     args = []
+    _config_error = True
+
+
+def __getattr__(name):
+    # PEP 562 lazy module attribute. The reader is opened only when a tool first
+    # accesses rfidiot.card - which in every tool happens inside its own
+    # try/except guard - so importing the package has no hardware side effect and
+    # does not exit the process (issue #35). The built instance is cached in the
+    # module globals, so subsequent accesses skip this hook.
+    if name == "card":
+        if _config_error:
+            # option parsing failed; behave as before (no usable reader) and let
+            # the caller's guard report "Couldn't open reader"
+            raise AttributeError("reader not available: global option parsing failed")
+        card = RFIDIOt.rfidiot(
+            readernum,
+            readertype,
+            line,
+            speed,
+            timeout,
+            rfidiotglobals.Debug,
+            noinit,
+            nfcreader,
+        )
+        # expose the help flag on the card so card.info() can stop after the banner
+        card.help = help
+        globals()["card"] = card
+        return card
+    raise AttributeError("module %r has no attribute %r" % (__name__, name))
