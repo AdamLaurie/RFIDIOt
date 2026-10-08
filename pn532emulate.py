@@ -34,7 +34,7 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532emulate v3.0b")
+card.info("pn532emulate v3.0c")
 
 if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")
@@ -64,7 +64,13 @@ if chelp or len(args) < 6:
     print("        2 Bytes, LSB first, as defined in ISO 14443-3.")
     print()
     print("    NFCID1t:")
-    print("        UID Last 6 HEX digits ('08' will be prepended).")
+    print("        UID Last 6 HEX digits (3 bytes). The PN532 target mode takes only a")
+    print("        3-byte NFCID1t and always transmits a single-size (4-byte) UID whose")
+    print("        first byte is hard-wired to '08' (the ISO 14443-3 cascade-tag /")
+    print("        random-UID marker), so '08' is prepended and byte 0 cannot be set to")
+    print("        anything else - an arbitrary first byte needs a different emulator")
+    print("        (Proxmark3, Chameleon). This is exact for ICAO 9303 ePassports, whose")
+    print("        UIDs are random and already start with '08'.")
     print()
     print("    SEL_RES:")
     print("        1 Byte, as defined in ISO14443-4.")
@@ -118,6 +124,9 @@ if card.acs_send_apdu(PN532_APDU["GET_GENERAL_STATUS"]):
 
 mode = [args[0]]
 sens_res = [args[1]]
+# NFCID1t is only 3 bytes; in target mode the PN532 always emits a single-size
+# UID with byte 0 hard-wired to 0x08, so only these low 3 bytes are settable and
+# '08' is prepended on the wire (see the usage text above).
 uid = [args[2]]
 sel_res = [args[3]]
 felica = [args[4]]
