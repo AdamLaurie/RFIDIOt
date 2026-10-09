@@ -196,7 +196,14 @@ class rfidiot:
                     self.acs_set_retry(to)
             # libnfc device
             elif self.readertype == self.READER_LIBNFC:
-                self.nfc = pynfc.NFC(self.NFCReader)
+                # a "ccid" connstring selects the direct-CCID ACR122U backend
+                # (talks straight to the reader's PN532 over usbdevfs, for units
+                # that libnfc/pcscd misidentify - e.g. the ACR122U-WB-R); any
+                # other connstring/number is an ordinary libnfc device.
+                if isinstance(self.NFCReader, str) and self.NFCReader.lower().startswith("ccid"):
+                    self.nfc = pynfc.ACR122CCID(self.NFCReader)
+                else:
+                    self.nfc = pynfc.NFC(self.NFCReader)
                 self.readername = self.nfc.LIBNFC_READER
             # Chameleon Ultra (serial), used as an ISO 14443-A reader
             elif self.readertype == self.READER_CHAMELEON:
@@ -263,7 +270,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.0h"
+    VERSION = "3.1a"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02

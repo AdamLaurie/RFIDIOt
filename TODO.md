@@ -309,13 +309,67 @@ Hardware-verified on an ACR122U/Touchatag (libnfc `acr122_usb`):
 - `mrpkey.py -f 0 <MRZ>`: full ePassport BAC + secure messaging, EF.COM/SOD/DG1/DG2/
   DG14, the 18,417-byte EF.DG2 JPEG read in full via T=CL chaining.
 
-Still to test: only the Touchatag/tikitag ACR122 was on hand. Other ACR122-family
-readers (plain ACR122U revisions, ACR122T, ACR1222L, and the many clones/relabels)
-ship different PN532 firmware and USB-bridge revisions, so their internal reassembly
-buffer size - and thus where chaining overflows, or whether `63 27` is even the
-symptom - may differ. The fix should still apply (it detects by the `acr122`
-connstring prefix and just drives T=CL in software), but it hasn't been confirmed on
-non-tikitag hardware. Verify against another ACR122 variant when one is available.
+Second unit tested (ACR122U-WB-R) - the libnfc path can't even open it, so a new
+direct-CCID back-end was added. Only the Touchatag/tikitag ACR122 (PID `072f:90cc`
+with older firmware) was on hand for the original fix; a retail **ACR122U-WB-R** was
+tried next and exposed a deeper, unrelated problem: this unit enumerates with the
+**ACR38 PID `072f:90cc`** (iProduct "CCID USB Reader", firmware string "ACR122U..."),
+and *every* off-the-shelf driver misidentifies it:
+- **libnfc 1.8.0 `acr122_usb`** fails its PN532 power-on init ("Unable to open NFC
+  device") - libnfc 1.8.0 (2018) predates this firmware. Ruled out, each by test:
+  pcscd contention, USB permissions (node is `rw` via ACL+plugdev), dead hardware
+  (the PN532 answers raw CCID instantly and returns its "ACR122U" firmware string),
+  an init timeout (0 ms response), and a stale bulk-IN frame (drained clean).
+- **libccid/PC-SC** loads its **ACR38 contact driver** (`ACS ACR 38U-CCID`) and
+  negotiates the contactless card as **T=0**. A single simple SELECT (`IDENTIFY`)
+  works, but a real T=CL EMV APDU sequence fails (`Failed to transmit with protocol
+  T0`, `0x80100016`) and wedges the reader off the USB bus (needs a replug).
+
+The PN532 behind it is fine - it answers raw CCID pseudo-APDUs perfectly. So the fix
+was a new **direct-CCID ACR122U back-end** in `rfidiot/pynfc.py` (`ACR122CCID`): it
+talks straight to the reader's CCID bulk endpoints over `usbdevfs` (no libnfc, no
+pcscd), wraps PN532 commands in ACR122U direct-transmit pseudo-APDUs (`FF 00 00 00 Lc
+..`, following T=0 `61xx` GET RESPONSE), selects via `InListPassiveTarget`, and drives
+each ISO 14443-4 I-block via `InCommunicateThru` through the **same** software T=CL
+engine as the libnfc path (the T=CL loop was factored into `_tcl_exchange()` and a
+`_ISODEP` mixin, shared by both `NFC` and `ACR122CCID`). CRC is left to the PN532
+(CIU TxCRCEn/RxCRCEn, matching libnfc's HANDLE_CRC). Select it with `-f ccid` (first
+ACS reader) or `-f ccid:<bus>:<dev>`; `RFIDIOt.select()` auto-enables software T=CL
+for 14443-4 just as on the libnfc path (`is_acr122` is set).
+
+Hardware-verified on the ACR122U-WB-R (`-f ccid`):
+- `ChAP.py -f ccid -c`: full contactless EMV read - both AIDs (Debit Mastercard +
+  companion A000000029), the whole transaction log, and the chained **248-byte Issuer
+  Public Key Certificate** - offline cert chain verified end to end (CA 1984-bit ->
+  Issuer 1408-bit -> ICC 1024-bit, PAN match), zero read/driver errors, no `63 27`.
+- `mrpkey.py -f ccid <MRZ>`: full ePassport BAC + secure messaging, EF.COM/SOD/DG1/
+  DG2/DG14, the 18,417-byte EF.DG2 JPEG read via T=CL chaining, Passive Authentication
+  DG1/DG2/DG14 hashes OK.
+
+Two bugs found and fixed during bring-up:
+- the T=0 `61xx` GET RESPONSE must use the ACR122U pseudo-APDU class **`FF C0`**, not
+  T=0's `00 C0` (the latter returns CCID `bStatus` "command failed", so every PN532
+  reply came back empty - nothing selected);
+- the PN532 InCommunicateThru RF timeout defaults to ~52 ms, so a card's **S(WTX)**
+  (ePassport BAC EXTERNAL AUTHENTICATE runs 3DES on-chip) RF-errored after we echoed
+  the WTX. Fixed by raising RFConfiguration item 0x02 fRetryTimeout to 0x10 (~3.3 s)
+  in `enable_software_tcl()` - the direct-CCID analogue of the libnfc NP_TIMEOUT_COM
+  bump (section 11, WTX). EMV didn't surface it (its reads return fast); BAC did,
+  exactly as on the libnfc path.
+
+Remaining on the direct-CCID back-end:
+- Only the **14443-A + ISO-7816 / software-T=CL** path is implemented. 14443-B,
+  Jewel and iClass `select*` return None; MIFARE Classic goes via `InDataExchange`
+  (`_plain_apdu`) but is untested on this path.
+- Consider auto-falling back to the direct-CCID back-end when libnfc fails to open an
+  `acr122` device, instead of requiring the explicit `-f ccid`.
+- A lighter alternative worth noting: an `/etc/libccid_Info.plist` override mapping
+  `072f:90cc` to the ACR122U PICC behaviour might fix the PC/SC path too (untried).
+
+Other ACR122-family variants (ACR122T, ACR1222L, clones/relabels) may differ again;
+the software-T=CL fix should still apply on any that libnfc *can* open (it detects by
+the `acr122` connstring prefix), and the direct-CCID back-end covers ACS units that
+libnfc/pcscd cannot. May relate to the open "ACR122 reader support" issue #30.
 
 Affected tools (the 14443-4 APDU path over an ACR122U via libnfc): `ChAP.py` and
 `mrpkey.py` (both verified above); `rfidiot-cli.py` APDU/SELECT/IDENTIFY;

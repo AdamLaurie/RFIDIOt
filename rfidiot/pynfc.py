@@ -366,7 +366,84 @@ class JEWEL():
         return rv
 
 
-class NFC():
+def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None):
+    """Drive one ISO 7816 APDU over the ISO 14443-4 (T=CL) block protocol.
+
+    `raw_frame(hexframe, timeout) -> (ok, hex)` sends exactly one T=CL frame and
+    returns the card's one-frame reply (CRC already stripped by the reader). We
+    own the PCB here, so we toggle the I-block number, answer the card's receive-
+    side chaining with R(ACK)s, and echo S(WTX) waiting-time-extension requests.
+    The command APDU is sent as a single I-block (the eMRTD/EMV read flows never
+    need send-side chaining); only the response may be chained. Returns
+    (ok, hex_or_errcode, next_iblock); on error `iblock` is returned unchanged.
+
+    Shared by both raw-frame backends - the libnfc one (NFC, easy framing off)
+    and the direct-CCID one (ACR122CCID, PN532 InCommunicateThru) - so the T=CL
+    engine lives in exactly one place.
+    """
+    pcb = 0x02 | iblock
+    ok, resp = raw_frame("%02X%s" % (pcb, apdu), timeout)
+    if not ok:
+        return False, resp, iblock
+    inf = ""
+    guard = 0
+    while True:
+        guard += 1
+        if guard > 4096:
+            if log:
+                log.error("T=CL chaining did not terminate")
+            return False, -1, iblock
+        if len(resp) < 2:
+            return False, -1, iblock
+        p = int(resp[0:2], 16)
+        if (p & 0xC0) == 0x00:
+            # I-block: collect INF; if the card is chaining, R(ACK) with the
+            # *toggled* block number so it advances to the next block
+            inf += resp[2:]
+            if p & 0x10:
+                ok, resp = raw_frame("%02X" % (0xA2 | ((p & 1) ^ 1)), timeout)
+                if not ok:
+                    return False, resp, iblock
+                continue
+            # final I-block: next command's block number is this one toggled
+            iblock = (p & 1) ^ 1
+            break
+        if (p & 0xF6) == 0xF2:
+            # S(WTX) waiting-time extension request: echo the INF byte back
+            ok, resp = raw_frame("F2" + resp[2:4], timeout)
+            if not ok:
+                return False, resp, iblock
+            continue
+        if log:
+            log.error("unexpected T=CL PCB 0x%s" % resp[0:2])
+        return False, -1, iblock
+    return True, inf.upper(), iblock
+
+
+class _ISODEP():
+    """ISO 14443-4 APDU dispatch shared by the raw-frame backends.
+
+    A host class must provide: self._raw_frame(hexframe, timeout) -> (ok, hex)
+    (one T=CL frame), self._plain_apdu(apdu, timeout) -> (ok, hex) (the non-T=CL
+    path), and the attributes self.software_tcl, self._iblock and self.log.
+    """
+
+    def sendAPDU(self, apdu, timeout=None):
+        apdu = "".join(list(apdu))
+        if self.software_tcl:
+            return self._sendAPDU_tcl(apdu, timeout)
+        return self._plain_apdu(apdu, timeout)
+
+    def _sendAPDU_tcl(self, apdu, timeout=None):
+        "send one APDU wrapped in software-driven T=CL (see _tcl_exchange)"
+        log = self.log if rfidiotglobals.Debug else None
+        ok, resp, self._iblock = _tcl_exchange(
+            self._raw_frame, apdu, self._iblock, timeout, log
+        )
+        return ok, resp
+
+
+class NFC(_ISODEP):
     tag = (NFC_TARGET * MAX_TARGET_COUNT)()
 
     def __init__(self, nfcreader=None, listonly=False):
@@ -714,60 +791,320 @@ class NFC():
             self.log.debug(f"Received {rxlen} byte APDU: {rxAPDU}")
         return True, rxAPDU.upper()
 
-    def sendAPDU(self, apdu, timeout=None):
-        # apdu = "".join([x for x in apdu]) # ?? Unnecessary ??
-        apdu = "".join(list(apdu))
-        if self.software_tcl:
-            return self._sendAPDU_tcl(apdu, timeout)
+    def _plain_apdu(self, apdu, timeout=None):
+        "non-T=CL path: a straight libnfc transceive (reader-firmware framing)"
         return self._raw_frame(apdu, timeout)
 
-    def _sendAPDU_tcl(self, apdu, timeout=None):
-        """Send one ISO 7816 APDU wrapped in the ISO 14443-4 (T=CL) block protocol.
 
-        Used when software_tcl is on (ACR122U workaround): we own the PCB, so we
-        toggle the I-block number, answer the card's receive-side chaining with
-        R(ACK)s, and echo S(WTX) waiting-time-extension requests. Command APDUs
-        are sent as a single I-block (the eMRTD/EMV read flows never need send-
-        side chaining); only the response may be chained. Returns (ok, hex) like
-        the plain path, so callers are unchanged.
-        """
-        pcb = 0x02 | self._iblock
-        ok, resp = self._raw_frame("%02X%s" % (pcb, apdu), timeout)
-        if not ok:
-            return False, resp
-        inf = ""
-        guard = 0
-        while True:
-            guard += 1
-            if guard > 4096:
-                if rfidiotglobals.Debug:
-                    self.log.error("T=CL chaining did not terminate")
-                return False, -1
-            if len(resp) < 2:
-                return False, -1
-            p = int(resp[0:2], 16)
-            if (p & 0xC0) == 0x00:
-                # I-block: collect INF; if the card is chaining, R(ACK) with the
-                # *toggled* block number so it advances to the next block
-                inf += resp[2:]
-                if p & 0x10:
-                    ok, resp = self._raw_frame("%02X" % (0xA2 | ((p & 1) ^ 1)), timeout)
-                    if not ok:
-                        return False, resp
-                    continue
-                # final I-block: next command's block number is this one toggled
-                self._iblock = (p & 1) ^ 1
-                break
-            if (p & 0xF6) == 0xF2:
-                # S(WTX) waiting-time extension request: echo the INF byte back
-                ok, resp = self._raw_frame("F2" + resp[2:4], timeout)
-                if not ok:
-                    return False, resp
+# --------------------------------------------------------------------------- #
+# Direct-CCID ACR122U backend                                                 #
+#                                                                             #
+# Some ACR122U units (e.g. the ACR122U-WB-R, which enumerates with the ACR38  #
+# PID 072f:90cc) are misidentified by every off-the-shelf driver: libnfc's    #
+# acr122_usb init fails to bring them up, and libccid loads its ACR38 *contact*#
+# driver and mis-negotiates the contactless card as T=0. The PN532 itself is  #
+# fine, though - it answers raw CCID perfectly. This backend talks straight to #
+# the reader's CCID bulk endpoints over usbdevfs (no libnfc, no pcscd), wraps  #
+# PN532 commands in ACR122U pseudo-APDUs, and drives ISO 14443-4 with the same #
+# software T=CL engine (_tcl_exchange) as the libnfc path, so long chained     #
+# responses never hit the PN532's reassembly-buffer overflow.                 #
+#                                                                             #
+# Select it with  -f ccid  (first ACS reader) or  -f ccid:<bus>:<dev>.        #
+# --------------------------------------------------------------------------- #
+
+import os as _os
+import glob as _glob
+
+# usbdevfs ioctls (asm-generic _IOC encoding)
+def _IOC(d, t, nr, sz):
+    return (d << 30) | (sz << 16) | (t << 8) | nr
+_USBDEVFS_CLAIMINTERFACE = _IOC(2, 0x55, 15, 4)
+_USBDEVFS_RELEASEINTERFACE = _IOC(2, 0x55, 16, 4)
+_USBDEVFS_BULK = _IOC(3, 0x55, 2, 24)   # sizeof(struct usbdevfs_bulktransfer) on LP64
+
+
+class _usbdevfs_bulktransfer(ctypes.Structure):
+    _fields_ = [
+        ("ep", ctypes.c_uint),
+        ("len", ctypes.c_uint),
+        ("timeout", ctypes.c_uint),   # ms
+        ("data", ctypes.c_void_p),
+    ]
+
+
+class ACR122CCID(_ISODEP):
+    """Drive an ACR122U directly over its CCID bulk endpoints (no libnfc/pcscd).
+
+    Presents the same surface RFIDIOt uses on the libnfc path (selectISO14443A,
+    sendAPDU, enable_software_tcl, powerOn/powerOff, is_acr122, LIBNFC_READER),
+    so it is a drop-in for pynfc.NFC when the connstring starts with "ccid".
+    """
+
+    # ACR122U CCID bulk endpoints (standard for this reader)
+    EP_OUT = 0x02
+    EP_IN = 0x82
+
+    def __init__(self, spec, listonly=False):
+        self.spec = spec
+        self.software_tcl = False
+        self._iblock = 0
+        self.is_acr122 = True
+        self.LIBNFC_CONNSTRING = spec
+        self.LIBNFC_VER = "direct-ccid"
+        self.poweredUp = False
+        self._seq = 0
+        self._libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        self.log = logging.getLogger("pynfc.ccid")
+        if not self.log.handlers:
+            sh = logging.StreamHandler()
+            sh.setFormatter(logging.Formatter("%(asctime)s: %(levelname)s - %(message)s"))
+            self.log.addHandler(sh)
+        self.log.setLevel(logging.DEBUG)
+
+        node, bus, dev = self._find(spec)
+        self.LIBNFC_READER = "ACS ACR122U (direct CCID, bus %d dev %d)" % (bus, dev)
+        self._fd = _os.open(node, _os.O_RDWR)
+        self._claimed = False
+        try:
+            self._ioctl(_USBDEVFS_CLAIMINTERFACE, ctypes.byref(ctypes.c_uint(0)))
+            self._claimed = True
+        except OSError as e:
+            _os.close(self._fd)
+            raise ConnectionAbortedError(
+                "cannot claim ACR122U interface (%s) - is pcscd holding it? "
+                "stop it with: sudo systemctl stop pcscd pcscd.socket" % e
+            )
+        if not listonly:
+            self._pn532_init()
+
+    # -- device discovery ---------------------------------------------------
+    @staticmethod
+    def _find(spec):
+        "resolve a 'ccid[:bus:dev]' spec to (node, bus, dev) via sysfs"
+        want_bus = want_dev = None
+        parts = spec.split(":")
+        if len(parts) >= 3:
+            want_bus, want_dev = int(parts[1]), int(parts[2])
+        for d in sorted(_glob.glob("/sys/bus/usb/devices/*")):
+            try:
+                with open(d + "/idVendor") as f:
+                    vid = int(f.read().strip(), 16)
+                with open(d + "/busnum") as f:
+                    bus = int(f.read().strip())
+                with open(d + "/devnum") as f:
+                    dev = int(f.read().strip())
+            except (OSError, ValueError):
                 continue
-            if rfidiotglobals.Debug:
-                self.log.error("unexpected T=CL PCB 0x%s" % resp[0:2])
+            if want_bus is not None:
+                if bus != want_bus or dev != want_dev:
+                    continue
+            elif vid != 0x072F:          # ACS (Advanced Card Systems)
+                continue
+            return "/dev/bus/usb/%03d/%03d" % (bus, dev), bus, dev
+        raise ConnectionAbortedError("no ACS/ACR122U USB device found for '%s'" % spec)
+
+    # -- low-level CCID transport ------------------------------------------
+    def _ioctl(self, req, arg):
+        r = self._libc.ioctl(self._fd, ctypes.c_ulong(req), arg)
+        if r < 0:
+            e = ctypes.get_errno()
+            raise OSError(e, _os.strerror(e))
+        return r
+
+    def _bulk(self, ep, data, timeout_ms):
+        if data is not None:
+            buf = (ctypes.c_ubyte * len(data))(*data)
+            bt = _usbdevfs_bulktransfer(ep, len(data), timeout_ms,
+                                        ctypes.cast(buf, ctypes.c_void_p))
+            return self._ioctl(_USBDEVFS_BULK, ctypes.byref(bt))
+        buf = (ctypes.c_ubyte * 512)()
+        bt = _usbdevfs_bulktransfer(ep, 512, timeout_ms,
+                                    ctypes.cast(buf, ctypes.c_void_p))
+        n = self._ioctl(_USBDEVFS_BULK, ctypes.byref(bt))
+        return bytes(buf[:n])
+
+    def _xfrblock(self, apdu, timeout_ms):
+        "one CCID PC_to_RDR_XfrBlock -> the reader's response data (after header)"
+        self._seq = (self._seq + 1) & 0xFF
+        n = len(apdu)
+        hdr = [0x6F, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF,
+               0x00, self._seq, 0x00, 0x00, 0x00]
+        self._bulk(self.EP_OUT, hdr + list(apdu), timeout_ms)
+        while True:
+            r = self._bulk(self.EP_IN, None, timeout_ms)
+            if len(r) < 10:
+                return b""
+            # bStatus bmCommandStatus == 10b: "time extension", card still working
+            if (r[7] & 0xC0) == 0x80:
+                continue
+            dlen = r[1] | (r[2] << 8) | (r[3] << 16) | (r[4] << 24)
+            return bytes(r[10:10 + dlen])
+
+    def _apdu(self, apdu, timeout_ms):
+        "send a reader APDU, following T=0 61xx GET RESPONSE chaining"
+        out = bytearray()
+        resp = self._xfrblock(apdu, timeout_ms)
+        while len(resp) >= 2 and resp[-2] == 0x61:
+            out += resp[:-2]
+            # GET RESPONSE uses the ACR122U pseudo-APDU class FF, not T=0's 00
+            resp = self._xfrblock([0xFF, 0xC0, 0x00, 0x00, resp[-1]], timeout_ms)
+        out += resp
+        return bytes(out)
+
+    def _pn532(self, cmd, timeout_ms=3000):
+        "wrap a PN532 command (starting 0xD4) in the ACR122U direct-transmit pseudo-APDU"
+        apdu = [0xFF, 0x00, 0x00, 0x00, len(cmd)] + list(cmd)
+        r = self._apdu(apdu, timeout_ms)
+        if len(r) >= 2 and r[-2] == 0x90 and r[-1] == 0x00:
+            r = r[:-2]
+        return r   # expect D5 <cmd+1> ...
+
+    def _read_reg(self, addr):
+        r = self._pn532([0xD4, 0x06, (addr >> 8) & 0xFF, addr & 0xFF])
+        return r[2] if len(r) >= 3 else 0
+
+    def _write_reg(self, addr, val):
+        self._pn532([0xD4, 0x08, (addr >> 8) & 0xFF, addr & 0xFF, val & 0xFF])
+
+    # -- PN532 setup --------------------------------------------------------
+    def _pn532_init(self):
+        self._pn532([0xD4, 0x14, 0x01, 0x00])             # SAMConfiguration: normal mode
+        # limit passive-activation retries so selectISO14443A() returns promptly
+        # when no card is present (mirrors libnfc NP_INFINITE_SELECT = false)
+        self._pn532([0xD4, 0x32, 0x05, 0xFF, 0x01, 0x02])  # RFConfiguration: MaxRetries
+        self.poweredUp = True
+
+    def _timeout_ms(self, timeout):
+        # T=CL callers pass a per-op timeout in seconds; give slow responses
+        # (e.g. ePassport BAC crypto / S(WTX)) plenty of room, never less than 3 s
+        if timeout is None:
+            return 5000
+        return max(int(timeout * 1000), 3000)
+
+    # -- API expected by RFIDIOt -------------------------------------------
+    def powerOn(self):
+        self._pn532([0xD4, 0x32, 0x01, 0x01])   # RFConfiguration: RF field on
+        self.poweredUp = True
+
+    def powerOff(self):
+        self._pn532([0xD4, 0x32, 0x01, 0x00])   # RFConfiguration: RF field off
+        self.poweredUp = False
+
+    def selectISO14443A(self):
+        """Poll for a 106 kbps ISO 14443-A target, return an ISO14443A() object."""
+        r = self._pn532([0xD4, 0x4A, 0x01, 0x00])   # InListPassiveTarget, 1 target, 106A
+        # D5 4B <NbTg> [Tg SENS_RES(2) SEL_RES(1) IDlen ID... [ATS...]]
+        if len(r) < 4 or r[0] != 0xD5 or r[1] != 0x4B or r[2] == 0:
+            return None
+        p = 4                       # skip D5 4B NbTg Tg
+        sens = r[p:p + 2]; p += 2
+        sel = r[p]; p += 1
+        idlen = r[p]; p += 1
+        uid = r[p:p + idlen]; p += idlen
+        ats = r[p:]                 # remaining bytes are the ATS (if any)
+        return _SimpleTargetA(uid, ats, sens, sel)
+
+    def selectISO14443B(self):
+        return None                 # not implemented for the direct-CCID path
+
+    def selectJEWEL(self):
+        return None
+
+    def selectICLASS(self):
+        return None
+
+    def enable_software_tcl(self):
+        """Take over ISO 14443-4 (T=CL) handling (see configure()/libnfc path).
+
+        Each raw I-block goes out via PN532 InCommunicateThru, so the reader's
+        firmware never reassembles a chained response and cannot overflow. CRC is
+        left to the PN532 (CIU TxCRCEn/RxCRCEn), matching libnfc's HANDLE_CRC.
+        """
+        self._set_crc(True)
+        # Extend the PN532 InCommunicateThru RF timeout (RFConfiguration item 0x02
+        # fRetryTimeout; Timeout = 100us * 2^(n-1), so 0x10 ~= 3.3 s) so a card's
+        # S(WTX) waiting-time extension - e.g. ePassport BAC EXTERNAL AUTHENTICATE
+        # running 3DES on-chip - doesn't hit the ~52 ms default and RF-error. This
+        # is the direct-CCID analogue of raising libnfc's NP_TIMEOUT_COM.
+        self._pn532([0xD4, 0x32, 0x02, 0x00, 0x0B, 0x10])
+        self._iblock = 0
+        self.software_tcl = True
+        if rfidiotglobals.Debug:
+            self.log.debug("software T=CL enabled (direct CCID, InCommunicateThru)")
+
+    def disable_software_tcl(self):
+        self.software_tcl = False
+
+    def configMifare(self):
+        self.software_tcl = False
+        self.selectISO14443A()
+
+    def _set_crc(self, on):
+        "set/clear the PN532 CIU automatic-CRC bits for InCommunicateThru"
+        for reg in (0x6302, 0x6303):        # CIU_TxMode, CIU_RxMode; bit7 = CRCEn
+            v = self._read_reg(reg)
+            v = (v | 0x80) if on else (v & ~0x80)
+            self._write_reg(reg, v)
+
+    def _raw_frame(self, apdu, timeout=None):
+        "transceive one ISO 14443-4 frame via PN532 InCommunicateThru"
+        frame = [int(apdu[i:i + 2], 16) for i in range(0, len(apdu), 2)]
+        if rfidiotglobals.Debug:
+            self.log.debug("CCID TX frame: %s" % apdu)
+        r = self._pn532([0xD4, 0x42] + frame, self._timeout_ms(timeout))   # InCommunicateThru
+        # D5 43 <status> <card bytes, CRC already stripped by the PN532>
+        if len(r) < 3 or r[0] != 0xD5 or r[1] != 0x43:
             return False, -1
-        return True, inf.upper()
+        if r[2] != 0x00:                     # PN532 error status (ETIMEOUT, ERFPROTO, ...)
+            if rfidiotglobals.Debug:
+                self.log.error("InCommunicateThru status 0x%02X" % r[2])
+            return False, -1
+        resp = "".join("%02X" % b for b in r[3:])
+        if rfidiotglobals.Debug:
+            self.log.debug("CCID RX frame: %s" % resp)
+        return True, resp
+
+    def _plain_apdu(self, apdu, timeout=None):
+        "non-T=CL path: PN532 InDataExchange (firmware framing; MIFARE, short APDUs)"
+        frame = [int(apdu[i:i + 2], 16) for i in range(0, len(apdu), 2)]
+        r = self._pn532([0xD4, 0x40, 0x01] + frame, self._timeout_ms(timeout))   # InDataExchange, Tg 1
+        if len(r) < 3 or r[0] != 0xD5 or r[1] != 0x41 or r[2] != 0x00:
+            return False, -1
+        return True, "".join("%02X" % b for b in r[3:])
+
+    def listreaders(self, target=None):
+        print("Direct-CCID reader:", self.LIBNFC_READER)
+        return None
+
+    def deconfigure(self):
+        fd = getattr(self, "_fd", None)
+        if fd is not None:
+            try:
+                if getattr(self, "_claimed", False):
+                    self._ioctl(_USBDEVFS_RELEASEINTERFACE, ctypes.byref(ctypes.c_uint(0)))
+            except OSError:
+                pass
+            try:
+                _os.close(fd)
+            except OSError:
+                pass
+            self._fd = None
+
+    def __del__(self):
+        self.deconfigure()
+
+
+class _SimpleTargetA():
+    "ISO14443A-compatible view of a PN532 InListPassiveTarget result"
+    def __init__(self, uid, ats, sens, sel):
+        self.uid = "".join("%02X" % b for b in uid)
+        self.atr = "".join("%02X" % b for b in ats)
+        self.atqa = "".join("%02X" % b for b in sens)
+        self.sak = "%02X" % sel
+
+    def __str__(self):
+        return "ISO14443A(uid='%s', atr='%s', atqa='%s', sak='%s')" % (
+            self.uid, self.atr, self.atqa, self.sak)
 
 
 def target_is_present(self):
