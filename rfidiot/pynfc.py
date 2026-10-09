@@ -505,7 +505,9 @@ class NFC(_ISODEP):
             ctypes.c_int,
         ]
         self.libnfc.nfc_close.argtypes = [ctypes.c_void_p]
-        self.libnfc.nfc_perror.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p]
+        # nfc_perror takes a C char* - c_wchar_p would pass wide chars and the
+        # message would print as just its first letter.
+        self.libnfc.nfc_perror.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         self.libnfc.nfc_initiator_list_passive_targets.argtypes = [
             ctypes.c_void_p,
             ctypes.Structure,
@@ -523,6 +525,28 @@ class NFC(_ISODEP):
         self.libnfc.nfc_initiator_target_is_present.argtypes = [
             ctypes.c_void_p,
             ctypes.Structure,
+        ]
+        # target (card-emulation) mode - see initAsTarget()/targetReceive()/
+        # targetSend(). nfc_target_init takes an in/out nfc_target describing the
+        # PICC to present and blocks until an initiator activates it.
+        self.libnfc.nfc_target_init.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_int,
+        ]
+        self.libnfc.nfc_target_receive_bytes.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_int,
+        ]
+        self.libnfc.nfc_target_send_bytes.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_int,
         ]
         self.libnfc.nfc_init(ctypes.byref(self.context))
         return self.libnfc.nfc_version()
@@ -781,7 +805,7 @@ class NFC(_ISODEP):
         if rfidiotglobals.Debug:
             self.log.debug("APDU rxlen = " + str(rxlen))
         if rxlen < 0:
-            self.libnfc.nfc_perror(self.device, "nfc_initiator_transceive_bytes")
+            self.libnfc.nfc_perror(self.device, b"nfc_initiator_transceive_bytes")
             if rfidiotglobals.Debug:
                 self.log.error("Error sending/receiving APDU")
             return False, rxlen
@@ -794,6 +818,99 @@ class NFC(_ISODEP):
     def _plain_apdu(self, apdu, timeout=None):
         "non-T=CL path: a straight libnfc transceive (reader-firmware framing)"
         return self._raw_frame(apdu, timeout)
+
+    def make_iso14443a_target(self, atqa_hex, uid_hex, sak_hex, ats_hex=""):
+        """Build an NFC_TARGET describing an ISO 14443-A passive PICC to emulate.
+
+        atqa_hex: 2-byte SENS_RES/ATQA; uid_hex: the full UID to present (e.g.
+        '08' + a 3-byte NFCID1t for a single-size UID); sak_hex: 1-byte
+        SEL_RES/SAK; ats_hex: optional ATS / historical bytes. Only ISO 14443-A
+        at 106 kBaud is built here - that is what the eMRTD/EMV (Type 4 / T=CL)
+        emulation use cases need; FeliCa and DEP targets are not covered.
+        """
+        def _bytes(h):
+            return [int(h[i : i + 2], 16) for i in range(0, len(h), 2)]
+
+        nt = NFC_TARGET()
+        nt.nm.nmt = NMT_ISO14443A
+        nt.nm.nbr = NBR_106
+        nai = nt.nti.nai
+        atqa = _bytes(atqa_hex)
+        for i in range(min(2, len(atqa))):
+            nai.abtAtqa[i] = atqa[i]
+        nai.btSak = int(sak_hex, 16) if sak_hex else 0
+        uid = _bytes(uid_hex)
+        nai.uiUidLen = len(uid)
+        for i in range(min(10, len(uid))):
+            nai.abtUid[i] = uid[i]
+        ats = _bytes(ats_hex)
+        nai.uiAtsLen = len(ats)
+        for i in range(min(254, len(ats))):
+            nai.abtAts[i] = ats[i]
+        return nt
+
+    def initAsTarget(self, nfc_target, timeout=0, raw=True):
+        """Enter target (card-emulation) mode and block until an initiator
+        activates us. timeout is in ms (0 = block indefinitely). Returns
+        (True, rx_hex) where rx_hex is the first command the initiator sent on
+        activation ('' if none), or (False, rc) with the libnfc return code.
+
+        With raw=True (the default) libnfc "easy framing" is turned off before
+        entering target mode. This is required for an ISO 14443-A (non-DEP)
+        target: libnfc only implements target receive/send for DEP under easy
+        framing and returns NFC_ENOTIMPL otherwise. With it off, libnfc hands us
+        raw frames and the caller drives the ISO 14443-4 (T=CL) target side -
+        answer the RATS with the ATS, then exchange I-blocks (see
+        pn532emulate.py). The chip still handles CRC/parity. A generous raw RF
+        timeout mirrors enable_software_tcl() so a slow initiator poll does not
+        RF-error at libnfc's ~52 ms default.
+        """
+        rxAPDU = ctypes.c_ubyte * MAX_FRAME_LEN
+        rx = rxAPDU()
+        rxlen = self.libnfc.nfc_target_init(
+            self.device,
+            ctypes.byref(nfc_target),
+            ctypes.byref(rx),
+            ctypes.c_size_t(MAX_FRAME_LEN),
+            int(timeout),
+        )
+        if rxlen < 0:
+            self.libnfc.nfc_perror(self.device, b"nfc_target_init")
+            return False, rxlen
+        # Set raw framing *after* nfc_target_init - it resets these properties, so
+        # setting them earlier has no effect and target send/receive then fail
+        # with NFC_ENOTIMPL (libnfc only implements the easy-framing path for DEP).
+        if raw:
+            self.libnfc.nfc_device_set_property_bool(self.device, NP_HANDLE_CRC, True)
+            self.libnfc.nfc_device_set_property_bool(self.device, NP_HANDLE_PARITY, True)
+            self.libnfc.nfc_device_set_property_bool(self.device, NP_EASY_FRAMING, False)
+            self.libnfc.nfc_device_set_property_int(self.device, NP_TIMEOUT_COM, 3000)
+        return True, "".join([f"{x:02x}" for x in rx[:rxlen]]).upper()
+
+    def targetReceive(self, timeout=0):
+        "receive one frame from the initiator; (True, hex) or (False, rc)"
+        rxAPDU = ctypes.c_ubyte * MAX_FRAME_LEN
+        rx = rxAPDU()
+        rxlen = self.libnfc.nfc_target_receive_bytes(
+            self.device, ctypes.byref(rx), ctypes.c_size_t(MAX_FRAME_LEN), int(timeout)
+        )
+        if rxlen < 0:
+            self.libnfc.nfc_perror(self.device, b"nfc_target_receive_bytes")
+            return False, rxlen
+        return True, "".join([f"{x:02x}" for x in rx[:rxlen]]).upper()
+
+    def targetSend(self, apdu, timeout=0):
+        "send one frame (hex in) back to the initiator; (True, nbytes) or (False, rc)"
+        txData = [int(apdu[i : i + 2], 16) for i in range(0, len(apdu), 2)]
+        txAPDU = ctypes.c_ubyte * max(1, len(txData))
+        tx = txAPDU(*txData)
+        ret = self.libnfc.nfc_target_send_bytes(
+            self.device, ctypes.byref(tx), ctypes.c_size_t(len(txData)), int(timeout)
+        )
+        if ret < 0:
+            self.libnfc.nfc_perror(self.device, b"nfc_target_send_bytes")
+            return False, ret
+        return True, ret
 
 
 # --------------------------------------------------------------------------- #

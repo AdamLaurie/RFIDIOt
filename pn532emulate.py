@@ -34,7 +34,7 @@ except Exception as e:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532emulate v3.0d")
+card.info("pn532emulate v3.0e")
 
 if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")
@@ -104,9 +104,17 @@ if chelp or len(args) < 6:
     print("    In ISO/IEC 14443-4 PICC emulation mode, the emulator will wait for initiator, then wait for an APDU,")
     print("    to which it will reply '9000' and exit.")
     print()
+    print("    With a libnfc reader (-f) the SEL_RES (SAK) selects the emulated tag class:")
+    print("      SAK with bit 0x20 (e.g. 20) -> ISO 14443-4 (Type 4): reader sends RATS,")
+    print("        we answer with the ATS (Historical Bytes) then reply 9000 to each APDU.")
+    print("      SAK without bit 0x20 (e.g. 00) -> ISO 14443-3 (Type 2): we serve READ")
+    print("        commands from a small memory image (Mifare Ultralight-style).")
+    print("      (PN533-based readers such as the SCL3711 can activate as a target but")
+    print("       cannot meet ISO 14443-4 activation timing; use an ACR122U or PN532.)")
+    print()
     sys.exit(True)
 
-if card.readersubtype != card.READER_ACS:
+if card.readertype != card.READER_LIBNFC and card.readersubtype != card.READER_ACS:
     print("  Reader type not supported!")
     sys.exit(True)
 
@@ -115,12 +123,13 @@ if card.readersubtype != card.READER_ACS:
 #       print '  Could not disable auto-polling'
 #       sys.exit(True)
 
-if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
-    print("  NXP PN532 Firmware:")
-    pn532_print_firmware(card.data)
+if card.readersubtype == card.READER_ACS:
+    if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
+        print("  NXP PN532 Firmware:")
+        pn532_print_firmware(card.data)
 
-if card.acs_send_apdu(PN532_APDU["GET_GENERAL_STATUS"]):
-    pn532_print_status(card.data)
+    if card.acs_send_apdu(PN532_APDU["GET_GENERAL_STATUS"]):
+        pn532_print_status(card.data)
 
 mode = [args[0]]
 sens_res = [args[1]]
@@ -143,6 +152,150 @@ try:
 except:
     lentk = ["00"]
     tk = [""]
+
+def _emulate_tcl_libnfc(card, first):
+    """Type 4 (ISO 14443-4) target loop.
+
+    Easy framing is left ON (see the initAsTarget call), so the reader chip
+    drives the ISO 14443-4 (T=CL) block protocol - RATS/ATS, PCB block numbers,
+    CID, chaining, WTX - and we exchange bare APDUs. We just reply 9000 to each
+    command (a stub; a real emulator would dispatch on the APDU). This is how
+    libnfc's own nfc-emulate-forum-tag4 works and runs on ACR122U/PN532.
+
+    `first` is whatever nfc_target_init returned: normally empty (the chip has
+    just answered the RATS) or already the first APDU. If it is a RATS ('E0 ..')
+    the chip did NOT handle T=CL itself - that is the PN533/SCL3711 case, which
+    cannot do ISO 14443-4 target mode (target receive returns NFC_ENOTIMPL);
+    report it rather than limp along.
+    """
+    if first[:2] == "E0":
+        print("Reader handed up the RATS (%s) instead of answering it in "
+              "hardware: this chip does not implement ISO 14443-4 target mode. "
+              "Seen on PN533-based readers (e.g. the SCL3711); use an ACR122U "
+              "or a PN532 for Type 4 (APDU) emulation." % first)
+        sys.exit(True)
+    status, data = (True, first) if first else card.nfc.targetReceive(0)
+
+    guard = 0
+    while status:
+        guard += 1
+        if guard > 4096:
+            print("ISO 14443-4 exchange did not terminate")
+            sys.exit(True)
+        print("<<", data)
+        print(">>", card.ISO_OK)
+        status, ret = card.nfc.targetSend(card.ISO_OK, 0)
+        if not status:
+            print("response send failed (libnfc rc %s)" % ret)
+            sys.exit(True)
+        status, data = card.nfc.targetReceive(0)
+
+    # receive returned an error (initiator left the field, or ENOTIMPL)
+    if data == -8:
+        print("Target receive not supported (libnfc NFC_ENOTIMPL): this reader "
+              "cannot do ISO 14443-4 target mode. Use an ACR122U or a PN532.")
+    else:
+        print("Target receive ended (libnfc rc %s)" % data)
+    sys.exit(False)
+
+
+def _emulate_type2_libnfc(card, uid_full, first):
+    """Type 2 (ISO 14443-3 / NFC Forum Type 2) target loop (libnfc raw framing).
+
+    The reader issues raw commands (no RATS). Answer READ (0x30 <page>) with 16
+    bytes - four pages, wrapping - from a small static memory image, and
+    acknowledge HALT (0x50). Writes (0xA2) and other commands are not
+    implemented: a 4-bit NAK cannot be sent through the byte-oriented API, so
+    they are logged and the exchange waits for the next command. `first` is the
+    command captured during activation ('' if none).
+    """
+    # 16 pages x 4 bytes. page 0 holds the first 4 UID bytes; page 3 is the NFC
+    # Forum capability container (E1 10 06 00 = magic, v1.0, 48 bytes, R/W);
+    # page 4 is an empty NDEF TLV. Enough to read as a blank Type 2 tag.
+    pages = ["00000000"] * 16
+    pages[0] = (uid_full + "0" * 8)[:8]
+    pages[3] = "E1100600"
+    pages[4] = "0300FE00"
+
+    def read16(page):
+        return "".join(pages[(page + i) % len(pages)] for i in range(4))
+
+    print("  ISO 14443-3 (Type 2) target - serving %d pages" % len(pages))
+    status, data = True, first
+    if not data:
+        status, data = card.nfc.targetReceive(0)
+
+    guard = 0
+    while status:
+        guard += 1
+        if guard > 100000:
+            print("Type 2 exchange did not terminate")
+            sys.exit(True)
+        if len(data) < 2:
+            status, data = card.nfc.targetReceive(0)
+            continue
+        cmd = int(data[0:2], 16)
+        if cmd == 0x30:  # READ <page>
+            page = int(data[2:4], 16) if len(data) >= 4 else 0
+            resp = read16(page)
+            print("<< READ %02X" % page)
+            print(">>", resp)
+            ok, ret = card.nfc.targetSend(resp, 0)
+            if not ok:
+                print("response send failed (libnfc rc %s)" % ret)
+                sys.exit(True)
+        elif cmd == 0x50:  # HALT
+            print("<< HALT")
+            print("  Initiator halted")
+            sys.exit(False)
+        else:
+            print("<< unsupported Type 2 command:", data)
+        status, data = card.nfc.targetReceive(0)
+
+    print("Target receive ended (libnfc rc %s)" % data)
+    sys.exit(False)
+
+
+if card.readertype == card.READER_LIBNFC:
+    # libnfc card-emulation path. libnfc's target API only expresses an
+    # ISO 14443-A PICC, so the PN532-specific MODE byte, the FeliCa parameters
+    # (NFCID2t/PAD/SYSTEM_CODE), NFCID3t and the DEP General Bytes that the
+    # ACR122U path accepts have no equivalent here and are ignored. SENS_RES
+    # becomes the ATQA, '08'+NFCID1t the (single-size) UID, SEL_RES the SAK and
+    # the Historical Bytes the ATS.
+    for ignored, label in (
+        (mode[0], "MODE"),
+        (felica[0], "NFCID2t/FeliCa params"),
+        (nfcid[0], "NFCID3t"),
+        (gt[0], "General Bytes (DEP)"),
+    ):
+        if ignored:
+            print("  Note: %s ignored (libnfc ISO 14443-A target only)" % label)
+    uid_full = "08" + uid[0]
+    # Tag class comes from the SAK (SEL_RES) we present: bit 0x20 advertises
+    # ISO 14443-4 -> Type 4 (reader does RATS/T=CL/APDUs), otherwise Type 2 (raw
+    # ISO 14443-3 reads). This drives the framing we ask libnfc for:
+    #   Type 4 -> easy framing ON, so the reader chip runs T=CL and we trade
+    #             bare APDUs (works on ACR122U/PN532);
+    #   Type 2 -> raw framing, so we serve the ISO 14443-3 commands ourselves.
+    is_type4 = bool(int(sel_res[0], 16) & 0x20)
+    target = card.nfc.make_iso14443a_target(sens_res[0], uid_full, sel_res[0], tk[0])
+    print("  Waiting for activation...")
+    status, data = card.nfc.initAsTarget(target, 0, raw=not is_type4)
+    if not status:
+        print("Target Init failed (libnfc rc %s)" % data)
+        sys.exit(True)
+    print("  Emulator activated:")
+    print("         UID: %s" % uid_full)
+    if data:
+        print("    First RX:", data)
+    print()
+
+    if is_type4:
+        _emulate_tcl_libnfc(card, data)
+    else:
+        _emulate_type2_libnfc(card, uid_full, data)
+    sys.exit(False)
 
 print("  Waiting for activation...")
 card.acs_send_apdu(card.PCSC_APDU["ACS_LED_RED"])
