@@ -309,6 +309,14 @@ Hardware-verified on an ACR122U/Touchatag (libnfc `acr122_usb`):
 - `mrpkey.py -f 0 <MRZ>`: full ePassport BAC + secure messaging, EF.COM/SOD/DG1/DG2/
   DG14, the 18,417-byte EF.DG2 JPEG read in full via T=CL chaining.
 
+Still to test: only the Touchatag/tikitag ACR122 was on hand. Other ACR122-family
+readers (plain ACR122U revisions, ACR122T, ACR1222L, and the many clones/relabels)
+ship different PN532 firmware and USB-bridge revisions, so their internal reassembly
+buffer size - and thus where chaining overflows, or whether `63 27` is even the
+symptom - may differ. The fix should still apply (it detects by the `acr122`
+connstring prefix and just drives T=CL in software), but it hasn't been confirmed on
+non-tikitag hardware. Verify against another ACR122 variant when one is available.
+
 Affected tools (the 14443-4 APDU path over an ACR122U via libnfc): `ChAP.py` and
 `mrpkey.py` (both verified above); `rfidiot-cli.py` APDU/SELECT/IDENTIFY;
 `jcopsetatrhist.py`/`jcopmifare.py` contactless JCOP; `nfcid.py` (enables the mode but
