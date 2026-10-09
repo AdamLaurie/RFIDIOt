@@ -50,6 +50,8 @@ a:
     second PC/SC slot, i.e. reader index 1 ('-r 1').
   - the original ACG and Frosch serial readers ('-R READER_ACG' / '-R READER_FROSCH',
     serial port via '-l', e.g. /dev/ttyUSB0).
+  See docs/readers.md for per-model launch commands (SCL3711, ACR122U / Touchatag,
+  ACR122U-WB-R via '-f ccid', OMNIKEY 5321, Chameleon Ultra, ...).
   Run any tool with '-h' for the full list of options.
 
 q: How do I install it?
