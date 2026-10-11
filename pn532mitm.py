@@ -119,50 +119,75 @@ except:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532mitm v3.0d")
-
+# Print our own help BEFORE card.info(): under -h, card.info() emits the banner
+# and exits (see RFIDIOt.info()), so the detailed help below must come first.
 if chelp or len(args) < 1:
     print(sys.argv[0] + " - NXP PN532 Man-In-The-Middle")
     print()
-    print("\tUsage: " + sys.argv[0] + " <EMULATOR|REMOTE> [LOG FILE] ['QUIET']")
+    print("\tUsage: " + sys.argv[0] + " <EMULATOR# | reader:HOST:PORT | emulator:HOST:PORT> [LOG FILE] ['QUIET']")
     print()
-    print("\t  Default PCSC reader will be the READER. Specify reader number to use as an EMULATOR as")
-    print("\t  the <EMULATOR> argument.")
+    print("\t  A MITM has two roles:")
     print()
-    print("\t  To utilise a REMOTE device, use a string in the form 'emulator:HOST:PORT' or 'reader:HOST:PORT'.")
+    print("\t    READER   - talks to the genuine target (the REAL card / chip).")
+    print("\t    EMULATOR - presents a FAKE card over the air to the victim reader.")
     print()
-    print("\t  COMMANDS and RESPONSES will be relayed between the READER and the EMULATOR, and relayed")
-    print("\t  traffic will be displayed (and logged if [LOG FILE] is specified).")
+    print("\t  APDUs are relayed EMULATOR <-> READER, so the victim reader believes")
+    print("\t  it is talking to the real card.")
     print()
-    print("\t  If the 'QUIET' option is specified, traffic log will not be displayed on screen.")
+    print("\t  THIS (local) machine always runs exactly ONE of those roles.")
+    print("\t  For the socket forms the argument names the REMOTE role (via the")
+    print("\t  'reader:'/'emulator:' prefix), so the LOCAL role is the opposite.")
+    print("\t  For a bare device number the argument is the local EMULATOR device:")
     print()
-    print("\t  Logging is in the format:")
+    print("\t    <n>                 LOCAL = EMULATOR, on PC/SC reader <n>.")
+    print("\t                        READER = the default local PC/SC reader")
+    print("\t                        (from config, or -r). Both roles on one host.")
+    print()
+    print("\t    reader:HOST:PORT    REMOTE (HOST:PORT) = READER.")
+    print("\t                        LOCAL = EMULATOR, selected with -r <n> (PC/SC)")
+    print("\t                        or -f <n> (libnfc ACR122U / tikitag).")
+    print()
+    print("\t    emulator:HOST:PORT  REMOTE (HOST:PORT) = EMULATOR.")
+    print("\t                        LOCAL = READER, the default PC/SC reader (-r <n>).")
+    print()
+    print("\t  COMMANDS and RESPONSES are relayed between the READER and the")
+    print("\t  EMULATOR, and the relayed traffic is displayed (and logged if")
+    print("\t  [LOG FILE] is given). 'QUIET' suppresses the on-screen traffic log.")
+    print()
+    print("\t  Log format:")
     print()
     print("\t    << DATA...        - HEX APDU received by EMULATOR and relayed to READER")
     print("\t    >> DATA... SW1SW2 - HEX response and STATUS received by READER and relayed to EMULATOR")
     print()
-    print("\t  Examples:")
+    print("\t  Examples (the role word shows what THIS host does):")
     print()
-    print("\t    Use device no. 2 as the READER and device no. 3 as the EMULATOR:")
-    print()
+    print("\t    One host, READER = device 2, EMULATOR = device 3:")
     print("\t      " + sys.argv[0] + " -r 2 3")
     print()
-    print("\t    Use device no. 2 as the EMULATOR and remote system on 192.168.1.3 port 5000 as the READER:")
-    print()
+    print("\t    This host EMULATES (PC/SC device 2); READER is on another host:")
     print("\t      " + sys.argv[0] + " -r 2 reader:192.168.1.3:5000")
     print()
-    print("\t  NB: the EMULATOR couples to the genuine target reader only over the air,")
-    print("\t  so reliability is a matter of antenna coupling, not of how many devices")
-    print("\t  share a host. All three (READER, EMULATOR, target reader) can run on one")
-    print("\t  machine, as long as the target is a PC/SC reader that couples well to the")
-    print("\t  EMULATOR (the OMNIKEY CardMan 5321 couples poorly and fails the larger")
-    print("\t  transfers; most other PC/SC readers are fine). The one combination that")
-    print("\t  does NOT work is this PC/SC MITM tooling alongside a libnfc target reader")
-    print("\t  on the SAME machine - they contend for the device. Splitting READER +")
-    print("\t  EMULATOR onto one machine with the target reader on another, or the socket")
-    print("\t  form across two machines to any remote target, works fine.")
+    print("\t    This host EMULATES with a libnfc ACR122U/tikitag; READER is remote:")
+    print("\t      " + sys.argv[0] + " -f 0 reader:192.168.1.3:5000")
+    print()
+    print("\t    This host is the READER (default PC/SC); EMULATOR is on another host:")
+    print("\t      " + sys.argv[0] + " emulator:192.168.1.3:5000")
+    print()
+    print("\t  Coupling: the EMULATOR couples to the victim target reader only over")
+    print("\t  the air, so reliability is antenna coupling, not host count. An")
+    print("\t  all-PC/SC run can put all three (READER, EMULATOR, target reader) on")
+    print("\t  one host if the target couples well (the OMNIKEY CardMan 5321 couples")
+    print("\t  poorly and fails larger transfers; most other PC/SC readers are fine).")
+    print()
+    print("\t  libnfc EMULATOR: a libnfc ACR122U/tikitag (-f <n>) can be the local")
+    print("\t  EMULATOR, but ONLY over the socket (reader:HOST:PORT) with the READER")
+    print("\t  on another host - a libnfc reader and emulator contend for the device")
+    print("\t  on the same host. It emulates an ISO 14443-4 (Type 4 / APDU) target;")
+    print("\t  the SCL3711 (PN533) cannot be a Type 4 target and is refused.")
     print()
     sys.exit(True)
+
+card.info("pn532mitm v3.0e")
 
 # logging = False
 logfile = None
@@ -228,14 +253,32 @@ else:
         print("Couldn't initialise EMULATOR on reader", args[0])
         sys.exit(True)
 
+# The EMULATOR side may be a libnfc reader (e.g. an ACR122U/tikitag driven via
+# -f): it presents a target to the victim reader using the pynfc target-mode
+# helpers and relays each APDU over the socket. We synthesize the same ACS PN532
+# response framing on the wire ("D503..", "D58D..", "D587..") so the READER side
+# - which stays the existing PC/SC code, possibly on another machine - is
+# unchanged. Only the emulator-over-socket case (reader:HOST:PORT) is supported
+# for libnfc; the READER side (which drives the real tag) still needs ACS, and a
+# local all-in-one run still needs ACS for both.
+em_libnfc = rd_remote and card.readertype == card.READER_LIBNFC
+em_pending = None  # first APDU captured during libnfc activation, if any
+
 # always check at least one device locally
-if card.readersubtype != card.READER_ACS:
-    print("READER is not an ACS")
+if not em_libnfc and card.readersubtype != card.READER_ACS:
+    print("Local reader is not an ACS")
     if remote:
         connection.close()
     sys.exit(True)
 
-if card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
+if em_libnfc:
+    # No PN532 GetFirmwareVersion over libnfc; send a synthetic response so the
+    # remote READER side's handshake (which prints it) still completes.
+    fwdata = "D50332010607"
+    send_data(connection, fwdata)
+    print("  Local firmware (libnfc emulator - synthetic):")
+    pn532_print_firmware(fwdata)
+elif card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
     if remote:
         send_data(connection, card.data)
         print("  Local NXP PN532 Firmware:")
@@ -338,19 +381,43 @@ if tags > 1:
 
 if not remote or remote_type == "READER":
     print("  Waiting for EMULATOR activation...")
-    status = emulator.acs_send_apdu(
-        PN532_APDU["TG_INIT_AS_TARGET"] + mode + sens_res + uid + sel_res + felica + nfcid + lengt + gt + lentk + tk
-    )
-    if not status or emulator.data[:4] != "D58D":
-        print(
-            "Target Init failed:",
-            emulator.errorcode,
-            emulator.get_error_str(card.errorcode),
+    if em_libnfc:
+        # Present an ISO 14443-4 PICC via libnfc target mode (easy framing on,
+        # so the victim reader's chip drives T=CL and we trade bare APDUs). The
+        # UID/sens_res/sel_res are the real tag's, relayed from the READER side.
+        target = emulator.nfc.make_iso14443a_target(
+            sens_res[0], "08" + uid[0], sel_res[0], tk[0])
+        ok, first = emulator.nfc.initAsTarget(target, 0, raw=False)
+        if not ok:
+            print("Target Init failed (libnfc rc %s)" % first)
+            if remote:
+                connection.close()
+            sys.exit(True)
+        if first[:2] == "E0":
+            print("Reader handed up the RATS (%s): this chip can't do ISO "
+                  "14443-4 target mode (PN533/SCL3711). Use an ACR122U or "
+                  "PN532 as the emulator." % first)
+            if remote:
+                connection.close()
+            sys.exit(True)
+        em_pending = first  # '' if the chip answered RATS and no APDU yet
+        # Synthesize the ACS TgInitAsTarget result for the wire/parse below:
+        # 'D58D' + mode byte 0x08 (ISO 14443-4 PICC), no initiator bytes.
+        data = "D58D08"
+    else:
+        status = emulator.acs_send_apdu(
+            PN532_APDU["TG_INIT_AS_TARGET"] + mode + sens_res + uid + sel_res + felica + nfcid + lengt + gt + lentk + tk
         )
-        if remote:
-            connection.close()
-        sys.exit(True)
-    data = emulator.data
+        if not status or emulator.data[:4] != "D58D":
+            print(
+                "Target Init failed:",
+                emulator.errorcode,
+                emulator.get_error_str(card.errorcode),
+            )
+            if remote:
+                connection.close()
+            sys.exit(True)
+        data = emulator.data
 if remote:
     if remote_type == "READER":
         send_data(connection, data)
@@ -381,19 +448,34 @@ try:
     while 42:
         # wait for emulator to receive a command
         if not remote or remote_type == "READER":
-            status = emulator.acs_send_apdu(PN532_APDU["TG_GET_DATA"])
-            data = emulator.data
-            # if not status or not emulator.data[:4] == 'D587':
-            if not status:
-                print(
-                    "Target Get Data failed:",
-                    emulator.errorcode,
-                    emulator.get_error_str(card.errorcode),
-                )
-                print("Data:", emulator.data)
-                if remote:
-                    connection.close()
-                sys.exit(True)
+            if em_libnfc:
+                if em_pending:
+                    apdu, em_pending = em_pending, None
+                    ok = True
+                else:
+                    em_pending = None  # drop the '' sentinel after activation
+                    ok, apdu = emulator.nfc.targetReceive(0)
+                if ok:
+                    # mimic the ACS TgGetData reply: 'D587' + errorcode 00 + APDU
+                    data = "D58700" + apdu
+                else:
+                    # negative rc (field gone / released): map to the ACS
+                    # "released" status 0x29 so the end handling below fires.
+                    data = "D58729"
+            else:
+                status = emulator.acs_send_apdu(PN532_APDU["TG_GET_DATA"])
+                data = emulator.data
+                # if not status or not emulator.data[:4] == 'D587':
+                if not status:
+                    print(
+                        "Target Get Data failed:",
+                        emulator.errorcode,
+                        emulator.get_error_str(card.errorcode),
+                    )
+                    print("Data:", emulator.data)
+                    if remote:
+                        connection.close()
+                    sys.exit(True)
         if remote:
             if remote_type == "READER":
                 send_data(connection, data)
@@ -409,7 +491,7 @@ try:
                     logfile.close()
                     logfile = None
                 print("  Session ended: EMULATOR released by Initiator")
-                if not remote or remote_type == "READER":
+                if (not remote or remote_type == "READER") and not em_libnfc:
                     emulator.acs_send_apdu(card.PCSC_APDU["ACS_LED_GREEN"])
                 sys.exit(False)
             print("Error:", PN532_ERRORS[errorcode])
@@ -442,7 +524,11 @@ try:
             logfile.flush
         # relay tag's response back via emulator
         if not remote or remote_type == "READER":
-            status = emulator.acs_send_apdu(PN532_APDU["TG_SET_DATA"] + [data] + [errorcode])
+            if em_libnfc:
+                # send the tag's response body + status word to the victim reader
+                emulator.nfc.targetSend(data + errorcode, 0)
+            else:
+                status = emulator.acs_send_apdu(PN532_APDU["TG_SET_DATA"] + [data] + [errorcode])
 except Exception:
     # NB: catch only real errors - a bare 'except:' also swallows the SystemExit
     # from the clean "EMULATOR released by Initiator" (0x29) exit above, turning a
@@ -453,6 +539,6 @@ except Exception:
     print("  Session ended with possible errors")
     if remote:
         connection.close()
-    if not remote or remote_type == "READER":
+    if (not remote or remote_type == "READER") and not em_libnfc:
         emulator.acs_send_apdu(card.PCSC_APDU["ACS_LED_GREEN"])
     sys.exit(True)
