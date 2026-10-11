@@ -405,3 +405,51 @@ APDU transceive + MIFARE Classic auth/read/write, and LF EM410x read; NO 14443-B
   `hidprox.py`/`fdxbnum.py`/`q5reset.py`/`lfxtype.py`/`readlfx.py`/`writelfx.py`
   (Chameleon LF *reader* only does EM410x scan + T55xx write, not HID/Hitag/FDX-B/EM4x
   reads); and `froschtest.py`/`demotag.py` (those are specific serial readers).
+
+## 12. libnfc card-emulation (EMULATOR role) for pn532emulate / pn532mitm - **[DONE]**
+The EMULATOR (target) role in `pn532emulate.py` and `pn532mitm.py` used to require an
+ACS PN532 (the `TgInitAsTarget` ACS pseudo-APDU path). A libnfc ACR122U/tikitag (`-f`)
+can now take that role too, **as well as** the ACS path - not instead of it. Section 9
+(Android HCE) remains a future third back-end for the same role.
+
+Fix (commits `7e0f769` pn532emulate, `e771bcf` pn532mitm; library `VERSION` 3.1b).
+New pynfc target-mode helpers on the `NFC` class: `make_iso14443a_target()` builds an
+ISO 14443-A `NFC_TARGET` (ATQA/UID/SAK/ATS), `initAsTarget()` enters target mode and
+blocks for activation, `targetReceive()`/`targetSend()` exchange frames. Critical
+ordering: libnfc "easy framing" must be set **after** `nfc_target_init` (it resets the
+device properties), else target send/receive returns `NFC_ENOTIMPL` (libnfc only
+implements the easy-framing receive path for DEP). Also fixed `nfc_perror`'s argtype
+(`c_char_p`, was `c_wchar_p`) so it prints the whole label.
+
+`pn532emulate.py` dispatches by the SAK bit `0x20` of the requested card:
+- **Type 4** (ISO 14443-4 / T=CL / APDU): easy framing **on**, the chip drives T=CL and
+  we answer bare APDUs - the `nfc-emulate-forum-tag4` approach. Needs a PN532
+  (ACR122U/tikitag) that answers RATS in hardware.
+- **Type 2** (ISO 14443-3 / Mifare UL memory): raw framing, a 16-page image (page 0 =
+  UID, page 3 = CC `E1100600`, page 4 = `0300FE00`), serving `READ`(0x30) and `HALT`.
+
+`pn532mitm.py` adds a libnfc EMULATOR side over the socket relay (`-f <n>
+reader:HOST:PORT`): it presents an ISO 14443-4 target and synthesises the **same ACS
+wire framing** the ACS emulator would (`D503..` firmware, `D58D..` activation,
+`D587..` TgGetData, `targetSend(data+errorcode)` for TgSetData), so the READER side
+stays the unchanged PC/SC code - on the same host (two shells) or another machine.
+
+Proven matrix (hardware-verified):
+- Type 2 emulation works on **both** the SCL3711 (PN533) and the tikitag (read back as
+  a MIFARE Ultralight).
+- Type 4 emulation works on the **tikitag/ACR122U** (`<< 00A4000C023F0000  >> 9000`).
+- Type 4 does **not** work on the SCL3711: the PN533 hands RATS up to software, which
+  can't meet the RATS->ATS timing, so a Type 4 target is refused on it with a clear
+  message. (The ACR122U/PN532 answers RATS in hardware.)
+- `pn532mitm` relay end-to-end: tikitag as the libnfc EMULATOR + the existing PC/SC
+  reader side, a full ePassport read (`mrpkey.py`) relayed cleanly.
+
+Remaining / limits:
+- The `pn532mitm` libnfc emulator is **Type 4 only** (the Type 2 memory path lives in
+  `pn532emulate`, not the relay); and it uses a default/passed ATS - the real card's
+  ATS is not yet relayed over the socket (fine for most readers, may matter for picky
+  ones).
+- libnfc can't drive a reader **and** an emulator on the same host (device contention),
+  so the libnfc emulator is socket-only: two shells on one host (reader on PC/SC,
+  emulator on libnfc) or split across two machines. The PN532's hard-wired `08` UID
+  first byte (section 9) still applies.
