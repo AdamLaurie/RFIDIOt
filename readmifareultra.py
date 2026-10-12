@@ -49,7 +49,9 @@ print("\n  ID: " + card.uid)
 print("Type: " + card.tagtype)
 
 card.select()
-# pull header block information from the tag
+# pull header block information from the tag. A read failure here (e.g. the tag
+# is not a Type 2 / Ultralight, or the field dropped) leaves the header values
+# unset, so bail out cleanly rather than crashing later (NameError on lock0).
 if card.readblock(0):
     sn0 = card.data[0:2]
     sn1 = card.data[2:4]
@@ -57,6 +59,7 @@ if card.readblock(0):
     bcc0 = card.data[6:8]
 else:
     print("read error: %s" % card.errorcode)
+    sys.exit(True)
 
 if card.readblock(1):
     sn3 = card.data[0:2]
@@ -65,6 +68,7 @@ if card.readblock(1):
     sn6 = card.data[6:8]
 else:
     print("read error: %s" % card.errorcode)
+    sys.exit(True)
 
 if card.readblock(2):
     bcc1 = card.data[0:2]
@@ -73,6 +77,7 @@ if card.readblock(2):
     lock1 = card.data[6:8]
 else:
     print("read error: %s" % card.errorcode)
+    sys.exit(True)
 
 if card.readblock(3):
     otp0 = card.data[0:2]
@@ -81,6 +86,7 @@ if card.readblock(3):
     otp3 = card.data[6:8]
 else:
     print("read error: %s" % card.errorcode)
+    sys.exit(True)
 
 # convert lock bytes to binary for later use
 lbits0 = card.ToBinaryString(card.ToBinary(lock0))
