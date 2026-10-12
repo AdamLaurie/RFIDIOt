@@ -103,7 +103,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1b")
+card.info("rfidiot-cli v3.1c")
 
 # globals
 Mifare_Key = None
