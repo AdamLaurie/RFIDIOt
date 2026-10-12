@@ -34,7 +34,7 @@ except Exception as e:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("pn532emulate v3.0e")
+card.info("pn532emulate v3.0f")
 
 if chelp or len(args) < 6:
     print(sys.argv[0] + " - Switch NXP PN532 chip into emulation mode")
@@ -68,9 +68,10 @@ if chelp or len(args) < 6:
     print("        3-byte NFCID1t and always transmits a single-size (4-byte) UID whose")
     print("        first byte is hard-wired to '08' (the ISO 14443-3 cascade-tag /")
     print("        random-UID marker), so '08' is prepended and byte 0 cannot be set to")
-    print("        anything else - an arbitrary first byte needs a different emulator")
-    print("        (Proxmark3, Chameleon). This is exact for ICAO 9303 ePassports, whose")
-    print("        UIDs are random and already start with '08'.")
+    print("        anything else here. For a UID of your choice (4, 7 or 10 bytes) at the")
+    print("        ISO 14443-3 layer, use emulateuid.py (libnfc PN53x), or a Proxmark3 /")
+    print("        Chameleon. '08' is exact for ICAO 9303 ePassports, whose UIDs are")
+    print("        random and already start with '08'.")
     print()
     print("    SEL_RES:")
     print("        1 Byte, as defined in ISO14443-4.")

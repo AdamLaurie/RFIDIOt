@@ -899,17 +899,26 @@ class NFC(_ISODEP):
             self.libnfc.nfc_device_set_property_int(self.device, NP_TIMEOUT_COM, 3000)
         return True, "".join([f"{x:02x}" for x in rx[:rxlen]]).upper()
 
-    def targetReceive(self, timeout=0):
-        "receive one frame from the initiator; (True, hex) or (False, rc)"
+    def targetReceive(self, timeout=0, quiet=False):
+        """receive one frame from the initiator; (True, hex) or (False, rc).
+        quiet=True suppresses libnfc's error print, for polling with a timeout."""
         rxAPDU = ctypes.c_ubyte * MAX_FRAME_LEN
         rx = rxAPDU()
         rxlen = self.libnfc.nfc_target_receive_bytes(
             self.device, ctypes.byref(rx), ctypes.c_size_t(MAX_FRAME_LEN), int(timeout)
         )
         if rxlen < 0:
-            self.libnfc.nfc_perror(self.device, b"nfc_target_receive_bytes")
+            if not quiet:
+                self.libnfc.nfc_perror(self.device, b"nfc_target_receive_bytes")
             return False, rxlen
         return True, "".join([f"{x:02x}" for x in rx[:rxlen]]).upper()
+
+    def targetHandleCRC(self, on):
+        """let the chip add/check CRC_A on target frames (on), or leave it to the
+        caller (off) - ISO 14443-3 anticollision frames (ATQA, UID+BCC) carry no
+        CRC, so a host answering anticollision itself needs it off (see
+        emulateuid.py), appending CRC_A to the SAK by hand."""
+        self.libnfc.nfc_device_set_property_bool(self.device, NP_HANDLE_CRC, bool(on))
 
     def targetSend(self, apdu, timeout=0):
         "send one frame (hex in) back to the initiator; (True, nbytes) or (False, rc)"

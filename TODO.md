@@ -185,6 +185,7 @@ Why it's worth it: cheap, ubiquitous hardware (no PN532/ACR122 needed for the ta
 side); and it may sidestep the PN532's forced `08` UID first byte (the chip only
 takes a 3-byte NFCID1t and hard-wires byte 0 to `08` - see the note in
 `pn532emulate.py`/`pn532mitm.py`). Exact for ePassports, but a hard limit otherwise.
+(Update: at the UID layer this is now beaten on libnfc PN53x by `emulateuid.py` - see section 14.)
 
 Caveats to check first: Android HCE emulates an ISO/IEC 14443-4 Type A PICC at the
 **APDU** level only (SELECT-AID routed to a service) - the app does not drive
@@ -720,3 +721,46 @@ Still to verify when the hardware is to hand:
 - a real **ACS ACR122U PICC over PC/SC** (-r), to exercise acs_mifare_login - the WB-R and
   tikitag both go via direct-CCID / libnfc instead, so that path was not exercised here.
 - an **SCM SDI010** (legacy FF 88 + 0x60 slots), if one is ever available.
+
+## 17. True UID emulation on libnfc PN53x (`emulateuid.py`) - **[DONE]**
+The PN53x answers anticollision in hardware (AutoColl) from a 25-byte buffer holding
+only 3 UID bytes, so `TgInitAsTarget` always presents `08` + 3 bytes (verified by
+reading the CIU Config buffer back). The way round it, as in libnfc's
+`nfc-emulate-uid`: once AutoColl has activated the chip (a full select plus one more
+command), it stays an activated target relaying raw frames, and the host answers
+REQA/WUPA, ANTICOL and SELECT itself (CRC handling off, SAK CRC added by hand).
+Without that activation, host-sent replies never go out - a plain card-mode
+Receive/Transmit without AutoColl does not work, and the activation bit is read-only.
+Two ways to get the priming activation:
+- retry (default): prime with SAK 20, so the real reader follows its select with a
+  RATS; we never answer it, the reader's activation fails, and a reader that retries
+  (PN532 InListPassiveTarget does) selects again - answered by the host, so its first
+  reported UID is ours.
+- `-p` primer: a second reader (ACR122U `ccid`, `twn4`, or a libnfc connstring) primes
+  first, so the real reader sees our UID from its first poll - but only while the
+  emulator never loses RF field (see below).
+**Losing the RF field releases the activation** (libnfc `-10` NFC_ETGRELEASED): after
+priming on the TWN4 with its field held on, lifting the SCL3711 clear released it at
+once; put back, it reports plain timeouts but relays nothing, and the next field cycle
+releases it again. It needs a fresh `initAsTarget`, i.e. `08`-priming again. So `-p`
+can't prime on one reader and then be carried to another; the primer's field must
+overlap the real reader's. (An earlier "survives 20 s field-off" result was the
+ACR122U's RFConfiguration RF-off, which evidently doesn't drop the field enough for
+the PN533 to notice.)
+**TWN4 as real reader: does not work.** It primes us (its RATS, or a raw `3000` after
+SAK 08), but it cycles its field at every SearchTag (and on SetRFOff / SetTagTypes),
+which releases the activation, so it always reads the `08` priming UID. The TWN4 has no
+lower-level REQA/anticollision call that would keep the field up.
+Verified (SCL3711 emulating, ACR122U-WB-R as reader): 4-byte `DEADBEEF`, 7-byte
+`04A1B2C3D4E5F6` (2 cascade levels), retry mode, and `-p ccid` with the ACR122U as both
+primer and reader. Host replies take ~5 ms per step over USB; the ACR122U accepts that.
+Remaining:
+- a primer whose field overlaps the real reader's (e.g. both readers side by side) is
+  untested; so is the TWN4 as primer for a PN532 real reader.
+- libnfc-connstring primer (needs a second libnfc device) untested.
+- other real readers: one that cycles its field between polls can't be used (see the
+  TWN4); one that doesn't retry after a failed RATS needs `-p`; one with strict ISO timing (~86 us) may not accept host-timed replies at all.
+- above the UID layer: RATS/ATS + T=CL and MIFARE Classic are not emulated (Crypto1
+  isn't available in PN53x target mode).
+- ACR122U (PN532) as the emulator via the direct-CCID path: not tried - note a raw
+  7-bit REQA sent through that path wedges the ACR122U-WB-R until replugged.
