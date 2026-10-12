@@ -462,14 +462,15 @@ Remaining on the direct-CCID back-end:
   the 3 s USB read. Now `_pn532_init()` and `configMifare()` restore the PN532
   default RF timeouts, and `_xfrblock()` reports a USB timeout as a failed exchange
   (the late reply is dropped by the bSeq check).
-- `writemifare1k.py` calls `card.login(sector, ...)` with the **sector** number, but on
-  libnfc/CCID `login()` takes a **block** number (`readmifare1k` passes `sector * 4`),
-  so for sector N it authenticates block N and then writes blocks 4N..4N+2 - expected
-  to fail there (works on the Chameleon, which re-auths per write). Not run: it
-  overwrites every data block. Fix: pass `sector * 4`, then test on a scratch card.
-- `rfidiot-cli` MF AUTH/DUMP/READ fail ("Security status not satisfied") unless a
-  `SELECT` comes first on libnfc/CCID: the auth frame needs the UID from select().
-  Consider having MF AUTH select when `card.uid` is empty.
+- **[DONE]** `writemifare1k.py` (v3.0c) called `card.login(sector, ...)` with the
+  **sector** number, but `login()` takes a **block** number on PC/SC/ACS/libnfc/CCID/
+  Chameleon (only the ACG serial branch sends it as a sector; `readmifare1k` already
+  passes `sector * 4`). So for sector N it authenticated block N (another sector) and
+  the write to block 4N was refused; 4N+1/4N+2 then landed only because the libnfc
+  write's read-back re-authenticates the right sector. Hardware-confirmed on `-f ccid`
+  (45 of 135 writes failed - exactly blocks 4N), fixed to `sector * 4`: all 135 writes
+  OK, card contents match, trailers untouched; card restored from a backup dump
+  afterwards. (The tool still writes each sector once per key type A/B/FF - harmless.)
 - **[DONE]** (library `VERSION` 3.1g) Type B fallback in the tools: `rfidiot-cli.py`
   IDENTIFY/SELECT/HSS (v3.1d), `cardselect.py` (v3.1c) and `ChAP.py` (3.1c) now try
   `select("B")` when no Type A card answers (only libnfc/CCID distinguish A from B;

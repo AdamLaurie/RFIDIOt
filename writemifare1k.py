@@ -36,7 +36,7 @@ except Exception as e:
 args = rfidiot.args
 chelp = rfidiot.help
 
-card.info("writemifare1k v3.0b")
+card.info("writemifare1k v3.0c")
 card.select()
 print("Card ID: " + card.uid)
 while True:
@@ -51,7 +51,9 @@ while sector < 0x10:
     for ctype in ["AA", "BB", "FF"]:
         card.select()
         print(" sector %02x: Keytype: %s" % (sector, ctype), end="")
-        if card.login(sector, ctype, "FFFFFFFFFFFF"):
+        # login() takes a block number (as in readmifare1k) - authenticate the
+        # sector's first block, not block <sector>, which is in another sector
+        if card.login(sector * 4, ctype, "FFFFFFFFFFFF"):
             for block in range(3):
                 print("\n  block %02x: " % ((sector * 4) + block), end="")
                 if len(args) == 1:
