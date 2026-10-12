@@ -431,7 +431,7 @@ while args:
             if not Mifare_KeyType or not Mifare_Key:
                 print("failed! No authentication performed!")
                 sys.exit(True)
-            end = start + len(data) / 16 - 1
+            end = start + len(data) // 16 - 1
             print(f"to blocks {start:02X} to {end:02X}")
             print()
             print("    Key A will be set to:", Mifare_KeyA)
