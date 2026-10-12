@@ -31,8 +31,8 @@ from tkinter import (
     Tk, StringVar, W, NW, NE, E
 )
 from operator import xor, and_
-from Crypto.Hash import SHA
-from Crypto.Cipher import DES3, DES
+from Crypto.Hash import SHA, CMAC
+from Crypto.Cipher import DES3, DES, AES
 # import string
 import rfidiot
 from rfidiot import pace
@@ -357,6 +357,8 @@ MRZ_FIELD_KEYS_ID = (5, 30, 38)
 
 # Global Send Sequence Counter
 SSC = ""
+# secure messaging cipher: 3DES (BAC, PACE-3DES) unless PACE negotiated AES
+SM_AES = False
 
 # Global bruteforce vars
 br_num = []
@@ -420,27 +422,113 @@ def changestyle(style, face, features):
         drawfeatures(face, features)
 
 
+# secure messaging primitives (ICAO 9303-11 9.8): 3DES-CBC (IV 0) + Retail-MAC with
+# 8-byte padding, or for PACE-AES: AES-CBC (IV = E(KSenc, SSC)) + AES-CMAC truncated
+# to 8 bytes with 16-byte padding. Padding is ISO 9797-1 method 2 in both cases.
+def sm_pad(data):
+    "pad to the SM cipher's block size (0x80 then zeros)"
+    bs = 16 if SM_AES else 8
+    data = bytes(data) + b"\x80"
+    while len(data) % bs:
+        data += b"\x00"
+    return data
+
+
+def sm_ssc_increment(ssc):
+    "increment the Send Sequence Counter, keeping its length (8 bytes 3DES, 16 AES)"
+    n = len(ssc)
+    return bytearray(((int.from_bytes(bytes(ssc), "big") + 1) % (1 << (8 * n))).to_bytes(n, "big"))
+
+
+def _sm_cipher(keyenc):
+    if SM_AES:
+        iv = AES.new(bytes(keyenc), AES.MODE_ECB).encrypt(bytes(SSC))
+        return AES.new(bytes(keyenc), AES.MODE_CBC, iv)
+    return DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
+
+
+def sm_encrypt(keyenc, data):
+    "encrypt (already padded) command data with the current SSC"
+    return _sm_cipher(keyenc).encrypt(bytes(data))
+
+
+def sm_decrypt(keyenc, data):
+    "decrypt a response cryptogram with the current SSC"
+    return _sm_cipher(keyenc).decrypt(bytes(data))
+
+
+def sm_mac(keymac, data):
+    "8-byte cryptographic checksum over data (padded here for AES; DESMAC pads itself)"
+    if SM_AES:
+        c = CMAC.new(bytes(keymac), ciphermod=AES)
+        c.update(sm_pad(data))
+        return c.digest()[:8]
+    return passport.DESMAC(data, keymac, "")
+
+
+def _ber_len(n):
+    if n < 0x80:
+        return bytes([n])
+    if n < 0x100:
+        return bytes([0x81, n])
+    return bytes([0x82, n >> 8, n & 0xFF])
+
+
+def sm_do87(cryptogram):
+    "DO87: padding-content indicator 01 + cryptogram, with a BER length"
+    body = b"\x01" + bytes(cryptogram)
+    return b"\x87" + _ber_len(len(body)) + body
+
+
+def sm_tlvs(rapdu):
+    "split a protected response (hex) into {tag: raw TLV bytes} for DO87/DO99/DO8E"
+    data = passport.ToBinary(rapdu)
+    out = {}
+    i = 0
+    while i + 2 <= len(data):
+        tag = data[i]
+        ln = data[i + 1]
+        hdr = 2
+        if ln == 0x81:
+            ln, hdr = data[i + 2], 3
+        elif ln == 0x82:
+            ln, hdr = (data[i + 2] << 8) | data[i + 3], 4
+        out[tag] = bytes(data[i : i + hdr + ln])
+        i += hdr + ln
+    return out
+
+
+def sm_do87_plain(keyenc, rapdu):
+    "decrypt the DO87 of a protected response, returning the padded plaintext"
+    do87 = sm_tlvs(rapdu).get(0x87)
+    if not do87:
+        return b""
+    hdr = 3 if do87[1] == 0x81 else (4 if do87[1] == 0x82 else 2)
+    # skip the tag/length and the 01 padding-content indicator
+    return sm_decrypt(keyenc, do87[hdr + 1 :])
+
+
 def secure_select_file(keyenc, keymac, file, p1="02", p2="0c"):
     "secure select file (p1=02/p2=0c selects an EF by id; p1=04 selects a DF by name)"
     global SSC
 
     cla = "0c"
     ins = passport.ISOAPDU["SELECT_FILE"]
-    command = passport.PADBlock(passport.ToBinary(cla + ins + p1 + p2))
-    data = passport.PADBlock(passport.ToBinary(file))
-    tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
-    encdata = tdes.encrypt(data)
+    command = sm_pad(passport.ToBinary(cla + ins + p1 + p2))
+    data = sm_pad(passport.ToBinary(file))
+    # increment first: the AES IV is derived from this command's SSC
+    SSC = sm_ssc_increment(SSC)
+    encdata = sm_encrypt(keyenc, data)
     if DEBUG:
         print("Encrypted data: ", end="")
         passport.HexPrint(encdata)
-    do87 = passport.ToBinary(passport.DO87) + encdata
+    do87 = sm_do87(encdata)
     m = command + do87
     if DEBUG:
         print("DO87: ", end="")
         passport.HexPrint(m)
-    SSC = passport.SSCIncrement(SSC)
     n = SSC + m
-    cc = passport.DESMAC(n, keymac, "")
+    cc = sm_mac(keymac, n)
     if DEBUG:
         print("CC: ", end="")
         passport.HexPrint(cc)
@@ -479,12 +567,12 @@ def secure_read_binary(keymac, d_bytes, offset):
     p1 = hexoffset[0:2]
     p2 = hexoffset[2:4]
     le = "%02x" % d_bytes
-    command = passport.PADBlock(passport.ToBinary(cla + ins + p1 + p2))
+    command = sm_pad(passport.ToBinary(cla + ins + p1 + p2))
     do97 = passport.ToBinary(passport.DO97 + le)
     m = command + do97
-    SSC = passport.SSCIncrement(SSC)
+    SSC = sm_ssc_increment(SSC)
     n = SSC + m
-    cc = passport.DESMAC(n, keymac, "")
+    cc = sm_mac(keymac, n)
     do8e = passport.ToBinary(passport.DO8E) + cc
     lc = "%02x" % (len(do97) + len(do8e))
     le = "00"
@@ -526,24 +614,19 @@ def check_cc(key, rapdu):
     "Check Cryptographic Checksum"
     global SSC
 
-    SSC = passport.SSCIncrement(SSC)
+    SSC = sm_ssc_increment(SSC)
     # copy: SSC is a mutable bytearray, and k += ... below would otherwise
     # extend the global SSC in place (corrupting it for the next command)
     k = bytes(SSC)
-    length = 0
-    # check if DO87 present
-    if rapdu[0:2] == "87":
-        length = 4 + int(rapdu[2:4], 16) * 2
-        k += passport.ToBinary(rapdu[:length])
-    # check if DO99 present
-    if rapdu[length : length + 2] == "99":
-        length2 = 4 + int(rapdu[length + 2 : length + 4], 16) * 2
-        k += passport.ToBinary(rapdu[length : length + length2])
+    # MAC input: SSC + DO87 (if present) + DO99 (if present), each as a full TLV
+    # (DO87 may use a long BER length, e.g. 87 81 81 for a 128-byte AES chunk)
+    tlvs = sm_tlvs(rapdu)
+    k += tlvs.get(0x87, b"") + tlvs.get(0x99, b"")
 
     if DEBUG:
         print("K: ", end="")
         passport.HexPrint(k)
-    cc = passport.DESMAC(k, key, "")
+    cc = sm_mac(key, k)
     if DEBUG:
         print("CC: ", end="")
         print(passport.ToHex(cc), end="")
@@ -682,12 +765,9 @@ def secure_read_file(keyenc, keymac, file):
     status, rapdu = secure_read_binary(keymac, readlen, 0)
     if not status:
         return False, rapdu
-    do87 = rapdu[6:22]
     if DEBUG:
-        print("DO87: " + do87)
         print("Decrypted DO87: ", end="")
-    tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
-    decdo87 = tdes.decrypt(passport.ToBinary(do87))[:readlen]
+    decdo87 = sm_do87_plain(keyenc, rapdu)[:readlen]
     if DEBUG:
         passport.HexPrint(decdo87)
 
@@ -708,9 +788,7 @@ def secure_read_file(keyenc, keymac, file):
         status, rapdu = secure_read_binary(keymac, toread, offset)
         if not status:
             return False, rapdu
-        do87 = rapdu[6 : (toread + (8 - toread % 8)) * 2 + 6]
-        tdes = DES3.new(keyenc, DES.MODE_CBC, passport.DES_IV)
-        decdo87 += tdes.decrypt(passport.ToBinary(do87))[:toread]
+        decdo87 += sm_do87_plain(keyenc, rapdu)[:toread]
         offset += toread
         readlen -= toread
         print("Reading: %05d\r" % readlen, end="")
@@ -1143,7 +1221,7 @@ Help = rfidiot.help
 Nogui = rfidiot.nogui
 DEBUG = rfidiot.rfidiotglobals.Debug
 
-myver = "mrpkey v3.1c"
+myver = "mrpkey v3.1d"
 
 TEST = False
 FILES = False
@@ -1364,6 +1442,7 @@ if not FILES and not TEST:
             print("PACE failed:", pmsg)
             sys.exit(True)
         print("PACE established secure messaging (%s)" % pace_sm)
+        SM_AES = pace_sm.startswith("AES")
         print("  Session Key ENC: ", end="")
         passport.HexPrint(KSenc)
         print("  Session Key MAC: ", end="")
