@@ -274,7 +274,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1f"
+    VERSION = "3.1g"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -1368,6 +1368,9 @@ class rfidiot:
                         self.protocol = result.protocol
                         self.cid = result.cid
                         self.tagtype = "ISO 14443B"
+                        # no ATQA/SAK on Type B - don't leave a previous Type A's
+                        self.sens_res = ""
+                        self.sel_res = ""
                         # As for Type A: on the direct-CCID ACR122U back-end take over
                         # T=CL in software so long chained responses can't overflow the
                         # reader, if the card is ISO 14443-4 (Protocol_Type bit 0).

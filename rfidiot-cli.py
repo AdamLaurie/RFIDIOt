@@ -103,7 +103,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1c")
+card.info("rfidiot-cli v3.1d")
 
 # globals
 Mifare_Key = None
@@ -208,7 +208,8 @@ while args:
         print()
         print(f"  High Speed Selecting ({card.ISO_SPEED[speed]})")
         print()
-        if card.hsselect(speed):
+        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+        if card.hsselect(speed) or card.hsselect(speed, "B"):
             print("    Tag ID: " + card.uid)
         else:
             if card.errorcode:
@@ -220,7 +221,8 @@ while args:
         print()
         print("  Identiying TAG")
         print()
-        if card.select():
+        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+        if card.select() or card.select("B"):
             print("    Tag ID:", card.uid, "   Tag Type:", end="")
             if card.readertype == card.READER_ACG and card.readername.find("LFX") == 0:
                 print(card.LFXTags[card.tagtype])
@@ -231,6 +233,8 @@ while args:
                 print("      Type: ISO 14443A -", card.iso14443a_type())
                 if card.atr:
                     print("      ATS:", card.atr)
+            if card.readertype == card.READER_LIBNFC and card.tagtype == "ISO 14443B":
+                print("      PUPI:", card.pupi, "  Application Data:", card.appdata, "  Protocol Info:", card.protocol)
             if card.readertype == card.READER_PCSC:
                 if card.tagtype.find("ISO 15693") >= 0:
                     print()
@@ -592,7 +596,8 @@ while args:
         print()
         print("  Selecting TAG")
         print()
-        if card.select():
+        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+        if card.select() or card.select("B"):
             print("    Tag ID: " + card.uid)
             if card.readertype == card.READER_PCSC:
                 print("    ATR: " + card.pcsc_atr)

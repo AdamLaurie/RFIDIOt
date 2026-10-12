@@ -943,6 +943,7 @@ class NFC(_ISODEP):
 
 import os as _os
 import glob as _glob
+import time as _time
 
 # usbdevfs ioctls (asm-generic _IOC encoding)
 def _IOC(d, t, nr, sz):
@@ -1132,6 +1133,11 @@ class ACR122CCID(_ISODEP):
     def selectISO14443A(self):
         """Poll for a 106 kbps ISO 14443-A target, return an ISO14443A() object."""
         self._cid = None
+        # an already-activated card ignores REQA, so reset it with an RF field cycle
+        # first, as the libnfc path does - else a second select fails
+        self.powerOff()
+        _time.sleep(0.01)
+        self.powerOn()
         r = self._pn532([0xD4, 0x4A, 0x01, 0x00])   # InListPassiveTarget, 1 target, 106A
         # D5 4B <NbTg> [Tg SENS_RES(2) SEL_RES(1) IDlen ID... [ATS...]]
         if len(r) < 4 or r[0] != 0xD5 or r[1] != 0x4B or r[2] == 0:
@@ -1152,6 +1158,10 @@ class ACR122CCID(_ISODEP):
         the card then requires in every block (see _tcl_exchange), so keep it.
         """
         self._cid = None
+        # an already-activated (ATTRIB'd) card ignores REQB: reset it as for Type A
+        self.powerOff()
+        _time.sleep(0.01)
+        self.powerOn()
         r = self._pn532([0xD4, 0x4A, 0x01, 0x03, 0x00])   # InListPassiveTarget, 1 target, 106B, AFI 0
         # D5 4B <NbTg> [Tg ATQB(12) ATTRIB_RES_len ATTRIB_RES...]
         # ATQB = 50 PUPI(4) ApplicationData(4) ProtocolInfo(3)

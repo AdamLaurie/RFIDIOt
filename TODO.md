@@ -452,8 +452,19 @@ ePassport: `mrpkey.py -f ccid <MRZ>` full BAC + SM read, EF.COM/SOD/DG1/DG2/DG14
 Remaining on the direct-CCID back-end:
 - Jewel and iClass `select*` return None; MIFARE Classic goes via `InDataExchange`
   (`_plain_apdu`) but is untested on this path.
-- `rfidiot-cli.py IDENTIFY` only tries Type A, so it reports "No card present" for a
-  Type B card on any reader (`mrpkey.py` tries A then B).
+- **[DONE]** (library `VERSION` 3.1g) Type B fallback in the tools: `rfidiot-cli.py`
+  IDENTIFY/SELECT/HSS (v3.1d), `cardselect.py` (v3.1c) and `ChAP.py` (3.1c) now try
+  `select("B")` when no Type A card answers (only libnfc/CCID distinguish A from B;
+  other readers ignore `cardtype`, the Chameleon refuses B at once). IDENTIFY and
+  cardselect print PUPI / Application Data / Protocol Info for a Type B card. A Type B
+  select now clears the stale Type A ATQA/SAK. Also fixed on this back-end: a second
+  select in a row failed (A or B) because the card was still activated and ignored
+  REQA/REQB - `selectISO14443A/B()` now cycle the RF field first, as the libnfc path
+  does. Hardware-verified on `-f ccid`: `IDENTIFY SELECT HSS 4 IDENTIFY` all succeed on
+  both a Type B ePassport and a Type A Debit Mastercard; `ChAP.py -c` and the full
+  `mrpkey.py` read unchanged. Not changed (no Type B use): the MIFARE/LF/Hitag tools,
+  `readtag.py` (block reads), `send_apdu.py` (PC/SC only), `nfcid.py` (Android), the
+  JCOP tools (Type A cards); `isotype.py`/`multiselect.py` already tried B.
 - Consider auto-falling back to the direct-CCID back-end when libnfc fails to open an
   `acr122` device, instead of requiring the explicit `-f ccid`.
 - A lighter alternative worth noting: an `/etc/libccid_Info.plist` override mapping

@@ -705,7 +705,7 @@ BER_TLV_AFL = 0x14
 
 def printhelp():
     print("\nChAP.py - Chip And PIN in Python")
-    print("Ver 3.1b\n")
+    print("Ver 3.1c\n")
     print("usage:\n\n ChAP.py [rfidiot-options] [ChAP-options] [PIN]")
     print()
     print("Reader selection uses the standard RFIDIOt global options above")
@@ -1881,9 +1881,9 @@ if EncipheredPIN and not PIN:
 try:
     print("using reader:", getattr(card, "readername", "unknown"))
     if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON):
-        # contactless: run ISO 14443-A anticollision/select to power and select
-        # the card before exchanging APDUs (PC/SC is already connected on import)
-        if not card.select():
+        # contactless: run ISO 14443-A (then -B) anticollision/select to power and
+        # select the card before exchanging APDUs (PC/SC is already connected on import)
+        if not (card.select() or card.select("B")):
             print("no card on the reader")
             sys.exit(True)
 
