@@ -1781,7 +1781,20 @@ class rfidiot:
             return False
         if not self.libnfc_mifare_read_block(block):
             return False
-        if self.data.upper() == data.upper():
+        readback = self.data.upper()
+        if self.mifare_is_trailer(block):
+            # a trailer never reads back as written: Key A always reads as zeros,
+            # and Key B too if the access bits hide it. Patch in the key we
+            # authenticated with, accept a hidden (all-zero) key field as written,
+            # and so verify the access bits + user byte and any key the card shows
+            readback = self.mifare_patch_trailer(
+                readback, getattr(self, "_libnfc_mf_keytype", "AA"), key
+            )
+            if readback[:12] == "0" * 12:
+                readback = data[:12].upper() + readback[12:]
+            if readback[20:] == "0" * 12:
+                readback = readback[:20] + data[20:].upper()
+        if readback == data.upper():
             self.errorcode = self.ISO_OK
             return True
         self.errorcode = self.ISO_SECURE  # read-back mismatch

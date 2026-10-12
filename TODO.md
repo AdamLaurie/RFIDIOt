@@ -462,6 +462,19 @@ Remaining on the direct-CCID back-end:
   the 3 s USB read. Now `_pn532_init()` and `configMifare()` restore the PN532
   default RF timeouts, and `_xfrblock()` reports a USB timeout as a failed exchange
   (the late reply is dropped by the bSeq check).
+- **[DONE]** (library `VERSION` 3.1h) **Sector trailers in dumps and trailer
+  writes.** `login()` records the key type + key that actually authenticated (cleared
+  on failure; reader branches moved unchanged into `_login()`), and
+  `readMIFAREblock()` patches every sector trailer it reads with that key, so every
+  dump on every back-end is clonable (`rfidiot-cli` MF DUMP/READ, `readmifare1k`,
+  `readmifaresimple`, ...). And `libnfc_mifare_write_block()`'s read-back check no
+  longer fails every trailer write (Key A always reads back as zeros, so CLONE/WIPE/
+  MF WRITE of a full dump stopped at the first trailer): for a trailer it patches in
+  the auth key, accepts an all-zero (hidden) key field, and so verifies the access
+  bits + user byte and any key the card shows. Hardware-verified on `-f ccid`:
+  trailers show the real Key A; block 07 rewritten with its own bytes reports OK
+  (was "Failed"), sector intact. The mismatch cases (access bits / visible Key B /
+  data block) are unit-tested offline, not on hardware.
 - **[DONE]** `writemifare1k.py` (v3.0c) called `card.login(sector, ...)` with the
   **sector** number, but `login()` takes a **block** number on PC/SC/ACS/libnfc/CCID/
   Chameleon (only the ACG serial branch sends it as a sector; `readmifare1k` already
