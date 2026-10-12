@@ -39,12 +39,23 @@ except ImportError:
 CMD_GET_APP_VERSION = 1000
 CMD_CHANGE_DEVICE_MODE = 1001
 CMD_GET_DEVICE_MODE = 1002
+CMD_SET_ACTIVE_SLOT = 1003
+CMD_SET_SLOT_TAG_TYPE = 1004
+CMD_SET_SLOT_DATA_DEFAULT = 1005
+CMD_SET_SLOT_ENABLE = 1006
+CMD_SLOT_DATA_CONFIG_SAVE = 1009
+CMD_ENTER_BOOTLOADER = 1010
+CMD_GET_ACTIVE_SLOT = 1018
+CMD_GET_SLOT_INFO = 1019
 CMD_HF14A_SCAN = 2000
 CMD_MF1_AUTH = 2007   # MF1_AUTH_ONE_KEY_BLOCK  - test a key against a block
 CMD_MF1_READ = 2008   # MF1_READ_ONE_BLOCK      - auth + read one block
 CMD_MF1_WRITE = 2009  # MF1_WRITE_ONE_BLOCK     - auth + write one block
 CMD_HF14A_RAW = 2010
 CMD_HF14A_SCAN_KEEP = 2016
+CMD_MF1_WRITE_EMU_BLOCK_DATA = 4000  # load a MIFARE dump into the active slot
+CMD_HF14A_SET_ANTI_COLL_DATA = 4001  # set emulated UID/ATQA/SAK/ATS
+CMD_EM410X_SET_EMU_ID = 5000         # set emulated EM410x id
 
 # --- device status codes ---
 STATUS_HF_TAG_OK = 0x0000
@@ -55,6 +66,27 @@ STATUS_INVALID_CMD = 0x0067
 # --- MIFARE Classic key types (first byte of the MF1_* command payloads) ---
 MF1_KEY_A = 0x60
 MF1_KEY_B = 0x61
+
+# --- slot config: tag sense type (SET_SLOT_ENABLE) ---
+SENSE_LF = 1
+SENSE_HF = 2
+
+# --- slot config: a subset of TagSpecificType (SET_SLOT_TAG_TYPE) ---
+NUM_SLOTS = 8
+TAG_TYPES = {
+    "MIFARE_MINI": 1000,
+    "MIFARE_1K": 1001,
+    "MIFARE_2K": 1002,
+    "MIFARE_4K": 1003,
+    "NTAG_213": 1100,
+    "NTAG_215": 1101,
+    "NTAG_216": 1102,
+    "ULTRALIGHT": 1103,   # MF0ICU1
+    "ULTRALIGHT_C": 1104, # MF0ICU2
+    "NTAG_210": 1107,
+    "NTAG_212": 1108,
+    "EM410X": 100,
+}
 
 # --- HF14A_RAW option bits (MSB first) ---
 OPT_ACTIVATE_RF = 0x80
@@ -293,6 +325,120 @@ class Chameleon:
         if status != STATUS_HF_TAG_OK or len(d) < 16:
             return False, status
         return True, d[:16].hex().upper()
+
+    # ------------------------------------------------------------------ emulation / slots
+    # Slot-config commands return the device-level STATUS_DEVICE_SUCCESS (0x68)
+    # rather than the tag-level HF_TAG_OK; accept either and raise otherwise.
+    def _config(self, cmd, data=b"", what="slot command"):
+        status, rdata = self.command(cmd, data)
+        if status not in (STATUS_DEVICE_SUCCESS, STATUS_HF_TAG_OK):
+            raise ChameleonError("%s failed (status 0x%04x)" % (what, status))
+        return rdata
+
+    def set_device_mode(self, reader):
+        "CHANGE_DEVICE_MODE: reader=True -> reader/initiator, False -> tag/emulator"
+        self._config(CMD_CHANGE_DEVICE_MODE, bytes([1 if reader else 0]), "set device mode")
+
+    def get_active_slot(self):
+        "return the active slot as a firmware index (0-7)"
+        d = self._config(CMD_GET_ACTIVE_SLOT, b"", "get active slot")
+        return d[0]
+
+    def get_slot_info(self):
+        "return a list of (hf_type, lf_type) TagSpecificType per slot (0-7)"
+        d = self._config(CMD_GET_SLOT_INFO, b"", "get slot info")
+        return [(hf, lf) for hf, lf in struct.iter_unpack("!HH", d)]
+
+    def set_active_slot(self, slot_fw):
+        "select the active slot (firmware index 0-7)"
+        self._config(CMD_SET_ACTIVE_SLOT, bytes([slot_fw]), "set active slot")
+
+    def set_slot_tag_type(self, slot_fw, tag_type):
+        "set a slot's emulated tag type (TagSpecificType)"
+        self._config(CMD_SET_SLOT_TAG_TYPE, struct.pack("!BH", slot_fw, tag_type), "set slot tag type")
+
+    def set_slot_data_default(self, slot_fw, tag_type):
+        "reset a slot's emulation data to the factory default for a tag type"
+        self._config(CMD_SET_SLOT_DATA_DEFAULT, struct.pack("!BH", slot_fw, tag_type), "set slot default")
+
+    def set_slot_enable(self, slot_fw, sense_type, enabled):
+        "enable/disable a slot's HF (SENSE_HF) or LF (SENSE_LF) field"
+        self._config(CMD_SET_SLOT_ENABLE, struct.pack("!BBB", slot_fw, sense_type, 1 if enabled else 0), "set slot enable")
+
+    def slot_data_config_save(self):
+        "persist the slot configuration to flash"
+        self._config(CMD_SLOT_DATA_CONFIG_SAVE, b"", "save slot config")
+
+    def hf14a_set_anti_coll_data(self, uid, atqa, sak, ats=b""):
+        "set the active slot's emulated 14443-A anti-collision data (bytes in)"
+        data = struct.pack("!B", len(uid)) + uid + atqa + sak + struct.pack("!B", len(ats)) + ats
+        self._config(CMD_HF14A_SET_ANTI_COLL_DATA, data, "set anti-collision data")
+
+    def mf1_write_emu_block(self, block_start, block_data):
+        "load MIFARE emulation data into the active slot from block_start (16-byte blocks)"
+        self._config(CMD_MF1_WRITE_EMU_BLOCK_DATA, bytes([block_start]) + block_data, "write emu block")
+
+    def em410x_set_emu_id(self, id5):
+        "set the active LF slot's emulated EM410x id (5 bytes)"
+        self._config(CMD_EM410X_SET_EMU_ID, id5, "set EM410x emu id")
+
+    # ---- defaulting helpers (shared by chameleon.py and rfidiot-cli.py) ----
+    @staticmethod
+    def default_atqa(uid_len):
+        "standard ATQA bytes for a UID length (first byte carries the cascade/size bits)"
+        return {4: b"\x04\x00", 7: b"\x44\x00", 10: b"\x84\x00"}.get(uid_len, b"\x04\x00")
+
+    @staticmethod
+    def default_sak(type_name):
+        "standard SAK byte for a tag-type name: 0x00 for Ultralight/NTAG (Type 2), else 0x08"
+        tn = type_name.upper()
+        return b"\x00" if tn.startswith("NTAG") or tn.startswith("ULTRALIGHT") else b"\x08"
+
+    @staticmethod
+    def type_from_blockcount(nblocks):
+        "infer a MIFARE Classic TagSpecificType name from a dump's block count"
+        return {20: "MIFARE_MINI", 64: "MIFARE_1K",
+                128: "MIFARE_2K", 256: "MIFARE_4K"}.get(nblocks, "MIFARE_1K")
+
+    # ---- high-level emulation sequences (ordering matters; keep them here so
+    #      every tool drives the slot the same way) ----
+    def emulate_14a(self, slot_fw, uid, atqa, sak, tag_type, ats=b""):
+        "set + enable a slot to emulate an ISO 14443-A tag (given anti-coll data), save, and leave the device emulating (tag mode). bytes in."
+        self.set_device_mode(False)
+        self.set_active_slot(slot_fw)
+        self.set_slot_tag_type(slot_fw, tag_type)
+        self.set_slot_enable(slot_fw, SENSE_HF, True)
+        self.hf14a_set_anti_coll_data(uid, atqa, sak, ats)
+        self.slot_data_config_save()
+
+    def emulate_mfload(self, slot_fw, dump, tag_type, uid, atqa, sak):
+        "load a raw MIFARE dump (bytes, 16-byte blocks) into a slot and emulate it (tag mode). the caller should reconstruct trailer Key A first (a dump reads it back as 000000)."
+        self.set_device_mode(False)
+        self.set_active_slot(slot_fw)
+        self.set_slot_tag_type(slot_fw, tag_type)
+        self.set_slot_enable(slot_fw, SENSE_HF, True)
+        for start in range(0, len(dump) // 16, 16):   # 16-block / 256-byte chunks
+            self.mf1_write_emu_block(start, dump[start * 16:(start + 16) * 16])
+        self.hf14a_set_anti_coll_data(uid, atqa, sak)
+        self.slot_data_config_save()
+
+    # ------------------------------------------------------------------ device control
+    def reboot(self):
+        """Reboot the device via its DFU bootloader (ENTER_BOOTLOADER).
+
+        This is the only reset the firmware exposes - the same path the official
+        client's 'hw dfu' uses. The MCU resets immediately (so no response comes
+        back, and the USB CDC port drops); with no firmware update the bootloader
+        hands control back to the application. The port must be re-opened after.
+        There is no software power-off / sleep-now command in the firmware; on
+        battery the device sleeps by itself after its sleep timeout.
+        """
+        try:
+            self.ser.reset_input_buffer()
+            self.ser.write(self._make_frame(CMD_ENTER_BOOTLOADER))
+            self.ser.flush()
+        except Exception:
+            pass  # the device resets as it receives this; errors here are expected
 
     # ------------------------------------------------------------------ lifecycle
     def close(self):

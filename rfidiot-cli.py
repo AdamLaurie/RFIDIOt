@@ -48,6 +48,11 @@ if chelp or len(sys.argv) == 1:
     print("     AIDS                                             List well known AIDs")
     print('     APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>      Send raw ISO 7816 APDU (use "" for empty elements)')
     print("     CHANGE <MESSAGE>                                 Print message and wait for TAG to change")
+    print("     CHAMELEON <COMMAND> [<ARGS> ... ]                Chameleon Ultra emulator (needs -R READER_CHAMELEON):")
+    print("        INFO                                            List the 8 slots and the active one")
+    print("        SLOT <n> UID <HEX> [TYPE <name>]                Emulate an arbitrary UID on slot <n> (1-8)")
+    print("        SLOT <n> MFLOAD <FILE>                          Load a MIFARE dump onto slot <n> and emulate it")
+    print("        REBOOT                                          Reboot the device (DFU bootloader)")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -372,7 +377,13 @@ while args:
                 sector = start
                 while sector <= end:
                     if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                        outfile.write(card.ToBinary(card.MIFAREdata))
+                        blockdata = card.MIFAREdata
+                        # a card never returns Key A (reads as 000000), so patch the
+                        # trailer with the key we authenticated with - otherwise the
+                        # dump can't be written back / cloned (e.g. via chameleon.py)
+                        if card.mifare_is_trailer(sector):
+                            blockdata = card.mifare_patch_trailer(blockdata, Mifare_KeyType, Mifare_Key)
+                        outfile.write(card.ToBinary(blockdata))
                     else:
                         print("    Failed: " + card.get_error_str(card.errorcode))
                     sector += 1
@@ -462,6 +473,72 @@ while args:
             print("    OK")
             continue
         print("  Invalid MF command:", mfcommand)
+        sys.exit(True)
+    if command == "CHAMELEON":
+        if card.readertype != card.READER_CHAMELEON:
+            print("  CHAMELEON commands require a Chameleon Ultra (-R READER_CHAMELEON)")
+            sys.exit(True)
+        from rfidiot import pychameleon as pc
+        cham = card.chameleon
+        cucommand = args.pop().upper()
+        if cucommand == "INFO":
+            print()
+            active = cham.get_active_slot()
+            names = {v: k for k, v in pc.TAG_TYPES.items()}
+            print("  Active slot: %d" % (active + 1))
+            print("    Slot  HF                 LF")
+            for i, (hf, lf) in enumerate(cham.get_slot_info()):
+                hn = "-" if hf == 0 else names.get(hf, "0x%04X" % hf)
+                ln = "-" if lf == 0 else names.get(lf, "0x%04X" % lf)
+                print("     %d    %-17s  %-10s%s" % (i + 1, hn, ln, "  <= active" if i == active else ""))
+            continue
+        if cucommand == "REBOOT":
+            print("  Rebooting the Chameleon via the DFU bootloader (the port will drop)...")
+            cham.reboot()
+            continue
+        if cucommand == "SLOT":
+            slot = int(args.pop())
+            if not 1 <= slot <= pc.NUM_SLOTS:
+                print("  Slot must be 1-%d" % pc.NUM_SLOTS)
+                sys.exit(True)
+            slot_fw = slot - 1
+            sub = args.pop().upper()
+            if sub == "UID":
+                uid = card.ToBinary(args.pop())
+                # optional trailing 'TYPE <name>' (only consume when present, as the
+                # arg stream may continue with another command)
+                type_name = "MIFARE_1K"
+                if args and args[-1].upper() == "TYPE":
+                    args.pop()
+                    type_name = args.pop().upper()
+                if type_name not in pc.TAG_TYPES:
+                    print("  Unknown TYPE '%s'. One of: %s" % (type_name, ", ".join(sorted(pc.TAG_TYPES))))
+                    sys.exit(True)
+                atqa = cham.default_atqa(len(uid))
+                sak = cham.default_sak(type_name)
+                print("  Emulating UID %s on slot %d (%s, ATQA %s SAK %s)"
+                      % (uid.hex().upper(), slot, type_name, atqa.hex().upper(), sak.hex().upper()))
+                cham.emulate_14a(slot_fw, uid, atqa, sak, pc.TAG_TYPES[type_name])
+                print("    OK")
+                continue
+            if sub == "MFLOAD":
+                filename = args.pop()
+                with open(filename, "rb") as f:
+                    dump = f.read()
+                if not dump or len(dump) % 16:
+                    print("  Dump length %d is not a multiple of 16" % len(dump))
+                    sys.exit(True)
+                type_name = cham.type_from_blockcount(len(dump) // 16)
+                block0 = dump[0:16]
+                uid, sak, atqa = block0[0:4], block0[5:6], block0[6:8]
+                print("  Loading %d blocks from %s onto slot %d (%s, UID %s)"
+                      % (len(dump) // 16, filename, slot, type_name, uid.hex().upper()))
+                cham.emulate_mfload(slot_fw, dump, pc.TAG_TYPES[type_name], uid, atqa, sak)
+                print("    OK")
+                continue
+            print("  CHAMELEON SLOT needs UID or MFLOAD")
+            sys.exit(True)
+        print("  Invalid CHAMELEON command:", cucommand)
         sys.exit(True)
     if command == "PROMPT":
         message = args.pop()

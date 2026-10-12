@@ -274,7 +274,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1d"
+    VERSION = "3.1e"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -1715,6 +1715,9 @@ class rfidiot:
     def libnfc_mifare_login(self, block, key, keytype) -> bool:
         "libNFC Mifare Login"
         self.nfc.configMifare()
+        # stash for libnfc_mifare_write_block's read-back verification
+        self._libnfc_mf_key = key
+        self._libnfc_mf_keytype = keytype
         if keytype == "BB":
             keytype = "%02x" % pynfc.MC_AUTH_B
         else:
@@ -1740,6 +1743,35 @@ class rfidiot:
         self.data = dat
         self.errorcode = self.ISO_OK
         return True
+
+    def libnfc_mifare_write_block(self, block, data) -> bool:
+        "libNFC Mifare Classic write - data is 32 hex chars (16 bytes). Requires a prior login()."
+        apdu = []
+        apdu += "%02X" % pynfc.MC_WRITE  # mifare write (0xA0)
+        apdu.append("%02x" % block)
+        # the PN532 InDataExchange carries the write command+block and the 16
+        # data bytes in one exchange and drives the two-phase MIFARE write itself
+        apdu += [data[i : i + 2] for i in range(0, len(data), 2)]
+        # the InDataExchange status for a MIFARE write is unreliable on the PN532
+        # (it reports 0x02/CRC on the short write-ACK even when the write lands),
+        # so ignore it and verify by reading the block back - re-authenticating
+        # with the key stashed by libnfc_mifare_login (auth drops after a write).
+        self.nfc.sendAPDU(apdu, self.timeout)
+        key = getattr(self, "_libnfc_mf_key", None)
+        if key is None:
+            # no stashed key to verify with (write issued without login); trust it
+            self.errorcode = self.ISO_OK
+            return True
+        if not self.libnfc_mifare_login(block, key, getattr(self, "_libnfc_mf_keytype", "AA")):
+            self.errorcode = self.ISO_SECURE
+            return False
+        if not self.libnfc_mifare_read_block(block):
+            return False
+        if self.data.upper() == data.upper():
+            self.errorcode = self.ISO_OK
+            return True
+        self.errorcode = self.ISO_SECURE  # read-back mismatch
+        return False
 
     # Global Platform specific commands
     def gp_external_authenticate(self, host_cryptogram, mac_key):
@@ -2169,6 +2201,26 @@ class rfidiot:
             count += 1
         return True
 
+    @staticmethod
+    def mifare_is_trailer(block) -> bool:
+        "True if `block` is a MIFARE Classic sector trailer (1K/Mini: every 4th block; 4K large sectors above block 128: every 16th)"
+        if block < 128:
+            return block % 4 == 3
+        return block % 16 == 15
+
+    @staticmethod
+    def mifare_patch_trailer(blockdata, keytype, key) -> str:
+        "Patch a sector-trailer block read from a card with the key actually used to authenticate. A card never returns Key A (it reads back as 000000), and Key B too when the access bits hide it, so a raw dump of a trailer is not writable/clonable. Replace the field for the key type used ('A'/'AA'/'FF' -> Key A, first 6 bytes; 'B'/'BB' -> Key B, last 6 bytes) with the real key. All args/return are uppercase hex; a 32-char (16-byte) blockdata and 12-char key."
+        kt = keytype.upper()
+        key = key.upper()
+        if len(blockdata) != 32 or len(key) != 12:
+            return blockdata
+        if kt in ("A", "AA", "FF"):
+            return key + blockdata[12:]        # Key A = bytes 0-5
+        if kt in ("B", "BB"):
+            return blockdata[:20] + key        # Key B = bytes 10-15
+        return blockdata
+
     def readvalueblock(self, block) -> bool:
         self.ser.write("rv%02x" % block)
         self.MIFAREdata = self.ser.readline()[:-2]
@@ -2197,6 +2249,9 @@ class rfidiot:
                 return True
             self.errorcode = x
             return False
+        if self.readertype == self.READER_LIBNFC:
+            # MIFARE Classic write over libnfc / ACR122CCID; requires a prior login()
+            return self.libnfc_mifare_write_block(block, data)
         if self.readertype == self.READER_CHAMELEON:
             # MIFARE Classic (auth + write one 16-byte block); requires a prior
             # login() to have stashed the key for this sector

@@ -229,9 +229,53 @@ block read failure now exits cleanly instead of crashing on an undefined `lock0`
 on a MIFARE Ultralight (UID `047BFDB22D6181`): `readmifareultra.py -R READER_CHAMELEON`
 reads the pages + lock/OTP decode.
 
+**[STARTED] Emulator / slot tooling** (`chameleon.py`, library `VERSION` 3.1e).
+pychameleon gained the slot/emulation commands (SET_ACTIVE_SLOT 1003, SET_SLOT_TAG_TYPE
+1004, SET_SLOT_DATA_DEFAULT 1005, SET_SLOT_ENABLE 1006, SLOT_DATA_CONFIG_SAVE 1009,
+GET_ACTIVE_SLOT 1018, GET_SLOT_INFO 1019, HF14A_SET_ANTI_COLL_DATA 4001,
+MF1_WRITE_EMU_BLOCK_DATA 4000, EM410X_SET_EMU_ID 5000) plus the TagSpecificType /
+TagSenseType constants, plus `reboot()` (ENTER_BOOTLOADER 1010 - the only reset the
+firmware offers; there is no power-off command). New `chameleon.py` tool: `INFO`
+(list the 8 slots + active), `SLOT <n> UID <hex> [TYPE/ATQA/SAK/ATS]` (emulate an
+arbitrary 4/7/10-byte UID - the win over the PN532's forced `08`), `SLOT <n> MFLOAD
+<dump>` (load a raw MIFARE dump via MF1_WRITE_EMU_BLOCK_DATA + anti-coll from block 0),
+and `REBOOT`. Hardware-verified end-to-end: `SLOT 8 UID 11223344` was read back over
+the air by an independent reader (ACR122U `-f ccid`): `Tag ID 11223344 ATQA 0004
+SAK 08 MIFARE Classic 1K`. A full-card clone (`MFLOAD` of a 64-block dump) emulated and
+read back sector-for-sector too; over-the-air read-back of the emulated tag is
+coupling-sensitive (varies run to run - a stable antenna mount helps).
+
+To enable writing/cloning cards, two general (non-Chameleon) additions landed in the
+same `VERSION` 3.1e change:
+- **libnfc/ACR122CCID MIFARE Classic write**: `libnfc_mifare_write_block()` +
+  `writeblock()` libnfc branch (none existed before). The PN532 InDataExchange reports
+  a bogus 0x02 status on a MIFARE write even when it lands, so the write verifies by
+  reading the block back (re-auth with the key stashed by `libnfc_mifare_login`).
+- **dump trailer-key patching**: `mifare_is_trailer()` + `mifare_patch_trailer()`
+  helpers, used by `rfidiot-cli MF READ`, patch the authenticating key back into a
+  dumped sector trailer (a card never returns Key A - it reads as 000000 - so an
+  un-patched dump can't be cloned/written back). `rfidiot-cli CLONE` and
+  `readmifaresimple COPY` already reconstruct trailers on write.
+
 **Remaining:**
-- The emulator/loader side (`chameleon.py` for UID/dump loading) below.
+- `chameleon.py`: `SLOT <n> EM410X <id>` (LF slot + EM410X_SET_EMU_ID; the pychameleon
+  method exists, just the tool sub-command).
 - LF EM410x reader (`EM410X_SCAN` 3000) if wanted.
+- **MIFARE Ultralight / Type 2 WRITE, across the board.** Read is done (above) but
+  there is no UL *write* on any back-end: `writeblock()` on PCSC/ACS/libnfc/Chameleon
+  all target MIFARE Classic (16-byte block, and on the Chameleon an `MF1_WRITE` that
+  needs a stashed key -> `CU04` for a keyless UL). Add a no-auth 14443-3 WRITE
+  (`0xA2`, **4 bytes to one page**) path and route `writeblock()` to it for Type 2 the
+  same way reads now route (no stashed key / SAK `00`):
+  - `pychameleon.ul_write(page, data4)` via `HF14A_RAW` - note UL WRITE answers a 4-bit
+    **ACK** (`0x0A`), not a CRC'd frame, so the response framing differs from `ul_read`
+    (no `CHECK_CRC` on the reply) - verify on hardware.
+  - libnfc has `MC_WRITE` (`0xA0`, 16-byte compatibility write) already; add the UL
+    `0xA2` 4-byte write too for NTAG/UL that reject `0xA0`.
+  - a client tool (`writemifareultra.py`, mirroring `readmifareultra.py`) and make
+    `rfidiot-cli.py WRITEHEX` accept a 4-byte UL page.
+  - DESTRUCTIVE + page 3 is one-way OTP and pages 0-2 are UID/lock: tools must refuse
+    or loudly warn on pages <= 3; test only on a user data page with read-back/restore.
 
 Add support for the Proxgrind/RRG **Chameleon Ultra** (and Lite) as both a reader
 and an emulator. Unlike the PN532 it drives its own anti-collision, so it can emulate
