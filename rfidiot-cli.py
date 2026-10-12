@@ -103,7 +103,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1d")
+card.info("rfidiot-cli v3.1e")
 
 # globals
 Mifare_Key = None
@@ -381,13 +381,9 @@ while args:
                 sector = start
                 while sector <= end:
                     if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                        blockdata = card.MIFAREdata
-                        # a card never returns Key A (reads as 000000), so patch the
-                        # trailer with the key we authenticated with - otherwise the
-                        # dump can't be written back / cloned (e.g. via chameleon.py)
-                        if card.mifare_is_trailer(sector):
-                            blockdata = card.mifare_patch_trailer(blockdata, Mifare_KeyType, Mifare_Key)
-                        outfile.write(card.ToBinary(blockdata))
+                        # readMIFAREblock() has already patched a sector trailer with
+                        # the key that authenticated, so the dump can be cloned
+                        outfile.write(card.ToBinary(card.MIFAREdata))
                     else:
                         print("    Failed: " + card.get_error_str(card.errorcode))
                     sector += 1

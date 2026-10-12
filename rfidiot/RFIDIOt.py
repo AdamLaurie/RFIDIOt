@@ -2021,6 +2021,15 @@ class rfidiot:
         # use transport key if none specified
         if not key:
             key = self.MIFARE_TK[keytype]
+        ok = self._login(sector, keytype, key)
+        # remember the key that actually authenticated, so readMIFAREblock() can
+        # patch it into sector trailers; forget it on failure so a later read
+        # can never be stamped with a key that didn't work
+        self._mf_auth = (keytype, key) if ok else None
+        return ok
+
+    def _login(self, sector, keytype, key) -> bool:
+        "reader-specific part of login(): keytype is normalised (AA/BB/FF) and key resolved"
         if self.readertype == self.READER_ACG:
             if keytype == "FF":
                 keytype = "AA"
@@ -2208,6 +2217,12 @@ class rfidiot:
             self.MIFAREdata = self.data
         else:
             return False
+        # a card never returns Key A (it reads as 000000000000), nor Key B when the
+        # access bits hide it, so a raw trailer can't be written back: always patch
+        # in the key that authenticated, so every dump is usable for cloning
+        auth = getattr(self, "_mf_auth", None)
+        if auth and self.mifare_is_trailer(block):
+            self.MIFAREdata = self.mifare_patch_trailer(self.MIFAREdata, auth[0], auth[1])
         count = 0
         self.MIFAREbinary = ""
         while count * 2 < len(self.MIFAREdata):
