@@ -34,9 +34,6 @@ from operator import xor, and_
 from Crypto.Hash import SHA
 from Crypto.Cipher import DES3, DES
 # import string
-from PIL import Image, ImageTk
-# import PIL.Image as Image
-# import PIL.ImageTk as ImageTk
 import rfidiot
 from rfidiot import pace
 
@@ -1918,6 +1915,13 @@ def do_command(func, *args, **kw):
 # display data and image in gui window
 Style = "Arrow"
 if not Nogui:
+    # PIL is only needed for the GUI, so import it here: the -g (no GUI) and TEST paths
+    # then run on a host without Pillow's ImageTk.
+    try:
+        from PIL import Image, ImageTk
+    except ImportError as e:
+        print("Could not import Pillow ImageTk (%s) - pip install Pillow, or run with -g for no GUI" % e)
+        sys.exit(True)
     root = Tk()
 
     font = "courier 22"
@@ -2025,7 +2029,7 @@ if not Nogui:
     if Display_DG7:
         im = Image.open(tempfiles + "EF_DG7." + Filetype)
         width, height = im.size
-        im = im.resize((300, 300 * height / width))
+        im = im.resize((300, 300 * height // width))
         pic = ImageTk.PhotoImage(im)
         width, height = im.size
         signcanvas = Canvas(frame, height=height, width=width)
