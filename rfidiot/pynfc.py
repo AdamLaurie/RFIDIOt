@@ -1064,7 +1064,14 @@ class ACR122CCID(_ISODEP):
                0x00, self._seq, 0x00, 0x00, 0x00]
         self._bulk(self.EP_OUT, hdr + list(apdu), timeout_ms)
         while True:
-            r = self._bulk(self.EP_IN, None, timeout_ms)
+            try:
+                r = self._bulk(self.EP_IN, None, timeout_ms)
+            except TimeoutError:
+                # no reply in time: report a failed exchange rather than raise; a
+                # late reply is then dropped by the bSeq check on the next exchange
+                if rfidiotglobals.Debug:
+                    self.log.error("CCID: no reply within %d ms" % timeout_ms)
+                return b""
             if len(r) < 10:
                 return b""
             # drop a stale reply to an earlier command (e.g. one the reader gave up
@@ -1112,7 +1119,16 @@ class ACR122CCID(_ISODEP):
         # limit passive-activation retries so selectISO14443A() returns promptly
         # when no card is present (mirrors libnfc NP_INFINITE_SELECT = false)
         self._pn532([0xD4, 0x32, 0x05, 0xFF, 0x01, 0x02])  # RFConfiguration: MaxRetries
+        # the PN532 keeps RF settings across processes, so undo a raised RF timeout
+        # left by an earlier session's software T=CL
+        self._default_rf_timeout()
         self.poweredUp = True
+
+    def _default_rf_timeout(self):
+        # RFConfiguration item 0x02 back to the PN532 defaults (fATR_RES_Timeout
+        # 0x0B ~102 ms, fRetryTimeout 0x0A ~51 ms). A raised fRetryTimeout makes a
+        # failed MIFARE auth - the card just stays silent - wait the full timeout
+        self._pn532([0xD4, 0x32, 0x02, 0x00, 0x0B, 0x0A])
 
     def _timeout_ms(self, timeout):
         # T=CL callers pass a per-op timeout in seconds; give slow responses
@@ -1205,6 +1221,7 @@ class ACR122CCID(_ISODEP):
 
     def configMifare(self):
         self.software_tcl = False
+        self._default_rf_timeout()
         self.selectISO14443A()
 
     def _set_crc(self, on):

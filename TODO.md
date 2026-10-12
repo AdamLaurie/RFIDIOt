@@ -450,8 +450,26 @@ ePassport: `mrpkey.py -f ccid <MRZ>` full BAC + SM read, EF.COM/SOD/DG1/DG2/DG14
 (libnfc doesn't expose the ATTRIB-assigned CID; untested there).
 
 Remaining on the direct-CCID back-end:
-- Jewel and iClass `select*` return None; MIFARE Classic goes via `InDataExchange`
-  (`_plain_apdu`) but is untested on this path.
+- Jewel and iClass `select*` return None.
+- **[DONE] MIFARE Classic on the direct-CCID back-end** (library `VERSION` 3.1h),
+  hardware-verified on a MIFARE Classic 1K: `readmifare1k.py` (full card),
+  `loginall.py`, `rfidiot-cli` MF KEY/AUTH/DUMP/READ (1 KB dump, trailer key patched)
+  and single-block writes via WRITEHEX and MF WRITE (block 05 written, read back,
+  restored; a wrong-key write fails cleanly in 0.6 s). Fixed on the way: a wrong-key
+  auth crashed the tools with a USB `TimeoutError`. The PN532 keeps RF settings
+  across processes, and `enable_software_tcl()` raises fRetryTimeout to ~3.3 s, so a
+  later MIFARE auth with a wrong key (the card just stays silent) waited longer than
+  the 3 s USB read. Now `_pn532_init()` and `configMifare()` restore the PN532
+  default RF timeouts, and `_xfrblock()` reports a USB timeout as a failed exchange
+  (the late reply is dropped by the bSeq check).
+- `writemifare1k.py` calls `card.login(sector, ...)` with the **sector** number, but on
+  libnfc/CCID `login()` takes a **block** number (`readmifare1k` passes `sector * 4`),
+  so for sector N it authenticates block N and then writes blocks 4N..4N+2 - expected
+  to fail there (works on the Chameleon, which re-auths per write). Not run: it
+  overwrites every data block. Fix: pass `sector * 4`, then test on a scratch card.
+- `rfidiot-cli` MF AUTH/DUMP/READ fail ("Security status not satisfied") unless a
+  `SELECT` comes first on libnfc/CCID: the auth frame needs the UID from select().
+  Consider having MF AUTH select when `card.uid` is empty.
 - **[DONE]** (library `VERSION` 3.1g) Type B fallback in the tools: `rfidiot-cli.py`
   IDENTIFY/SELECT/HSS (v3.1d), `cardselect.py` (v3.1c) and `ChAP.py` (3.1c) now try
   `select("B")` when no Type A card answers (only libnfc/CCID distinguish A from B;
@@ -469,6 +487,21 @@ Remaining on the direct-CCID back-end:
   `acr122` device, instead of requiring the explicit `-f ccid`.
 - A lighter alternative worth noting: an `/etc/libccid_Info.plist` override mapping
   `072f:90cc` to the ACR122U PICC behaviour might fix the PC/SC path too (untried).
+
+- **Bare libnfc connstring (`-f pn53x_usb`) opens the wrong device.** Passed as-is
+  to `nfc_open()`, libnfc 1.8's `pn53x_usb` driver (from memory of its source, not
+  checked here) doesn't filter by VID/PID when no bus:dev is given: it opens the first
+  USB device it can, resets it, tries to set its configuration and gives up on
+  failure. Seen 2026-10-12: `-f pn53x_usb` failed with "Unable to set USB
+  configuration (EPERM) ... device 1d6b:0003" (the root hub) while
+  `-f pn53x_usb:003:009` opened the SCL3711. Risk: on a host where the first
+  openable device is writable, the bare form would reset an unrelated device. Fix
+  (not done): in `pynfc.NFC.configure()`, resolve a bare driver name via sysfs to the
+  first matching VID:PID and rewrite it to `<driver>:BBB:DDD` (like
+  `ACR122CCID._find()`); raise a clear error if none. Tables: `pn53x_usb` 04cc:0531,
+  054c:0193, 04cc:2533, 04e6:5591 (SCL3711), 04e6:5594, 054c:02e1, 1fd3:0608;
+  `acr122_usb` 072f:2200, 072f:90cc, 072f:2214. Then fix `docs/readers.md`, which says
+  the bare form opens the first match.
 
 Other ACR122-family variants (ACR122T, ACR1222L, clones/relabels) may differ again;
 the software-T=CL fix should still apply on any that libnfc *can* open (it detects by
