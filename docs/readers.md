@@ -22,7 +22,7 @@ the commands below work with `rfidiot-cli.py`, `ChAP.py`, `mrpkey.py`,
 Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 0x02, `READER_DEMOTAG` 0x03, `READER_PCSC` 0x04, `READER_OMNIKEY` 0x05,
 `READER_SCM` 0x06, `READER_ACS` 0x07, `READER_LIBNFC` 0x08, `READER_NONE` 0x09,
-`READER_ANDROID` 0x10, `READER_CHAMELEON` 0x11.
+`READER_ANDROID` 0x10, `READER_CHAMELEON` 0x11, `READER_TWN4` 0x12.
 
 ## Quick model → launch table
 
@@ -33,6 +33,7 @@ Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 | **ACR122U-WB-R** | `-f ccid` | direct CCID (usbdevfs) | EMV + ePassport verified |
 | **OMNIKEY CardMan 5321** | `-r 0` (contact) / `-r 1` (contactless) | PC/SC (OMNIKEY) | dev reader |
 | **Chameleon Ultra** | `-R READER_CHAMELEON` | serial (USB CDC) | EMV + 14443-A verified |
+| **ELATEC TWN4 MultiTech 2** | `-R READER_TWN4` | Simple Protocol (USB CDC) | EMV + ePassport (A/B, BAC + PACE) verified |
 | **PN532 module** (emulator) | `pn532mitm.py` / `pn532emulate.py` | ACS / PC-SC | MITM relay verified |
 
 ---
@@ -125,6 +126,34 @@ The USB CDC port is auto-detected by default. Type A only (no Type B). The same
 software T=CL engine handles chained 14443-4 responses.
 
 **Verified:** contactless EMV (`ChAP.py`) and 14443-A select/identify.
+
+## ELATEC TWN4 (Simple Protocol)
+
+An ELATEC TWN4 (tested: TWN4 MultiTech 2, firmware `TWN4/B1.50/NCF5.25/PRS1.04/AV`)
+running ELATEC's **Simple Protocol** app (`PRS` in the version string), used as
+an ISO 14443-A/B reader:
+
+```sh
+python3 rfidiot-cli.py -R READER_TWN4 IDENTIFY
+python3 ChAP.py -R READER_TWN4 -c
+python3 mrpkey.py -R READER_TWN4 <MRZ> [PACE]
+```
+
+The USB CDC port is auto-detected (`09d8:0420`); for a true serial (UART) TWN4
+pass the port with `-l`. The tool refuses a TWN4 whose firmware isn't the
+Simple Protocol app.
+
+The TWN4's own ISO 14443-4 exchange (`ISO14443_4_TDX`) can return at most 255
+bytes, and its own RATS asks for 256-byte frames, so long responses (EMV
+certificate records) would fail. RFIDIOt therefore sends RATS itself (FSD 128)
+and runs T=CL in software over raw `ISO14443_3_TDX` frames with host-side CRC,
+the same engine as the ACR122U and Chameleon back-ends. Only ISO 14443-A/B
+select + APDU are implemented so far (no MIFARE, LF, 15693, iCLASS, LEGIC yet).
+
+**Verified:** `ChAP.py -c` (Debit Mastercard, all records incl. a 256-byte
+issuer certificate record, chain CA 1984 → Issuer 1968 → ICC 1408) and
+`mrpkey.py` on a Type B ePassport with BAC and with PACE (AES-256), 18 KB DG2,
+PA hashes OK; `rfidiot-cli` IDENTIFY/SELECT/HSS/APDU, `cardselect`, `isotype`.
 
 ## PN532 module (emulator / MITM)
 

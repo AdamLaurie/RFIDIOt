@@ -33,7 +33,7 @@ except Exception as e:
 
 args = rfidiot.args
 
-card.info("cardselect v3.1c")
+card.info("cardselect v3.1d")
 # force card type if specified
 if len(args) == 1:
     card.settagtype(args[0])
@@ -46,13 +46,13 @@ if card.select() or card.select("B"):
     if card.readertype == card.READER_PCSC:
         print("    Type: " + card.pcsc_tag_type())
         print("    ATR: " + card.pcsc_atr)
-    elif card.readertype == card.READER_LIBNFC and card.sel_res:
+    elif card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.sel_res:
         print("    ATQA: " + card.sens_res + "   SAK: " + card.sel_res)
         print("    Type: ISO 14443A - " + card.iso14443a_type())
         # ISO 14443-4 cards answer SELECT with an ATS; storage cards do not
         if card.atr:
             print("    ATS: " + card.atr)
-    elif card.readertype == card.READER_LIBNFC and card.tagtype == "ISO 14443B":
+    elif card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.tagtype == "ISO 14443B":
         print("    Type: ISO 14443B")
         print("    PUPI: " + card.pupi + "   Application Data: " + card.appdata + "   Protocol Info: " + card.protocol)
 else:

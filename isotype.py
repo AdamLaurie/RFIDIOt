@@ -33,7 +33,7 @@ except Exception as e:
     sys.exit(True)
 
 
-card.info("isotype v3.1b")
+card.info("isotype v3.1c")
 
 typed = 0
 if card.readertype == card.READER_ACG:
@@ -75,7 +75,7 @@ if card.readertype == card.READER_PCSC:
     else:
         print(card.get_error_str(card.errorcode))
         sys.exit(True)
-if card.readertype == card.READER_LIBNFC:
+if card.readertype in (card.READER_LIBNFC, card.READER_TWN4):
     if card.select("A"):
         print("     ID: " + card.uid)
         if card.sens_res:

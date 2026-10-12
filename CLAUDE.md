@@ -60,7 +60,7 @@ Three layers:
    ePassport BAC/secure messaging). Reader dispatch is `if self.readertype ==
    self.READER_*` branches throughout — the reader-type constants (`READER_ACG`,
    `READER_PCSC`, `READER_LIBNFC`, `READER_FROSCH`, `READER_ANDROID`, `READER_DEMOTAG`,
-   `READER_NONE`, and PC/SC subtypes `READER_ACS`/`READER_OMNIKEY`/`READER_SCM`) are
+   `READER_CHAMELEON`, `READER_TWN4`, `READER_NONE`, and PC/SC subtypes `READER_ACS`/`READER_OMNIKEY`/`READER_SCM`) are
    class attributes. Adding reader support to a method usually means adding a branch.
 
 2. **`rfidiot/__init__.py`** — the runtime entry point every client script imports.
@@ -120,6 +120,10 @@ Three layers:
   (`READER_LIBNFC`); libnfc enums/structs, aligned to libnfc 1.8. `sendAPDU()` is the
   raw transceive used for everything over libnfc.
 - `pyandroid.py` — Android NFC device over a socket (`READER_ANDROID`).
+- `pychameleon.py` — Chameleon Ultra over USB CDC serial (`READER_CHAMELEON`).
+- `pytwn4.py` — ELATEC TWN4 over its Simple Protocol (USB CDC / serial,
+  `READER_TWN4`): ISO 14443-A/B select, own RATS (FSD 128) and software T=CL
+  over raw `ISO14443_3_TDX` frames (shares `pynfc._tcl_exchange`).
 - `pn532.py` — PN532 chipset constants/helpers.
 - `iso3166.py` — country-code tables for the ePassport tools.
 - `rfidiotglobals.py` — the global `Debug` flag shared across modules.

@@ -103,7 +103,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1e")
+card.info("rfidiot-cli v3.1f")
 
 # globals
 Mifare_Key = None
@@ -228,12 +228,12 @@ while args:
                 print(card.LFXTags[card.tagtype])
             else:
                 print(card.tagtype)
-            if card.readertype == card.READER_LIBNFC and card.sel_res:
+            if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.sel_res:
                 print("      ATQA:", card.sens_res, "  SAK:", card.sel_res)
                 print("      Type: ISO 14443A -", card.iso14443a_type())
                 if card.atr:
                     print("      ATS:", card.atr)
-            if card.readertype == card.READER_LIBNFC and card.tagtype == "ISO 14443B":
+            if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.tagtype == "ISO 14443B":
                 print("      PUPI:", card.pupi, "  Application Data:", card.appdata, "  Protocol Info:", card.protocol)
             if card.readertype == card.READER_PCSC:
                 if card.tagtype.find("ISO 15693") >= 0:

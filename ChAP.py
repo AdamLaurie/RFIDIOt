@@ -705,7 +705,7 @@ BER_TLV_AFL = 0x14
 
 def printhelp():
     print("\nChAP.py - Chip And PIN in Python")
-    print("Ver 3.1c\n")
+    print("Ver 3.1d\n")
     print("usage:\n\n ChAP.py [rfidiot-options] [ChAP-options] [PIN]")
     print()
     print("Reader selection uses the standard RFIDIOt global options above")
@@ -952,12 +952,14 @@ def _transceive(apdu):
     # libnfc), returning (response-bytes-as-list-of-ints, sw1, sw2). T=0/T=1 is
     # negotiated by the library for PC/SC.
     hexapdu = "".join("%02X" % b for b in apdu)
-    if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON):
-        # both expose sendAPDU(hex, timeout) -> (ok, "<data><SW1SW2>")
+    if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON, card.READER_TWN4):
+        # all expose sendAPDU(hex, timeout) -> (ok, "<data><SW1SW2>")
         if card.readertype == card.READER_LIBNFC:
             ok, resp = card.nfc.sendAPDU(hexapdu, card.timeout)
-        else:
+        elif card.readertype == card.READER_CHAMELEON:
             ok, resp = card.chameleon.sendAPDU(hexapdu, card.timeout)
+        else:
+            ok, resp = card.twn4.sendAPDU(hexapdu, card.timeout)
         if not ok or len(resp) < 4:
             return [], 0x6F, 0x00
         data = [int(resp[i : i + 2], 16) for i in range(0, len(resp) - 4, 2)]
@@ -1880,7 +1882,7 @@ if EncipheredPIN and not PIN:
 
 try:
     print("using reader:", getattr(card, "readername", "unknown"))
-    if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON):
+    if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON, card.READER_TWN4):
         # contactless: run ISO 14443-A (then -B) anticollision/select to power and
         # select the card before exchanging APDUs (PC/SC is already connected on import)
         if not (card.select() or card.select("B")):

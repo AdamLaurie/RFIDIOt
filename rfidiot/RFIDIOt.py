@@ -228,6 +228,19 @@ class rfidiot:
                 # key/type from login() for the subsequent read/write of that sector
                 self._cham_mf_key = None
                 self._cham_mf_keytype = None
+            # ELATEC TWN4 (Simple Protocol firmware), used as an ISO 14443 reader
+            elif self.readertype == self.READER_TWN4:
+                from . import pytwn4
+
+                # auto-detect the TWN4's USB CDC port; fall back to -l for a true
+                # serial (UART) TWN4, which has no USB ID to find it by
+                try:
+                    tw_port = pytwn4.TWN4.find_port() or port
+                    self.twn4 = pytwn4.TWN4(port=tw_port, debug=self.DEBUG)
+                except pytwn4.TWN4Error as e:
+                    print("TWN4: %s" % e)
+                    sys.exit(True)
+                self.readername = self.twn4.readername
             # Andoid reader
             elif self.readertype == self.READER_ANDROID:
                 self.android = pyandroid.Android()
@@ -274,7 +287,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1h"
+    VERSION = "3.1i"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -287,6 +300,7 @@ class rfidiot:
     READER_NONE = 0x09
     READER_ANDROID = 0x10
     READER_CHAMELEON = 0x11
+    READER_TWN4 = 0x12
     # TAG related globals
     errorcode = ""
     binary = ""
@@ -378,6 +392,10 @@ class rfidiot:
         "CU04": "not authenticated - login to the sector first",
         "CU0K": "invalid MIFARE key (must be 6 bytes / 12 hex digits)",
         "CU0D": "invalid block data (must be 16 bytes / 32 hex digits)",
+    }
+    # ELATEC TWN4 reader error codes (set by the READER_TWN4 branches)
+    TWN4ErrorCodes = {
+        "TW00": "TWN4 APDU transceive error (or response longer than 255 bytes)",
     }
     ISOTags = {
         "a": "ISO 14443 Type A  ",
@@ -1000,6 +1018,8 @@ class rfidiot:
                 print("LibNFC", self.readername)
             if self.readertype == self.READER_ANDROID:
                 print("Android Reader")
+            if self.readertype == self.READER_TWN4:
+                print(self.readername)
             print()
 
     @staticmethod
@@ -1013,6 +1033,9 @@ class rfidiot:
 
         if err in rfidiot.ChameleonErrorCodes:
             return rfidiot.ChameleonErrorCodes[err]
+
+        if err in rfidiot.TWN4ErrorCodes:
+            return rfidiot.TWN4ErrorCodes[err]
 
         if err in pynfc.NFC_LIB_ERROR_CODES:
             return pynfc.NFC_LIB_ERROR_CODES[err]
@@ -1030,6 +1053,9 @@ class rfidiot:
 
         if err in self.ChameleonErrorCodes:
             return self.ChameleonErrorCodes[err]
+
+        if err in self.TWN4ErrorCodes:
+            return self.TWN4ErrorCodes[err]
 
         if err in pynfc.NFC_LIB_ERROR_CODES:
             return pynfc.NFC_LIB_ERROR_CODES[err]
@@ -1442,6 +1468,47 @@ class rfidiot:
             if self.DEBUG:
                 print("No TAG present!")
             return False
+
+        if self.readertype == self.READER_TWN4:
+            from . import pytwn4
+
+            if cardtype not in ("A", "B"):
+                if self.DEBUG:
+                    print("TWN4 back-end supports ISO 14443-A and -B only")
+                return False
+            try:
+                tagtype = pytwn4.HFTAG_MIFARE if cardtype == "A" else pytwn4.HFTAG_ISO14443B
+                tag = self.twn4.select(tagtype)
+                if not tag:
+                    if self.DEBUG:
+                        print("No TAG present!")
+                    return False
+                self.uid = tag[0]
+                if cardtype == "A":
+                    self.tagtype = "ISO 14443A"
+                    self.sens_res = self.twn4.get_atqa()
+                    self.sel_res = self.twn4.get_sak()
+                    # ATS from the RATS select() sent itself (14443-4 cards only)
+                    self.atr = self.twn4.ats
+                else:
+                    self.tagtype = "ISO 14443B"
+                    self.sens_res = ""
+                    self.sel_res = ""
+                    self.atr = ""
+                    # ATQB = 50 PUPI(4) ApplicationData(4) ProtocolInfo(3)
+                    atqb = self.twn4.get_atqb()
+                    self.pupi = atqb[2:10] or self.uid
+                    self.appdata = atqb[10:18]
+                    self.protocol = atqb[18:24]
+                    self.cid = ""
+                if self.DEBUG:
+                    print("UID: " + self.uid)
+                return True
+            except pytwn4.TWN4Error as e:
+                self.errorcode = "TW00"
+                if self.DEBUG:
+                    print("TWN4 select error:", e)
+                return False
 
         if self.readertype == self.READER_ANDROID:
             try:
@@ -1970,6 +2037,23 @@ class rfidiot:
                 self.errorcode = "CU00"
                 if self.DEBUG:
                     print("Chameleon APDU error:", e)
+                return False
+            self.data = result[0:-4]
+            self.errorcode = result[len(result) - 4 : len(result)]
+            if self.errorcode != self.ISO_OK:
+                return False
+            return True
+        if self.readertype == self.READER_TWN4:
+            if self.DEBUG:
+                print("In send_apdu - for TWN4:", cla + ins + p1 + p2 + lc + data + le)
+            try:
+                ret, result = self.twn4.sendAPDU(cla + ins + p1 + p2 + lc + data + le, self.timeout)
+            except Exception as e:
+                ret = False
+                if self.DEBUG:
+                    print("TWN4 APDU error:", e)
+            if not ret:
+                self.errorcode = "TW00"
                 return False
             self.data = result[0:-4]
             self.errorcode = result[len(result) - 4 : len(result)]
@@ -3172,4 +3256,6 @@ class rfidiot:
         if self.readertype == self.READER_LIBNFC:
             self.nfc.powerOff()
             self.nfc.deconfigure()
+        if self.readertype == self.READER_TWN4:
+            self.twn4.close()
         sys.exit(False)

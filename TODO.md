@@ -604,3 +604,41 @@ Remaining / limits:
   so the libnfc emulator is socket-only: two shells on one host (reader on PC/SC,
   emulator on libnfc) or split across two machines. The PN532's hard-wired `08` UID
   first byte (section 9) still applies.
+
+## 13. ELATEC TWN4 reader back-end (`READER_TWN4`)
+**[DONE] HF core** (library `VERSION` 3.1i, `rfidiot/pytwn4.py`). Drives a TWN4 running
+ELATEC's Simple Protocol app (ASCII mode, CRC off) over USB CDC (auto-detected,
+`09d8:0420`) or `-l` for a true-serial unit. Function numbers from ELATEC's
+`twn4.sys.h`, frame formats from the Simple Protocol doc (DocRev25) and confirmed on
+the hardware (TWN4 MultiTech 2, `TWN4/B1.50/NCF5.25/PRS1.04/AV`). Checked against API
+Reference DocRev31: all functions used match. DocRev31 also lists the system parameter
+`ISO14443_3_TDX_CRCCONTROL` (34), which makes the firmware add/strip the CRC on raw
+frames (verified on the reader); the driver forces it to 0 with `SetParameters` on
+open, so a reader left with it set still works. (Not checked: Simple Protocol DocRev26+.)
+- select: `SearchTag` narrowed to the requested type with `SetTagTypes`, then the
+  reader's tag types are restored at once (the TWN4 keeps them until reset, and tools
+  often exit without `shutdown()`); ATQA (LSB first from the reader, reversed), SAK,
+  ATQB / answer to ATTRIB (CID).
+- APDUs: `ISO14443_4_TDX` returns at most 255 bytes and the TWN4's own RATS (sent only
+  when asked for the ATS) announces FSD 256, so EMV certificate records failed. Now:
+  RATS sent by RFIDIOt with FSDI 7 (FSD 128) for SAK-bit-0x20 Type A cards, and T=CL in
+  software (`pynfc._tcl_exchange`) over raw `ISO14443_3_TDX` frames with host-side
+  CRC_A/CRC_B (checked against ISO 14443-3 Annex B and the ELATEC doc's example).
+- Tools: `ChAP.py` (3.1d), `rfidiot-cli.py` IDENTIFY (v3.1f), `cardselect.py` (v3.1d),
+  `isotype.py` (v3.1c) treat `READER_TWN4` like libnfc.
+- Hardware-verified: `ChAP.py -c` on a Debit Mastercard (all records incl. a 256-byte
+  issuer-cert record, chain verified); `mrpkey.py` on a Type B ePassport with BAC and
+  PACE-AES (full read, PA hashes OK, ~8 s); IDENTIFY/SELECT/HSS (repeated), APDU,
+  `cardselect`, `isotype` on Type A and B.
+
+Remaining:
+- MIFARE Classic / Ultralight (`API_MIFARECLASSIC` 11, `API_MIFAREULTRALIGHT` 12) for
+  the MIFARE tools; NTAG (32), DESFire (15).
+- LF tags via `SearchTag` (EM4102, HID Prox, FDX-B, Indala, AWID, ...) for the LF
+  tools; also ISO 15693 (13), iCLASS (17), LEGIC, FeliCa.
+- Type B frame size: the TWN4 sends ATTRIB itself, with its own max frame size; an
+  ePassport with 118-byte reads works, but a Type B card chaining frames > 255 bytes
+  would fail (no way found to re-ATTRIB).
+- True serial (UART) TWN4 untested (only USB CDC).
+- `chameleon`-style `twn4.py` tool for reader config (beep/LEDs, tag types)? Optional.
+
