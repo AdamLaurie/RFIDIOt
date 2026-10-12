@@ -202,9 +202,35 @@ USB auto-detect, firmware-version gate, `HF14A_SCAN_KEEP` select, and a T=CL APD
 engine (I-block toggling, S(WTX), receive chaining) over `HF14A_RAW`. Hardware-verified
 on hw_v1 / fw v2.2.0: a full `mrpkey.py -R READER_CHAMELEON` ePassport read (BAC +
 secure messaging + EF.COM/SOD/DG1/DG2/DG14, incl. the 18 KB DG2 JPEG via chaining;
-Passive Auth confirms the DG hashes). **Remaining:** the emulator/loader side
-(`chameleon.py` for UID/dump loading) below, plus MIFARE Classic reader ops
-(`MF1_AUTH/READ/WRITE`) and LF EM410x if wanted.
+Passive Auth confirms the DG hashes).
+
+**[DONE] MIFARE Classic reader ops** (`MF1_AUTH/READ/WRITE` 2007/2008/2009 in
+`pychameleon.py`; `READER_CHAMELEON` branches in `login`/`readblock`/`writeblock`,
+library `VERSION` 3.1c). The firmware auths on every MF1 command, so `login()` runs
+`MF1_AUTH` to verify + stash the key and the subsequent `readMIFAREblock`/`writeblock`
+re-auth with it. New `CU0x` error strings (`ChameleonErrorCodes`) + the "gemeral"->
+"general" punt fix. Hardware-verified on a MIFARE Classic 1K (SAK 08, transport Key A
+`FFFFFFFFFFFF`): `readmifare1k.py` (full dump + access-bit decode), `loginall.py`,
+`readmifaresimple.py`, `bruteforce.py` all read; `writemifare1k.py` writes data blocks
+(sector trailers correctly skipped, verified by read-back); `rfidiot-cli.py` MF
+KEY/AUTH/DUMP/READ/WRITE/WIPE/CLONE all work (WIPE rewrites trailers/keys; CLONE
+source->blank copy verified by read-back); wrong key / non-Classic fails cleanly
+with `CU01`. (Also fixed a Py3 bug surfaced in
+`rfidiot-cli.py` MF WRITE: `len(data) / 16` -> `// 16`, which made `end` a float and
+broke the `{end:02X}` format.)
+
+**Remaining:**
+- The emulator/loader side (`chameleon.py` for UID/dump loading) below.
+- LF EM410x reader (`EM410X_SCAN` 3000) if wanted.
+- **MIFARE Ultralight (Type 2) read** over the Chameleon: `readmifareultra.py` uses
+  `readblock()` with no `login()` (UL has no auth), but the Chameleon `readblock`
+  branch is Classic-only (auth+read) and returns `CU04` without a stashed key. Add a
+  no-auth raw path - 14443-3 READ (`0x30`) via `HF14A_RAW` (CRC on, no RATS), the
+  Chameleon analogue of `libnfc_mifare_read_block` - taken when no MIFARE key is set
+  (or gate on SAK `00`). Needs a UL/NTAG card to verify.
+- **Guard `readmifareultra.py`**: when `readblock(0)` fails it still references `lock0`
+  and crashes with `NameError` (a pre-existing bug on ANY reader when the read fails,
+  not Chameleon-specific) - bail out cleanly on read failure instead.
 
 Add support for the Proxgrind/RRG **Chameleon Ultra** (and Lite) as both a reader
 and an emulator. Unlike the PN532 it drives its own anti-collision, so it can emulate

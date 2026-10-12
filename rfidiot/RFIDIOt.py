@@ -224,6 +224,10 @@ class rfidiot:
                     sys.exit(True)
                 self.chameleon.set_reader_mode()
                 self.readername = self.chameleon.readername
+                # MIFARE Classic auth is per-command on the Chameleon, so stash the
+                # key/type from login() for the subsequent read/write of that sector
+                self._cham_mf_key = None
+                self._cham_mf_keytype = None
             # Andoid reader
             elif self.readertype == self.READER_ANDROID:
                 self.android = pyandroid.Android()
@@ -270,7 +274,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1b"
+    VERSION = "3.1c"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -365,6 +369,16 @@ class rfidiot:
     ACG_FAIL = "N"
     # Mifare transort keys
     MIFARE_TK = {"AA": "A0A1A2A3A4A5", "BB": "B0B1B2B3B4B5", "FF": "FFFFFFFFFFFF"}
+    # Chameleon reader error codes (set by the READER_CHAMELEON branches)
+    ChameleonErrorCodes = {
+        "CU00": "Chameleon APDU transceive error",
+        "CU01": "MIFARE authentication failed (wrong key or not a MIFARE Classic)",
+        "CU02": "MIFARE block read failed",
+        "CU03": "MIFARE block write failed",
+        "CU04": "not authenticated - login to the sector first",
+        "CU0K": "invalid MIFARE key (must be 6 bytes / 12 hex digits)",
+        "CU0D": "invalid block data (must be 16 bytes / 32 hex digits)",
+    }
     ISOTags = {
         "a": "ISO 14443 Type A  ",
         "b": "ISO 14443 Type B  ",
@@ -997,11 +1011,14 @@ class rfidiot:
         if err in rfidiot.ISO7816ErrorCodes:
             return rfidiot.ISO7816ErrorCodes[err]
 
+        if err in rfidiot.ChameleonErrorCodes:
+            return rfidiot.ChameleonErrorCodes[err]
+
         if err in pynfc.NFC_LIB_ERROR_CODES:
             return pynfc.NFC_LIB_ERROR_CODES[err]
 
         # Punt
-        return "gemeral error"
+        return "general error"
 
     def _get_error_str(self, err=None) -> str:
 
@@ -1011,11 +1028,14 @@ class rfidiot:
         if err in self.ISO7816ErrorCodes:
             return self.ISO7816ErrorCodes[err]
 
+        if err in self.ChameleonErrorCodes:
+            return self.ChameleonErrorCodes[err]
+
         if err in pynfc.NFC_LIB_ERROR_CODES:
             return pynfc.NFC_LIB_ERROR_CODES[err]
 
         # Punt
-        return "gemeral error"
+        return "general error"
 
     # reader functions
     #
@@ -1979,6 +1999,25 @@ class rfidiot:
             return self.frosch(self.FR_HTS_TagAuthent, "")
         if self.readertype == self.READER_LIBNFC:
             return self.libnfc_mifare_login(sector, key, keytype)
+        if self.readertype == self.READER_CHAMELEON:
+            # the Chameleon auths on each read/write, so "login" just verifies the
+            # key (MF1_AUTH) and stashes it for the sector's subsequent operations
+            key_type = 0x61 if keytype == "BB" else 0x60  # MIFARE Key B / Key A
+            try:
+                key_bytes = bytes.fromhex(key)
+            except ValueError:
+                self.errorcode = "CU0K"
+                return False
+            if len(key_bytes) != 6:
+                self.errorcode = "CU0K"
+                return False
+            if self.chameleon.mf1_auth(sector, key_type, key_bytes):
+                self._cham_mf_key = key_bytes
+                self._cham_mf_keytype = key_type
+                self.errorcode = ""
+                return True
+            self.errorcode = "CU01"
+            return False
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 return self.acs_mifare_login(sector, key, keytype)
@@ -2074,6 +2113,26 @@ class rfidiot:
             # READ (0x30) which returns 16 bytes (4 pages) and works without
             # authentication on Type 2 tags (MIFARE Ultralight / NTAG).
             return self.libnfc_mifare_read_block(block)
+        if self.readertype == self.READER_CHAMELEON:
+            # MIFARE Classic (auth + read one 16-byte block); requires a prior
+            # login() to have stashed the key for this sector
+            if self._cham_mf_key is None:
+                self.errorcode = "CU04"
+                self.data = ""
+                return False
+            ok, res = self.chameleon.mf1_read(block, self._cham_mf_keytype, self._cham_mf_key)
+            if not ok:
+                self.errorcode = "CU02"
+                self.data = ""
+                return False
+            self.data = res
+            self.binary = ""
+            count = 0
+            while count * 2 < len(self.data):
+                self.binary += chr(int(self.data[count * 2 : (count * 2) + 2], 16))
+                count += 1
+            self.errorcode = ""
+            return True
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 return self.acs_read_block(block)
@@ -2136,6 +2195,28 @@ class rfidiot:
                 self.errorcode = ""
                 return True
             self.errorcode = x
+            return False
+        if self.readertype == self.READER_CHAMELEON:
+            # MIFARE Classic (auth + write one 16-byte block); requires a prior
+            # login() to have stashed the key for this sector
+            if self._cham_mf_key is None:
+                self.errorcode = "CU04"
+                return False
+            try:
+                data_bytes = bytes.fromhex(data)
+            except ValueError:
+                self.errorcode = "CU0D"
+                return False
+            if len(data_bytes) != 16:
+                self.errorcode = "CU0D"
+                return False
+            ok, _status = self.chameleon.mf1_write(
+                block, self._cham_mf_keytype, self._cham_mf_key, data_bytes
+            )
+            if ok:
+                self.errorcode = ""
+                return True
+            self.errorcode = "CU03"
             return False
         if self.readertype == self.READER_PCSC:
             apdu = []

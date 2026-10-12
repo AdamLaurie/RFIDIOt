@@ -40,6 +40,9 @@ CMD_GET_APP_VERSION = 1000
 CMD_CHANGE_DEVICE_MODE = 1001
 CMD_GET_DEVICE_MODE = 1002
 CMD_HF14A_SCAN = 2000
+CMD_MF1_AUTH = 2007   # MF1_AUTH_ONE_KEY_BLOCK  - test a key against a block
+CMD_MF1_READ = 2008   # MF1_READ_ONE_BLOCK      - auth + read one block
+CMD_MF1_WRITE = 2009  # MF1_WRITE_ONE_BLOCK     - auth + write one block
 CMD_HF14A_RAW = 2010
 CMD_HF14A_SCAN_KEEP = 2016
 
@@ -48,6 +51,10 @@ STATUS_HF_TAG_OK = 0x0000
 STATUS_HF_TAG_NO = 0x0001
 STATUS_DEVICE_SUCCESS = 0x0068
 STATUS_INVALID_CMD = 0x0067
+
+# --- MIFARE Classic key types (first byte of the MF1_* command payloads) ---
+MF1_KEY_A = 0x60
+MF1_KEY_B = 0x61
 
 # --- HF14A_RAW option bits (MSB first) ---
 OPT_ACTIVATE_RF = 0x80
@@ -251,6 +258,27 @@ class Chameleon:
             raise ChameleonError("unexpected 14443-4 PCB 0x%02x" % p)
 
         return True, bytes(inf).hex().upper()
+
+    # ------------------------------------------------------------------ MIFARE Classic
+    # The firmware authenticates with the supplied key on every MF1 command (there
+    # is no persistent "logged-in" state on the wire), so the caller passes the key
+    # each time. key is 6 bytes, data is 16 bytes, key_type is MF1_KEY_A/MF1_KEY_B.
+    def mf1_auth(self, block, key_type, key):
+        "test one MIFARE Classic key against a block; True if it authenticates"
+        status, _ = self.command(CMD_MF1_AUTH, bytes([key_type, block]) + key)
+        return status == STATUS_HF_TAG_OK
+
+    def mf1_read(self, block, key_type, key):
+        "auth + read one MIFARE Classic block; (True, 16-byte hex) or (False, status)"
+        status, d = self.command(CMD_MF1_READ, bytes([key_type, block]) + key)
+        if status != STATUS_HF_TAG_OK:
+            return False, status
+        return True, d.hex().upper()
+
+    def mf1_write(self, block, key_type, key, data):
+        "auth + write one MIFARE Classic block (data = 16 bytes); (ok, status)"
+        status, _ = self.command(CMD_MF1_WRITE, bytes([key_type, block]) + key + data)
+        return status == STATUS_HF_TAG_OK, status
 
     # ------------------------------------------------------------------ lifecycle
     def close(self):
