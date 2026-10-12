@@ -280,6 +280,20 @@ class Chameleon:
         status, _ = self.command(CMD_MF1_WRITE, bytes([key_type, block]) + key + data)
         return status == STATUS_HF_TAG_OK, status
 
+    # ------------------------------------------------------------------ MIFARE Ultralight / Type 2
+    def ul_read(self, page):
+        """ISO 14443-3 READ (0x30) from a Type 2 tag (MIFARE Ultralight / NTAG):
+        16 bytes (4 pages) starting at `page`, no authentication. (True, hex) or
+        (False, status). Sent as a raw frame via HF14A_RAW with CRC on - the chip
+        has already selected the tag (HF14A_SCAN_KEEP); Type 2 has no RATS."""
+        status, d = self._raw(
+            OPT_WAIT_RESP | OPT_APPEND_CRC | OPT_CHECK_CRC | OPT_KEEP_FIELD,
+            bytes([0x30, page & 0xFF]),
+        )
+        if status != STATUS_HF_TAG_OK or len(d) < 16:
+            return False, status
+        return True, d[:16].hex().upper()
+
     # ------------------------------------------------------------------ lifecycle
     def close(self):
         try:

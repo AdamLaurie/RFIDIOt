@@ -219,18 +219,19 @@ with `CU01`. (Also fixed a Py3 bug surfaced in
 `rfidiot-cli.py` MF WRITE: `len(data) / 16` -> `// 16`, which made `end` a float and
 broke the `{end:02X}` format.)
 
+**[DONE] MIFARE Ultralight (Type 2) read** over the Chameleon (library `VERSION`
+3.1d). `pychameleon.ul_read()` does a no-auth 14443-3 READ (`0x30`) via `HF14A_RAW`
+(CRC on, no RATS) returning 16 bytes; the `READER_CHAMELEON` `readblock` branch routes
+to it when no MIFARE key is stashed (Classic logs in first; UL/NTAG never does), the
+analogue of `libnfc_mifare_read_block`. Also guarded `readmifareultra.py`: a header-
+block read failure now exits cleanly instead of crashing on an undefined `lock0`
+(`NameError`, a pre-existing bug on ANY reader when the read fails). Hardware-verified
+on a MIFARE Ultralight (UID `047BFDB22D6181`): `readmifareultra.py -R READER_CHAMELEON`
+reads the pages + lock/OTP decode.
+
 **Remaining:**
 - The emulator/loader side (`chameleon.py` for UID/dump loading) below.
 - LF EM410x reader (`EM410X_SCAN` 3000) if wanted.
-- **MIFARE Ultralight (Type 2) read** over the Chameleon: `readmifareultra.py` uses
-  `readblock()` with no `login()` (UL has no auth), but the Chameleon `readblock`
-  branch is Classic-only (auth+read) and returns `CU04` without a stashed key. Add a
-  no-auth raw path - 14443-3 READ (`0x30`) via `HF14A_RAW` (CRC on, no RATS), the
-  Chameleon analogue of `libnfc_mifare_read_block` - taken when no MIFARE key is set
-  (or gate on SAK `00`). Needs a UL/NTAG card to verify.
-- **Guard `readmifareultra.py`**: when `readblock(0)` fails it still references `lock0`
-  and crashes with `NameError` (a pre-existing bug on ANY reader when the read fails,
-  not Chameleon-specific) - bail out cleanly on read failure instead.
 
 Add support for the Proxgrind/RRG **Chameleon Ultra** (and Lite) as both a reader
 and an emulator. Unlike the PN532 it drives its own anti-collision, so it can emulate

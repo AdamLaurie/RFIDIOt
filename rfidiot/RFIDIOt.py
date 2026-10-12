@@ -274,7 +274,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1c"
+    VERSION = "3.1d"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -2114,13 +2114,14 @@ class rfidiot:
             # authentication on Type 2 tags (MIFARE Ultralight / NTAG).
             return self.libnfc_mifare_read_block(block)
         if self.readertype == self.READER_CHAMELEON:
-            # MIFARE Classic (auth + read one 16-byte block); requires a prior
-            # login() to have stashed the key for this sector
             if self._cham_mf_key is None:
-                self.errorcode = "CU04"
-                self.data = ""
-                return False
-            ok, res = self.chameleon.mf1_read(block, self._cham_mf_keytype, self._cham_mf_key)
+                # no MIFARE Classic login - treat as an ISO 14443-3 Type 2 tag
+                # (MIFARE Ultralight / NTAG): raw READ (0x30), no authentication,
+                # the Chameleon analogue of libnfc_mifare_read_block
+                ok, res = self.chameleon.ul_read(block)
+            else:
+                # MIFARE Classic: auth + read one 16-byte block with the stashed key
+                ok, res = self.chameleon.mf1_read(block, self._cham_mf_keytype, self._cham_mf_key)
             if not ok:
                 self.errorcode = "CU02"
                 self.data = ""
