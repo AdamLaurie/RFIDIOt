@@ -274,7 +274,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1e"
+    VERSION = "3.1f"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -1368,6 +1368,17 @@ class rfidiot:
                         self.protocol = result.protocol
                         self.cid = result.cid
                         self.tagtype = "ISO 14443B"
+                        # As for Type A: on the direct-CCID ACR122U back-end take over
+                        # T=CL in software so long chained responses can't overflow the
+                        # reader, if the card is ISO 14443-4 (Protocol_Type bit 0).
+                        # Not done on the libnfc path, which doesn't expose the CID
+                        # the PN532's ATTRIB assigned (untested there).
+                        if getattr(self.nfc, "software_tcl_type_b", False):
+                            try:
+                                if int(self.protocol[2:4], 16) & 0x01:
+                                    self.nfc.enable_software_tcl()
+                            except ValueError:
+                                pass
                         if self.DEBUG:
                             print("PUPI: " + self.pupi)
                             print("ATR: " + self.atr)

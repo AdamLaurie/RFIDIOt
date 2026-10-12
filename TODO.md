@@ -428,10 +428,32 @@ Two bugs found and fixed during bring-up:
   bump (section 11, WTX). EMV didn't surface it (its reads return fast); BAC did,
   exactly as on the libnfc path.
 
+**[DONE] ISO 14443-B on the direct-CCID back-end** (library `VERSION` 3.1f).
+`ACR122CCID.selectISO14443B()` polls with InListPassiveTarget 106B (the PN532 sends
+REQB + ATTRIB itself) and `RFIDIOt.select()` takes over T=CL in software for
+14443-4 Type B cards, as for Type A. Two things were needed:
+- **CID-aware T=CL.** The PN532's ATTRIB assigns CID 1 (= Tg), and a card given a
+  non-zero CID ignores blocks without it (verified: SELECT without CID = no answer,
+  with CID = `9000`). `_tcl_exchange()` now takes an optional `cid`: every I/R/S block
+  carries PCB bit `0x08` + the CID byte, and the card's echoed CID is stripped. With
+  no CID the frames are byte-for-byte unchanged. The CID is only used when the ATQB
+  says the card supports it (FO bit 0).
+- **Stale-reply fix in the CCID transport.** `_xfrblock()` accepted any bulk-IN
+  message, so one late reply (e.g. a poll the reader gave up on with `63 0x`, or one
+  left from a previous process) shifted every later exchange by one, and the
+  `61xx` GET RESPONSE length was then applied to the wrong command (truncated
+  replies). It now drops messages whose type/`bSeq` don't match the command sent.
+  Affects Type A on this back-end too (strictly a fix).
+Hardware-verified on an ACR122U-WB-R (`-f ccid`) with a Type B (random-PUPI) GBR
+ePassport: `mrpkey.py -f ccid <MRZ>` full BAC + SM read, EF.COM/SOD/DG1/DG2/DG14,
+18 KB DG2 via chaining, PA hashes DG1/DG2/DG14 OK. Not done on the libnfc path
+(libnfc doesn't expose the ATTRIB-assigned CID; untested there).
+
 Remaining on the direct-CCID back-end:
-- Only the **14443-A + ISO-7816 / software-T=CL** path is implemented. 14443-B,
-  Jewel and iClass `select*` return None; MIFARE Classic goes via `InDataExchange`
+- Jewel and iClass `select*` return None; MIFARE Classic goes via `InDataExchange`
   (`_plain_apdu`) but is untested on this path.
+- `rfidiot-cli.py IDENTIFY` only tries Type A, so it reports "No card present" for a
+  Type B card on any reader (`mrpkey.py` tries A then B).
 - Consider auto-falling back to the direct-CCID back-end when libnfc fails to open an
   `acr122` device, instead of requiring the explicit `-f ccid`.
 - A lighter alternative worth noting: an `/etc/libccid_Info.plist` override mapping

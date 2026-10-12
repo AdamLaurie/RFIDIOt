@@ -366,7 +366,7 @@ class JEWEL():
         return rv
 
 
-def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None):
+def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None, cid=None):
     """Drive one ISO 7816 APDU over the ISO 14443-4 (T=CL) block protocol.
 
     `raw_frame(hexframe, timeout) -> (ok, hex)` sends exactly one T=CL frame and
@@ -380,9 +380,18 @@ def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None):
     Shared by both raw-frame backends - the libnfc one (NFC, easy framing off)
     and the direct-CCID one (ACR122CCID, PN532 InCommunicateThru) - so the T=CL
     engine lives in exactly one place.
+
+    `cid` is the card identifier assigned at activation, or None. A card given a
+    non-zero CID (e.g. the PN532's ATTRIB for a Type B card assigns CID 1) won't
+    answer blocks without it, so when set every block we send carries PCB bit
+    0x08 + the CID byte, and the card's CID byte is skipped in its replies.
     """
-    pcb = 0x02 | iblock
-    ok, resp = raw_frame("%02X%s" % (pcb, apdu), timeout)
+    if cid is None:
+        cidbit, cidhex = 0x00, ""
+    else:
+        cidbit, cidhex = 0x08, "%02X" % cid
+    pcb = 0x02 | cidbit | iblock
+    ok, resp = raw_frame("%02X%s%s" % (pcb, cidhex, apdu), timeout)
     if not ok:
         return False, resp, iblock
     inf = ""
@@ -396,12 +405,14 @@ def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None):
         if len(resp) < 2:
             return False, -1, iblock
         p = int(resp[0:2], 16)
+        # the card echoes its CID (PCB bit 0x08) - skip it to reach the INF
+        body = resp[4:] if p & 0x08 else resp[2:]
         if (p & 0xC0) == 0x00:
             # I-block: collect INF; if the card is chaining, R(ACK) with the
             # *toggled* block number so it advances to the next block
-            inf += resp[2:]
+            inf += body
             if p & 0x10:
-                ok, resp = raw_frame("%02X" % (0xA2 | ((p & 1) ^ 1)), timeout)
+                ok, resp = raw_frame("%02X%s" % (0xA2 | cidbit | ((p & 1) ^ 1), cidhex), timeout)
                 if not ok:
                     return False, resp, iblock
                 continue
@@ -410,7 +421,7 @@ def _tcl_exchange(raw_frame, apdu, iblock, timeout=None, log=None):
             break
         if (p & 0xF6) == 0xF2:
             # S(WTX) waiting-time extension request: echo the INF byte back
-            ok, resp = raw_frame("F2" + resp[2:4], timeout)
+            ok, resp = raw_frame("%02X%s%s" % (0xF2 | cidbit, cidhex, body[0:2]), timeout)
             if not ok:
                 return False, resp, iblock
             continue
@@ -425,7 +436,8 @@ class _ISODEP():
 
     A host class must provide: self._raw_frame(hexframe, timeout) -> (ok, hex)
     (one T=CL frame), self._plain_apdu(apdu, timeout) -> (ok, hex) (the non-T=CL
-    path), and the attributes self.software_tcl, self._iblock and self.log.
+    path), and the attributes self.software_tcl, self._iblock and self.log
+    (and optionally self._cid, the card's assigned CID or None).
     """
 
     def sendAPDU(self, apdu, timeout=None):
@@ -438,7 +450,7 @@ class _ISODEP():
         "send one APDU wrapped in software-driven T=CL (see _tcl_exchange)"
         log = self.log if rfidiotglobals.Debug else None
         ok, resp, self._iblock = _tcl_exchange(
-            self._raw_frame, apdu, self._iblock, timeout, log
+            self._raw_frame, apdu, self._iblock, timeout, log, getattr(self, "_cid", None)
         )
         return ok, resp
 
@@ -965,7 +977,10 @@ class ACR122CCID(_ISODEP):
         self.spec = spec
         self.software_tcl = False
         self._iblock = 0
+        self._cid = None
         self.is_acr122 = True
+        # RFIDIOt.select() may take over T=CL for Type B too (CID-aware, above)
+        self.software_tcl_type_b = True
         self.LIBNFC_CONNSTRING = spec
         self.LIBNFC_VER = "direct-ccid"
         self.poweredUp = False
@@ -1051,6 +1066,13 @@ class ACR122CCID(_ISODEP):
             r = self._bulk(self.EP_IN, None, timeout_ms)
             if len(r) < 10:
                 return b""
+            # drop a stale reply to an earlier command (e.g. one the reader gave up
+            # on, whose late answer is still queued): otherwise every following
+            # exchange gets the previous command's reply
+            if r[0] != 0x80 or r[6] != self._seq:
+                if rfidiotglobals.Debug:
+                    self.log.debug("CCID: dropping stale reply seq %02X (want %02X)" % (r[6], self._seq))
+                continue
             # bStatus bmCommandStatus == 10b: "time extension", card still working
             if (r[7] & 0xC0) == 0x80:
                 continue
@@ -1109,6 +1131,7 @@ class ACR122CCID(_ISODEP):
 
     def selectISO14443A(self):
         """Poll for a 106 kbps ISO 14443-A target, return an ISO14443A() object."""
+        self._cid = None
         r = self._pn532([0xD4, 0x4A, 0x01, 0x00])   # InListPassiveTarget, 1 target, 106A
         # D5 4B <NbTg> [Tg SENS_RES(2) SEL_RES(1) IDlen ID... [ATS...]]
         if len(r) < 4 or r[0] != 0xD5 or r[1] != 0x4B or r[2] == 0:
@@ -1122,7 +1145,25 @@ class ACR122CCID(_ISODEP):
         return _SimpleTargetA(uid, ats, sens, sel)
 
     def selectISO14443B(self):
-        return None                 # not implemented for the direct-CCID path
+        """Poll for a 106 kbps ISO 14443-B target, return an ISO14443B-like object.
+
+        The PN532 sends REQB and then ATTRIB itself, so the card is already
+        activated at ISO 14443-4 level; the ATTRIB it sends assigns CID = Tg, which
+        the card then requires in every block (see _tcl_exchange), so keep it.
+        """
+        self._cid = None
+        r = self._pn532([0xD4, 0x4A, 0x01, 0x03, 0x00])   # InListPassiveTarget, 1 target, 106B, AFI 0
+        # D5 4B <NbTg> [Tg ATQB(12) ATTRIB_RES_len ATTRIB_RES...]
+        # ATQB = 50 PUPI(4) ApplicationData(4) ProtocolInfo(3)
+        if len(r) < 17 or r[0] != 0xD5 or r[1] != 0x4B or r[2] == 0 or r[4] != 0x50:
+            return None
+        atqb = r[4:16]
+        attrib_res = r[17:17 + r[16]] if len(r) > 16 else b""
+        cid = attrib_res[0] & 0x0F if attrib_res else 0
+        # only use a CID if one was assigned and the card supports CID (FO bit 0)
+        if cid and atqb[11] & 0x01:
+            self._cid = cid
+        return _SimpleTargetB(atqb, cid)
 
     def selectJEWEL(self):
         return None
@@ -1222,6 +1263,20 @@ class _SimpleTargetA():
     def __str__(self):
         return "ISO14443A(uid='%s', atr='%s', atqa='%s', sak='%s')" % (
             self.uid, self.atr, self.atqa, self.sak)
+
+
+class _SimpleTargetB():
+    "ISO14443B-compatible view of a PN532 InListPassiveTarget (106B) result"
+    def __init__(self, atqb, cid):
+        self.pupi = "".join("%02X" % b for b in atqb[1:5])
+        self.uid = self.pupi  # for sake of compatibility with apps written for typeA
+        self.appdata = "".join("%02X" % b for b in atqb[5:9])
+        self.protocol = "".join("%02X" % b for b in atqb[9:12])
+        self.cid = "%02x" % cid
+        self.atr = ""
+
+    def __str__(self):
+        return "ISO14443B(pupi='%s')" % self.pupi
 
 
 def target_is_present(self):

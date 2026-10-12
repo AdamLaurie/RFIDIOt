@@ -87,12 +87,14 @@ python3 mrpkey.py -f ccid:3:48 <MRZ>           # a specific bus:dev
 `-f ccid` opens the first ACS (`072f:*`) USB device; `-f ccid:<bus>:<dev>` pins
 one. `pcscd` **must be stopped** (`sudo systemctl stop pcscd pcscd.socket`) so
 the back-end can claim the interface. Software T=CL (with the WTX timeout
-extension) is auto-enabled for 14443-4, exactly as on the libnfc path. Only the
-14443-A / ISO-7816 path is implemented on this back-end.
+extension) is auto-enabled for 14443-4, exactly as on the libnfc path. Both
+ISO 14443-A and **14443-B** (e.g. Type B ePassports) are supported for ISO-7816;
+Jewel and iClass are not.
 
 **Verified:** `ChAP.py -f ccid -c` (EMV + offline cert chain CA 1984 → Issuer
 1408 → ICC 1024) and `mrpkey.py -f ccid <MRZ>` (BAC + secure messaging +
-EF.COM/SOD/DG1/DG2/DG14, 18 KB DG2 via T=CL chaining, PA hashes OK).
+EF.COM/SOD/DG1/DG2/DG14, 18 KB DG2 via T=CL chaining, PA hashes OK) on both a
+Type A and a Type B ePassport.
 
 ## OMNIKEY CardMan 5321 (PC/SC)
 
