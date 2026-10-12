@@ -18,7 +18,7 @@ Python 2 idioms. The Python 3 port was largely the work of Pete Shipley (evilpet
 ## Install / build / run
 
 ```sh
-pip install -r requirements.txt     # pycryptodome, pyscard, cryptography
+pip install -r requirements.txt     # pycryptodome, pyscard, Pillow, pyasn1, pyserial
 sudo python3 ./setup.py install     # installs the 'rfidiot' library + scripts
 ```
 

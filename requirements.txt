@@ -1,5 +1,9 @@
 # pip install -r requirements.txt
 pycryptodome>=3.20.0
+# PC/SC readers (needs the pcscd daemon + CCID driver)
+pyscard
+# mrpkey.py displays passport photos via Pillow's ImageTk (also needs tkinter)
+Pillow
 # passiveauth.py (ePassport Passive Authentication / CSCA master-list check)
 #   needs only the openssl command-line tool (no Python crypto library)
 # jcoptool.py (JCOP / GlobalPlatform card tool)
