@@ -25,6 +25,29 @@ Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 `READER_SCM` 0x06, `READER_ACS` 0x07, `READER_LIBNFC` 0x08, `READER_NONE` 0x09,
 `READER_ANDROID` 0x10, `READER_CHAMELEON` 0x11, `READER_TWN4` 0x12.
 
+## Back-ends (what each launch option actually drives)
+
+RFIDIOt has several reader back-ends. The option you pass selects the back-end,
+not just the device - and for the ACR122U and the ELATEC TWN4 two different
+back-ends exist, so the same hardware can be driven more than one way.
+
+| Launch | Back-end | Transport | What it is |
+| --- | --- | --- | --- |
+| `-f <n>` / `-f <connstring>` | **libnfc** (`READER_LIBNFC`) | libnfc shared lib | any libnfc PN53x device (SCL3711, ACR122U via `acr122_usb`, …); raw frames + card emulation |
+| `-f ccid` / `-f ccid:<bus>:<dev>` | **ACR122 direct-CCID** (`ACR122CCID`) | usbdevfs, **PN532 chip** | talks straight to the ACR122U's PN532 (PN532 commands wrapped in the reader's escape); the only route for the ACR122U-WB-R, and the route for emulation/MITM. Not for non-ACS readers |
+| `-r <n>` | **PC/SC** (`READER_PCSC`, subtype auto-detected) | `pcscd` + libccid | any PC/SC smart-card reader; ISO 7816 APDUs (+ MIFARE pseudo-APDUs). Subtypes: ACS / OMNIKEY / SCM / generic |
+| `-r ccid` / `-r ccid:<bus>:<dev>` | **raw CCID** (`CCIDDev`) | usbdevfs, **standard CCID** | any standard CCID reader (e.g. an ELATEC TWN4 in PC/SC firmware) driven directly, no `pcscd`; runs the whole PC/SC code path (select, EMV, ePassport, FF 86 MIFARE). Reader does the RF/T=CL itself. Stop `pcscd` first |
+| `-R READER_TWN4` | **ELATEC Simple Protocol** (`pytwn4`) | serial (USB CDC / UART) | a TWN4 in Simple Protocol firmware; ISO 14443-A/B + APDU, software T=CL |
+| `-R READER_CHAMELEON` | **Chameleon Ultra** | serial (USB CDC) | ISO 14443-A reader |
+| `-R READER_ACG` / `READER_FROSCH` / `READER_DEMOTAG` | **serial** | serial (`-l <port>`) | legacy serial readers (ACG LFX for 125 kHz LF, Frosch Hitag, DemoTag) |
+| `-R READER_ANDROID` | **Android** (`pyandroid`) | TCP socket | a phone running a companion app as the reader (dormant / Py3-broken - see TODO 15) |
+
+The two **direct-CCID** paths are different protocols over the same USB plumbing:
+`-f ccid` speaks the ACR122U's **PN532** (so it can emulate, and it can reach the
+WB-R whose CCID face is only a contact slot); `-r ccid` speaks **standard CCID**
+to any reader whose firmware already does the ISO work (so it is read-only, but
+works on readers that are not PN532-based). Neither needs `pcscd`; `-r <n>` does.
+
 ## Quick model → launch table
 
 | Model | Launch | Back-end | Status |
