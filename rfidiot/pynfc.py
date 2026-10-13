@@ -1373,7 +1373,8 @@ class ACR122CCID(_ISODEP):
             err = self._TG_ERRORS.get(r[2] & 0x3F, NFC_ECHIP)
         else:
             return 0
-        if not quiet:
+        # a release (the reader left) is how every session ends, not an error
+        if not quiet and err != NFC_ETGRELEASED:
             self.log.error("%s: %s" % (what, r.hex().upper() or "no reply"))
         return err
 
