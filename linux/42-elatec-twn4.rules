@@ -1,0 +1,25 @@
+# udev rule for the ELATEC TWN4 USB reader - reliability + non-root access
+#
+# Why: the TWN4 in CCID / PC-SC firmware drops off the USB bus when the kernel
+# auto-suspends it, then re-enumerates - so its device number keeps changing and
+# opening the node fails with EIO (seen repeatedly on an ELATEC TWN4 09d8:0428).
+# Pinning power/control="on" keeps it awake and stable. This also makes ordinary
+# pcscd / "-r <n>" use more reliable, not just the raw-CCID path.
+#
+# It also grants the plugdev group read/write on the USB node so RFIDIOt's
+# raw-CCID backend ("-r ccid[:bus:dev]", rfidiot/pynfc.py CCIDDev) and other
+# pcscd-free tools can claim the interface without sudo. NB: raw CCID and pcscd
+# both want the reader - stop pcscd (and pcscd.socket) before using "-r ccid".
+#
+# Install:
+#   sudo ./linux/install.sh          # or the manual steps in linux/README.md
+#   (then unplug and replug the reader)
+
+# ELATEC TWN4, CCID / PC-SC firmware (NPF.../S1SC...): "Elatec TWN4 SmartCard NFC"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="09d8", ATTR{idProduct}=="0428", ATTR{power/control}="on", GROUP="plugdev", MODE="0660"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="09d8", ATTR{idProduct}=="0427", ATTR{power/control}="on", GROUP="plugdev", MODE="0660"
+
+# ELATEC TWN4, Simple Protocol / CDC firmware (PRS...): serial, "TWN4 CDC".
+# Autosuspend has not been a problem here, but pinning it awake is harmless and
+# keeps the ttyACM stable; access to the tty is handled by the dialout group.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="09d8", ATTR{idProduct}=="0420", ATTR{power/control}="on"

@@ -89,6 +89,12 @@ class rfidiot:
     def __init__(self, readernum, reader, port, baud, to, debug, noinit, nfcreader):
         self.readertype = reader
         self.readersubtype = reader
+        # -r ccid[:bus:dev] drives a standard CCID reader over raw usbdevfs
+        # (no pcscd), via the same PC/SC code path - see the READER_PCSC branch
+        self.ccid_spec = None
+        if isinstance(readernum, str) and readernum.lower().startswith("ccid"):
+            self.ccid_spec = readernum
+            readernum = 0
         readernum = int(readernum)
         self.DEBUG = debug
         self.NoInit = noinit
@@ -97,7 +103,25 @@ class rfidiot:
         if self.NoInit:
             print("NoInit == TRUE")
         else:
-            if self.readertype == self.READER_PCSC:
+            if self.readertype == self.READER_PCSC and self.ccid_spec is not None:
+                # raw CCID: drive a standard CCID reader directly over usbdevfs,
+                # no pcscd. CCIDDev provides the pyscard CardConnection surface,
+                # so select()/EMV/ePassport/MIFARE all use the normal PC/SC path.
+                try:
+                    self.pcsc_connection = pynfc.CCIDDev(self.ccid_spec)
+                except Exception as e:
+                    print("Could not open raw CCID reader '%s': %s" % (self.ccid_spec, e))
+                    sys.exit(True)
+                self.readername = self.pcsc_connection.name
+                self.readersubtype = self.READER_PCSC   # standard v2.01 (FF 86 MIFARE)
+                self.pcsc_protocol = None
+                self.hcard = None
+                try:
+                    self.pcsc_connection.connect()
+                except Exception as e:
+                    print("Could not connect to %s: %s" % (self.readername, e))
+                    sys.exit(True)
+            elif self.readertype == self.READER_PCSC:
                 try:
                     self.pcsc_protocol = smartcard.scard.SCARD_PROTOCOL_T1
                 except:
@@ -288,7 +312,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1k"
+    VERSION = "3.1l"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02

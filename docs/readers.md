@@ -14,6 +14,7 @@ the commands below work with `rfidiot-cli.py`, `ChAP.py`, `mrpkey.py`,
 | `-f <connstring>` | open a specific libnfc device directly, e.g. `pn53x_usb` or `pn53x_usb:003:087` (no intrusive probe that would grab other readers) |
 | `-f ccid` / `-f ccid:<bus>:<dev>` | **direct-CCID ACR122U back-end** (talks straight to the PN532 over usbdevfs; for ACR122U units libnfc/pcscd misidentify) |
 | `-r <n>` | PC/SC reader number `<n>` (implies `-R READER_PCSC`; subtype ACS/OMNIKEY/SCM auto-detected) |
+| `-r ccid` / `-r ccid:<bus>:<dev>` | **raw-CCID back-end** for a standard CCID reader (e.g. an ELATEC TWN4 in PC/SC firmware) straight over usbdevfs, no pcscd; stop pcscd first |
 | `-R READER_*` | select a reader type explicitly (e.g. `-R READER_CHAMELEON`) |
 | `-l <port>` | serial port for the serial readers, e.g. `/dev/ttyUSB0` |
 | `-N` | list libnfc devices and exit (does not open one) |
@@ -54,7 +55,8 @@ gives raw ISO 14443-3 frames and card emulation, PC/SC gives ISO 7816 APDUs
 | | direct CCID `-f ccid[:bus:dev]` | opens any `072f:*` ACS device; `pcscd` stopped. Verified on the WB-R only |
 | **ACR122U-WB-R** | direct CCID `-f ccid` | the only route that works on this unit: libnfc's `acr122_usb` won't open it and libccid treats it as an ACR38 contact reader |
 | **ELATEC TWN4** | Simple Protocol `-R READER_TWN4` | needs the Simple Protocol firmware (`PRS`); verified |
-| | PC/SC `-r <n>` | needs ELATEC's PC/SC firmware instead (libccid lists e.g. `09d8:0427` "Elatec TWN4 SmartCard NFC"); APDU-level only. Not verified here |
+| | PC/SC `-r <n>` | needs ELATEC's PC/SC firmware (libccid lists `09d8:0427`/`0428`); standard CCID reader. Verified: EMV, ePassport, MIFARE |
+| | raw CCID `-r ccid[:bus:dev]` | same firmware, driven straight over usbdevfs with no pcscd (`CCIDDev`). Stop pcscd first. Verified: IDENTIFY, MIFARE, ePassport |
 
 The firmware on a TWN4 decides its route: a Simple Protocol TWN4 is a serial
 device, a PC/SC one is a CCID reader, and reflashing switches between them.

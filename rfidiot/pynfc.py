@@ -1462,6 +1462,202 @@ class ACR122CCID(_ISODEP):
         self.deconfigure()
 
 
+class CCIDDev():
+    """Raw CCID transport for a standard (non-ACS) contactless CCID reader - e.g.
+    an ELATEC TWN4 in PC/SC firmware - driven straight over its bulk endpoints
+    with usbdevfs, bypassing pcscd. It exposes the small pyscard CardConnection
+    surface RFIDIOt's PC/SC path uses (connect / getATR / transmit / disconnect /
+    getReader), so the whole PC/SC code path - select, EMV, ePassport, and the
+    FF 86 MIFARE login - runs over it unchanged. Transport only; the reader still
+    does the contactless activation and T=CL itself, exactly as under pcscd.
+
+    Select with  -r ccid  (first CCID reader) or  -r ccid:<bus>:<dev>.
+    """
+
+    def __init__(self, spec):
+        self._fd = None
+        self._claimed = False
+        self._iface = 0
+        self._seq = _os.urandom(1)[0]
+        self._atr = []
+        self.log = logging.getLogger("pynfc.cciddev")
+        if not self.log.handlers:
+            sh = logging.StreamHandler()
+            sh.setFormatter(logging.Formatter("%(asctime)s: %(levelname)s - %(message)s"))
+            self.log.addHandler(sh)
+        self.log.setLevel(logging.DEBUG)
+        node, bus, dev, iface, ep_out, ep_in, vid, pid = self._find(spec)
+        self.name = "CCID %04x:%04x (direct CCID, bus %d dev %d)" % (vid, pid, bus, dev)
+        self.EP_OUT, self.EP_IN, self._iface = ep_out, ep_in, iface
+        self._libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        self._fd = _os.open(node, _os.O_RDWR)
+        try:
+            self._ioctl(_USBDEVFS_CLAIMINTERFACE, ctypes.byref(ctypes.c_uint(iface)))
+            self._claimed = True
+        except OSError as e:
+            _os.close(self._fd)
+            self._fd = None
+            raise ConnectionAbortedError(
+                "cannot claim CCID interface (%s) - is pcscd holding it? "
+                "stop it with: sudo systemctl stop pcscd pcscd.socket" % e
+            )
+
+    # -- discovery via sysfs: a CCID reader and its bulk endpoints ---------
+    @staticmethod
+    def _find(spec):
+        "resolve 'ccid[:bus:dev]' to (node, bus, dev, iface, ep_out, ep_in, vid, pid)"
+        want_bus = want_dev = None
+        parts = spec.split(":")
+        if len(parts) >= 3:
+            want_bus, want_dev = int(parts[1]), int(parts[2])
+        for d in sorted(_glob.glob("/sys/bus/usb/devices/*")):
+            try:
+                with open(d + "/busnum") as f:
+                    bus = int(f.read().strip())
+                with open(d + "/devnum") as f:
+                    dev = int(f.read().strip())
+                with open(d + "/idVendor") as f:
+                    vid = int(f.read().strip(), 16)
+                with open(d + "/idProduct") as f:
+                    pid = int(f.read().strip(), 16)
+            except (OSError, ValueError):
+                continue
+            if want_bus is not None:
+                if bus != want_bus or dev != want_dev:
+                    continue
+            found = CCIDDev._ccid_endpoints(d)   # scan this device's interfaces
+            if found is None:
+                if want_bus is not None:
+                    raise ConnectionAbortedError("USB %d:%d is not a CCID reader" % (bus, dev))
+                continue
+            iface, ep_out, ep_in = found
+            node = "/dev/bus/usb/%03d/%03d" % (bus, dev)
+            return node, bus, dev, iface, ep_out, ep_in, vid, pid
+        raise ConnectionAbortedError("no CCID reader found for '%s'" % spec)
+
+    @staticmethod
+    def _ccid_endpoints(devdir):
+        """find a CCID interface (bInterfaceClass 0x0B) on the sysfs device <devdir>
+        and its bulk OUT/IN endpoints; return (iface, ep_out, ep_in) or None"""
+        for i in sorted(_glob.glob(devdir + "/*:*")):
+            try:
+                if open(i + "/bInterfaceClass").read().strip().lower() != "0b":
+                    continue
+                iface = int(open(i + "/bInterfaceNumber").read().strip(), 16)
+            except (OSError, ValueError):
+                continue
+            ep_out = ep_in = None
+            for e in sorted(_glob.glob(i + "/ep_*")):
+                try:
+                    addr = int(open(e + "/bEndpointAddress").read().strip(), 16)
+                    attr = int(open(e + "/bmAttributes").read().strip(), 16)
+                except (OSError, ValueError):
+                    continue
+                if (attr & 0x03) == 0x02:            # bulk
+                    if addr & 0x80:
+                        ep_in = ep_in if ep_in is not None else addr
+                    else:
+                        ep_out = ep_out if ep_out is not None else addr
+            if ep_out is not None and ep_in is not None:
+                return iface, ep_out, ep_in
+        return None
+
+    # -- low-level CCID transport (as ACR122CCID) --------------------------
+    def _ioctl(self, req, arg):
+        r = self._libc.ioctl(self._fd, ctypes.c_ulong(req), arg)
+        if r < 0:
+            e = ctypes.get_errno()
+            raise OSError(e, _os.strerror(e))
+        return r
+
+    def _bulk(self, ep, data, timeout_ms):
+        if data is not None:
+            buf = (ctypes.c_ubyte * len(data))(*data)
+            bt = _usbdevfs_bulktransfer(ep, len(data), timeout_ms, ctypes.cast(buf, ctypes.c_void_p))
+            return self._ioctl(_USBDEVFS_BULK, ctypes.byref(bt))
+        buf = (ctypes.c_ubyte * 65544)()
+        bt = _usbdevfs_bulktransfer(ep, len(buf), timeout_ms, ctypes.cast(buf, ctypes.c_void_p))
+        n = self._ioctl(_USBDEVFS_BULK, ctypes.byref(bt))
+        return bytes(buf[:n])
+
+    def _ccid(self, msgtype, payload, timeout_ms=5000, p1=0, p2=0, p3=0):
+        """one PC_to_RDR message -> the response's abData (after the 10-byte header),
+        following bChainParameter response chaining and bStatus time extension"""
+        self._seq = (self._seq + 1) & 0xFF
+        n = len(payload)
+        hdr = [msgtype, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF,
+               0x00, self._seq, p1, p2 & 0xFF, p3 & 0xFF]
+        self._bulk(self.EP_OUT, hdr + list(payload), timeout_ms)
+        out = bytearray()
+        while True:
+            r = self._bulk(self.EP_IN, None, timeout_ms)
+            if len(r) < 10 or r[6] != self._seq:
+                # stale or short reply: keep reading for ours
+                if len(r) < 10:
+                    return bytes(out)
+                continue
+            status = r[7]
+            if (status & 0xC0) == 0x80:        # time extension: card still working
+                continue
+            dlen = r[1] | (r[2] << 8) | (r[3] << 16) | (r[4] << 24)
+            out += r[10:10 + dlen]
+            chain = r[9] if len(r) > 9 else 0x02
+            if chain in (0x00, 0x02):           # complete (or final block)
+                return bytes(out)
+            # 0x01/0x03: more blocks follow - ask for the continuation
+            self._seq = (self._seq + 1) & 0xFF
+            cont = [0x6F, 0, 0, 0, 0, 0x00, self._seq, 0x00, 0x10, 0x00]  # XfrBlock, wLevelParameter=0x0010
+            self._bulk(self.EP_OUT, cont, timeout_ms)
+
+    # -- pyscard CardConnection surface RFIDIOt's PC/SC path calls ---------
+    def connect(self, *a, **k):
+        "power the card on (contactless activation) and keep its ATR"
+        self._atr = list(self._ccid(0x62, []))   # PC_to_RDR_IccPowerOn -> ATR
+        return self._atr
+
+    def disconnect(self, *a, **k):
+        try:
+            self._ccid(0x63, [], timeout_ms=2000)  # PC_to_RDR_IccPowerOff
+        except OSError:
+            pass
+
+    def getATR(self):
+        return list(self._atr)
+
+    def getReader(self):
+        return self.name
+
+    def getProtocol(self):
+        return None
+
+    def addObserver(self, observer):
+        pass
+
+    def transmit(self, apdu, protocol=None):
+        "send one ISO 7816 (or FF.. pseudo) APDU, return (data, sw1, sw2)"
+        r = self._ccid(0x6F, list(apdu))           # PC_to_RDR_XfrBlock
+        if len(r) < 2:
+            raise IOError("short CCID response (%d bytes)" % len(r))
+        return list(r[:-2]), r[-2], r[-1]
+
+    def deconfigure(self):
+        fd = getattr(self, "_fd", None)
+        if fd is not None:
+            try:
+                if getattr(self, "_claimed", False):
+                    self._ioctl(_USBDEVFS_RELEASEINTERFACE, ctypes.byref(ctypes.c_uint(self._iface)))
+            except OSError:
+                pass
+            try:
+                _os.close(fd)
+            except OSError:
+                pass
+            self._fd = None
+
+    def __del__(self):
+        self.deconfigure()
+
+
 class _SimpleTargetA():
     "ISO14443A-compatible view of a PN532 InListPassiveTarget result"
     def __init__(self, uid, ats, sens, sel):
