@@ -147,8 +147,9 @@ class rfidiot:
                             self.pcsc_protocol = smartcard.scard.SCARD_PROTOCOL_T0
                             self.hcard = None
                         else:
-                            # default to Omnikey for now
-                            self.readersubtype = self.READER_OMNIKEY
+                            # unknown reader: treat as a standard PC/SC v2.01 CCID
+                            # reader (General Authenticate FF 86), not an OMNIKEY
+                            self.readersubtype = self.READER_PCSC
                 if self.DEBUG:
                     print("Reader Subtype:", self.readersubtype)
                 # create a connection
@@ -287,7 +288,7 @@ class rfidiot:
     #
     # MRPmrzu: Machine Readable Passport - Machine Readable Zone - Upper
     # MRPmrzl Machine Readable Passport - Machine Readable Zone - Lower
-    VERSION = "3.1j"
+    VERSION = "3.1k"
     # Reader types
     READER_ACG = 0x01
     READER_FROSCH = 0x02
@@ -813,6 +814,7 @@ class rfidiot:
         "ACS_SET_PARAMETERS": ["d4", "12"],
         "ACS_SET_RETRY": ["d4", "32", "05", "00", "00", "00"],
         "AUTHENTICATE": ["ff", ISOAPDU["INTERNAL_AUTHENTICATE"]],
+        "GENERAL_AUTHENTICATE": ["ff", "86"],  # PC/SC v2.01 MIFARE authenticate
         "GUID": ["ff", ISOAPDU["GET_DATA"], "00", "00", "00"],
         "ACS_GET_ATS": ["ff", ISOAPDU["GET_DATA"], "01", "00", "00"],
         "LOAD_KEY": ["ff", ISOAPDU["EXTERNAL_AUTHENTICATE"]],
@@ -2173,7 +2175,13 @@ class rfidiot:
         if self.readertype == self.READER_PCSC:
             if self.readersubtype == self.READER_ACS:
                 return self.acs_mifare_login(sector, key, keytype)
-            # PCSC requires key to be loaded to reader, then login with key
+            if self.readersubtype not in (self.READER_OMNIKEY, self.READER_SCM):
+                # standard PC/SC v2.01 reader (ACR1255, Elatec CCID, generic CCID):
+                # load the key to volatile slot 0, then General Authenticate (FF 86).
+                # The legacy path below (FF 88 + SCM/OMNIKEY key slots) is rejected by
+                # modern CCID readers, which implement only the v2.01 commands.
+                return self.pcsc_mifare_login_std(sector, keytype, key)
+            # legacy OMNIKEY / SCM: load key to reader, then deprecated FF 88 authenticate
             if key not in self.PCSC_Keys:
                 # send key to reader and store in global PCSC_KEYS if not already sent
                 apdu = []
@@ -2222,6 +2230,18 @@ class rfidiot:
             # let PCSC get over it!
             time.sleep(0.5)
         return ret
+
+    def pcsc_mifare_login_std(self, block, keytype, key) -> bool:
+        "PC/SC v2.01 MIFARE authenticate: Load Key to volatile slot 0, then General Authenticate (FF 86)"
+        # Load Key: FF 82 P1=00 (volatile, key number) P2=00 (slot 0) Lc <key>
+        loadkey = list(self.PCSC_APDU["LOAD_KEY"]) + ["00", "00", "%02x" % (len(key) // 2), key]
+        if not self.pcsc_send_apdu(loadkey):
+            return False
+        # AA/FF -> Key A (60), BB -> Key B (61)
+        kt = "61" if keytype.upper() == "BB" else "60"
+        # General Authenticate: FF 86 00 00 05 | 01 (version) <block MSB=00> <block> <key type> <slot 0>
+        ga = list(self.PCSC_APDU["GENERAL_AUTHENTICATE"]) + ["00", "00", "05", "01", "00", "%02x" % block, kt, "00"]
+        return self.pcsc_send_apdu(ga)
 
     def verify(self, keytype, key) -> bool:
         ##- keytype= string.upper(keytype)
@@ -2294,15 +2314,20 @@ class rfidiot:
             hexblock = "%04x" % block
             apdu.append(hexblock[0:2])  # p1
             apdu.append(hexblock[2:4])  # p2
-            # try reading with block length of 1 to provoke size error
-            apdu.append("01")  # le
-            ret = self.pcsc_send_apdu(apdu)
-            # if failure is due to wrong block size, use block size returned by card instead
-            if self.errorcode.upper()[0:2] == "6C":
-                apdu[-1] = self.errorcode[2:4]
-                return self.pcsc_send_apdu(apdu)
-            # else:
-            return ret
+            if self.readersubtype in (self.READER_OMNIKEY, self.READER_SCM):
+                # try reading with block length of 1 to provoke size error
+                apdu.append("01")  # le
+                ret = self.pcsc_send_apdu(apdu)
+                # if failure is due to wrong block size, use block size returned by card instead
+                if self.errorcode.upper()[0:2] == "6C":
+                    apdu[-1] = self.errorcode[2:4]
+                    return self.pcsc_send_apdu(apdu)
+                # else:
+                return ret
+            # standard PC/SC v2.01 reader: read the full 16-byte block directly
+            # (Le=01 just returns 1 byte on these readers, not a 6Cxx size hint)
+            apdu.append("10")  # le = 16 bytes
+            return self.pcsc_send_apdu(apdu)
 
     def readMIFAREblock(self, block) -> bool:
         if self.readertype == self.READER_LIBNFC:
