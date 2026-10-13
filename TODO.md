@@ -795,10 +795,13 @@ back - so a reader sees our UID and talks to the real card. This is the thing a 
   handled"). So target-side software T=CL is implementable on top: answer `E0xx` (RATS)
   with an ATS, then handle I-/R-/S-blocks (PCB block numbers, chaining, WTX) - the
   mirror of the reader-side `_tcl_exchange`.
-- Milestones: (1) answer RATS with an ATS and confirm the victim then sends an I-block
-  APDU (stub reply 9000); (2) add target-side T=CL framing (block toggle, chaining,
-  WTX); (3) relay the APDU to a real card (reuse `pn532mitm`'s reader side) and return
-  the reply; (4) end-to-end with a chosen UID.
+- Milestones: (1) **[DONE]** answer RATS with an ATS and confirm the victim then sends
+  an I-block APDU (stub reply); (2) **[DONE]** target-side T=CL framing (I-block, block
+  toggle); (3) relay the APDU to a real card (reuse `pn532mitm`'s reader side) and
+  return the reply; (4) end-to-end with a chosen UID; (5) chaining + WTX for long
+  responses (DG2). Prototype `relayuid.py` (branch `full-relay`): verified (1)+(2) on an
+  SCL3711 emulating + ACR122U-WB-R (`-f ccid`) victim - UID CAFE1234 read with our ATS
+  0578808000, GET CHALLENGE relayed to the stub and the reply (08..9000) returned.
 - Constraints: SCL3711 (PN533) works only in RAW target mode here (it cannot be an
   easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
   UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
