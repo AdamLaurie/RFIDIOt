@@ -666,5 +666,13 @@ never sends while one is pending, and on close waits for any reader to be presen
   PN532 firmware/status replies; Type B sources presented as Type A, ATQA 0004 SAK 20).
   Verified on one host over loopback: TWN4 reading a Type B ePassport, ACR122U-WB-R
   `-f ccid` emulating, SCL3711 as the victim (SELECT AID + GET CHALLENGE relayed).
-  The session didn't end on its own when the victim left - the emulator never saw a
-  field drop, probably because the TWN4's field also reached it; stop it with Ctrl-C.
+  Full `mrpkey` read through it (BAC, EF.COM/SOD/DG1/18 KB DG2/DG14, PA hashes OK).
+  Relay timing: the victim's frame waiting time is set by the PN532's own ATS
+  (`05 75 33 92 03`: FWI 9, ~155 ms - TgInitAsTarget only takes the historical bytes;
+  no other way to raise FWI found yet).
+  Two early runs stalled at a file's first 118-byte read: those replies took ~124 ms
+  because send_data()'s three small writes hit Nagle + delayed ACK, 41 ms each way on
+  loopback. With TCP_NODELAY and one write per message the worst relay is 55 ms
+  (TWN4 + passport ~43 ms), 5/5 full reads. Across two hosts the network round trip
+  comes out of the remaining ~100 ms. Once, the session didn't end when the victim
+  left (no field drop seen, probably the TWN4's field reaching the emulator) - Ctrl-C.

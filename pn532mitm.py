@@ -48,6 +48,10 @@ def connect_to(chost, cport, ctype):
         print("  Listening on port %s ..." % cport)
         connection, addr = srv.accept()
         srv.close()
+        # no Nagle: each relayed APDU is a few small writes, and Nagle + the peer's
+        # delayed ACK held some for ~40 ms each way - enough to push a reply past
+        # the victim reader's frame waiting time (FWT ~155 ms for the PN532's ATS)
+        connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         cdata = recv_data(connection)       # acceptor: receive then send
         send_data(connection, ctype)
         print("  Connected to %s %d" % (addr[0], addr[1]))
@@ -57,6 +61,7 @@ def connect_to(chost, cport, ctype):
             connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 connection.connect((chost, cport))
+                connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 break
             except (ConnectionRefusedError, OSError):
                 connection.close()
@@ -83,9 +88,8 @@ def send_data(chost, cdata):
     for i in length + cdata:
         lrc ^=  ord(i)
         # lrc = operator.xor(lrc, ord(x))
-    chost.send(length.encode("latin-1"))
-    chost.send(cdata.encode("latin-1"))
-    chost.send(("%02x" % lrc).encode("latin-1"))
+    # one write per message (see TCP_NODELAY in connect_to)
+    chost.sendall((length + cdata + "%02x" % lrc).encode("latin-1"))
 
 
 def _recv(chost, n):
