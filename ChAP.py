@@ -1881,6 +1881,7 @@ if EncipheredPIN and not PIN:
     sys.exit(True)
 
 try:
+    print("ChAP v3.1a (using RFIDIOt v%s)" % getattr(card, "VERSION", "?"))
     print("using reader:", getattr(card, "readername", "unknown"))
     if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON, card.READER_TWN4):
         # contactless: run ISO 14443-A (then -B) anticollision/select to power and
@@ -1888,6 +1889,10 @@ try:
         if not (card.select() or card.select("B")):
             print("no card on the reader")
             sys.exit(True)
+
+    uid = getattr(card, "uid", "")
+    if uid:
+        print("selected card UID:", uid)
 
     # get_challenge(0)
 
