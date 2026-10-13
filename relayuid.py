@@ -28,8 +28,6 @@ import rfidiot
 card = rfidiot.card
 args = rfidiot.args
 
-card.info("relayuid v0.1a (EXPERIMENTAL)")
-
 
 def crc_a(data):
     "ISO 14443-3 CRC_A of bytes, as 2 bytes LSB first"
@@ -45,9 +43,14 @@ def usage():
     print()
     print(sys.argv[0] + " - emulate a full ISO 14443-4 card with a chosen UID (experimental)")
     print()
-    print("Usage: %s [options] <UID>" % sys.argv[0])
+    print("Usage: %s [options] [<UID>|random|auto]" % sys.argv[0])
     print()
-    print("  UID is 4, 7 or 10 bytes of HEX (a 4-byte UID may not start with 88)")
+    print("  UID is 4, 7 or 10 bytes of HEX (a 4-byte UID may not start with 88), or:")
+    print("    random  - a random 4-byte UID with the 0x08 random-UID marker on the front")
+    print("    auto    - clone the UID the -c relay reader reports for the real card")
+    print("              (the default when -c is given and no UID is named). NB a Type B")
+    print("              card's reported id is a random, per-tap PUPI, not a stable UID -")
+    print("              for those use 'random' to present a clean 0x08 UID instead.")
     print()
     print("  Options:")
     print("    -a <ATQA>     ATQA on the wire (default 0400/4400/8400 by UID size)")
@@ -68,6 +71,8 @@ if rfidiot.help:
     usage()
     sys.exit(False)
 
+card.info("relayuid v0.1a (EXPERIMENTAL)")
+
 try:
     opts, args = getopt.getopt(args, "a:k:c:w:")
 except getopt.GetoptError as e:
@@ -77,6 +82,7 @@ except getopt.GetoptError as e:
 
 atqa = None
 sak = 0x20
+sak_explicit = False
 relay = None
 wait = 0
 try:
@@ -86,18 +92,118 @@ try:
             assert len(atqa) == 2
         elif o == "-k":
             sak = int(a, 16)
+            sak_explicit = True
         elif o == "-c":
             relay = a
         elif o == "-w":
             wait = float(a)
-    uid = bytes.fromhex(args[0])
-    assert len(uid) in (4, 7, 10)
+    # UID is optional now: a hex value, the word "random", or omitted
+    uid_arg = args[0] if args else None
 except (ValueError, AssertionError, IndexError):
     usage()
     sys.exit(True)
 
 if card.readertype != card.READER_LIBNFC or not hasattr(card.nfc, "initAsTarget"):
     print("  The emulator must be a libnfc PN53x reader (-f <connstring>)")
+    sys.exit(True)
+
+
+def random_uid():
+    "a random 4-byte UID with the ISO 14443-3 random-UID marker 0x08 on the front"
+    return b"\x08" + os.urandom(3)
+# ATS we present after the RATS: TL=05, T0=78 (TA1/TB1/TC1 present, FSCI=8 -> 256),
+# TA1=80 (106 kbps both ways), TB1=E0 (FWI=14 -> FWT ~4.9 s, so a slow relayed reply
+# never trips the reader's frame-wait timeout; avoids needing S(WTX)), TC1=00 (no
+# CID, no NAD). No historical bytes.
+ATS = bytes.fromhex("057880E000")
+# largest INF we put in one response I-block before chaining (< FSD 256 and the
+# PN53x target frame limit); mrpkey's reads are ~118 B so this rarely triggers
+FRAG = 240
+
+# --- APDU responder: stub, or relay to a real card --------------------------
+relay_reader = None
+
+
+def open_relay(spec):
+    """open a second reader to relay APDUs to a real card; returns
+    (reader, send(apdu_hex)->resp_hex, card_uid_hex_or_None)"""
+    if spec.lower().startswith("eccid"):
+        # standard CCID reader (ELATEC TWN4 in PC/SC firmware, etc.) via CCIDDev;
+        # spec "eccid[:bus:dev]" -> CCIDDev("ccid[:bus:dev]"). The reader does T=CL.
+        from rfidiot.pynfc import CCIDDev
+        r = CCIDDev(spec[1:])
+        r.connect()                           # IccPowerOn: activate the card, get ATR
+        def send(apdu_hex):
+            try:
+                data, s1, s2 = r.transmit([int(apdu_hex[i:i + 2], 16) for i in range(0, len(apdu_hex), 2)])
+            except Exception:
+                return None
+            return "".join("%02X" % b for b in data) + "%02X%02X" % (s1, s2)
+        getuid = send("FFCA000000")           # PC/SC get-UID pseudo-APDU
+        carduid = getuid[:-4] if getuid and getuid.endswith("9000") and len(getuid) > 4 else None
+        return r, send, carduid
+    if spec.lower().startswith("ccid"):
+        from rfidiot.pynfc import ACR122CCID
+        r = ACR122CCID(spec)
+        sel = r.selectISO14443A()
+    else:
+        from rfidiot.pynfc import NFC
+        r = NFC(spec)
+        sel = r.selectISO14443A()
+    def send(apdu_hex):
+        ok, resp = r.sendAPDU(apdu_hex, 3)
+        return resp if ok else None
+    carduid = getattr(sel, "uid", None)
+    return r, send, carduid
+
+
+def stub(apdu_hex):
+    "minimal card: SELECT->9000, GET CHALLENGE->8 random bytes+9000, else 9000"
+    a = bytes.fromhex(apdu_hex)
+    if len(a) >= 2 and a[1] == 0x84:          # GET CHALLENGE
+        return os.urandom(8).hex().upper() + "9000"
+    return "9000"
+
+
+carduid = None
+if relay:
+    try:
+        relay_reader, responder, carduid = open_relay(relay)
+        print("  Relaying APDUs to real card on %s" % relay)
+    except Exception as e:
+        print("  Could not open relay reader '%s': %s" % (relay, e))
+        sys.exit(True)
+else:
+    responder = stub
+    print("  Stub responder (no -c): replying 9000 / GET CHALLENGE")
+
+# --- resolve the UID we present ---------------------------------------------
+# a hex UID is presented verbatim; "random" (or any generated fallback) uses the
+# ISO 14443-3 random-UID marker 0x08 on the front; "auto" (or no UID, with -c)
+# clones the UID the relay reader reports for the real card.
+try:
+    if uid_arg and uid_arg.lower() not in ("random", "auto"):
+        uid = bytes.fromhex(uid_arg)
+        assert len(uid) in (4, 7, 10)
+        uidsrc = "as given"
+    elif uid_arg and uid_arg.lower() == "random":
+        uid = random_uid()
+        uidsrc = "random (0x08 + 3 random bytes)"
+    elif relay and (uid_arg is None or uid_arg.lower() == "auto"):
+        if carduid and len(carduid) % 2 == 0 and len(bytes.fromhex(carduid)) in (4, 7, 10):
+            uid = bytes.fromhex(carduid)
+            uidsrc = "auto: cloned from the real card"
+        else:
+            uid = random_uid()
+            uidsrc = "auto: relay reader reported no UID - random (0x08 front)"
+    else:
+        uid = random_uid()
+        uidsrc = "random (0x08 front; no UID given and no -c)"
+except (ValueError, AssertionError):
+    print("  UID must be 4, 7 or 10 bytes of hex, or 'random'/'auto'")
+    sys.exit(True)
+if len(uid) == 4 and uid[0] == 0x88:
+    print("  A 4-byte UID can't start with 88 (that is the cascade tag)")
     sys.exit(True)
 
 # --- cascade levels for the chosen UID (as emulateuid.py) -------------------
@@ -116,73 +222,12 @@ for n, part in enumerate(parts):
     level_sak = (sak & ~0x04) if final else 0x04
     levels.append((0x93 + 2 * n, part + bytes([bcc]), bytes([level_sak]) + crc_a(bytes([level_sak]))))
 
-# ATS we present after the RATS: TL=05, T0=78 (TA1/TB1/TC1 present, FSCI=8 -> 256),
-# TA1=80 (106 kbps both ways), TB1=E0 (FWI=14 -> FWT ~4.9 s, so a slow relayed reply
-# never trips the reader's frame-wait timeout; avoids needing S(WTX)), TC1=00 (no
-# CID, no NAD). No historical bytes.
-ATS = bytes.fromhex("0578 80 E0 00".replace(" ", ""))
-# largest INF we put in one response I-block before chaining (< FSD 256 and the
-# PN53x target frame limit); mrpkey's reads are ~118 B so this rarely triggers
-FRAG = 240
-
-# --- APDU responder: stub, or relay to a real card --------------------------
-relay_reader = None
-
-
-def open_relay(spec):
-    "open a second reader to relay APDUs to a real card; returns (reader, send(apdu_hex)->resp_hex)"
-    if spec.lower().startswith("eccid"):
-        # standard CCID reader (ELATEC TWN4 in PC/SC firmware, etc.) via CCIDDev;
-        # spec "eccid[:bus:dev]" -> CCIDDev("ccid[:bus:dev]"). The reader does T=CL.
-        from rfidiot.pynfc import CCIDDev
-        r = CCIDDev(spec[1:])
-        r.connect()                           # IccPowerOn: activate the card, get ATR
-        def send(apdu_hex):
-            try:
-                data, s1, s2 = r.transmit([int(apdu_hex[i:i + 2], 16) for i in range(0, len(apdu_hex), 2)])
-            except Exception:
-                return None
-            return "".join("%02X" % b for b in data) + "%02X%02X" % (s1, s2)
-        return r, send
-    if spec.lower().startswith("ccid"):
-        from rfidiot.pynfc import ACR122CCID
-        r = ACR122CCID(spec)
-        r.selectISO14443A()
-    else:
-        from rfidiot.pynfc import NFC
-        r = NFC(spec)
-        r.selectISO14443A()
-    def send(apdu_hex):
-        ok, resp = r.sendAPDU(apdu_hex, 3)
-        return resp if ok else None
-    return r, send
-
-
-def stub(apdu_hex):
-    "minimal card: SELECT->9000, GET CHALLENGE->8 random bytes+9000, else 9000"
-    a = bytes.fromhex(apdu_hex)
-    if len(a) >= 2 and a[1] == 0x84:          # GET CHALLENGE
-        return os.urandom(8).hex().upper() + "9000"
-    return "9000"
-
-
-if relay:
-    try:
-        relay_reader, responder = open_relay(relay)
-        print("  Relaying APDUs to real card on %s" % relay)
-    except Exception as e:
-        print("  Could not open relay reader '%s': %s" % (relay, e))
-        sys.exit(True)
-else:
-    responder = stub
-    print("  Stub responder (no -c): replying 9000 / GET CHALLENGE")
-
 # --- prime (as emulateuid.py): SAK 20 provokes a RATS that breaks AutoColl ---
 prime_uid = "08" + os.urandom(3).hex().upper()
 nt = card.nfc.make_iso14443a_target("0400", prime_uid, "20")
 
 print()
-print("  Emulating ISO 14443-4 card UID %s (ATQA %s, SAK %02X)" % (uid.hex().upper(), atqa.hex().upper(), sak))
+print("  UID %s (%s), ATQA %s, SAK %02X" % (uid.hex().upper(), uidsrc, atqa.hex().upper(), sak))
 print("  Waiting for the real reader to prime us (its first activation will fail)...")
 ok, first = card.nfc.initAsTarget(nt, int(wait * 1000) if wait else 0)
 if not ok:
