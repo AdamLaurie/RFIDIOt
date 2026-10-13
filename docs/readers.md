@@ -48,41 +48,36 @@ WB-R whose CCID face is only a contact slot); `-r ccid` speaks **standard CCID**
 to any reader whose firmware already does the ISO work (so it is read-only, but
 works on readers that are not PN532-based). Neither needs `pcscd`; `-r <n>` does.
 
-## Quick model → launch table
+## Reader launch methods
 
-| Model | Launch | Back-end | Status |
+Every way RFIDIOt can drive each reader. Many readers have more than one method -
+which you get depends only on the option you pass (and, for the TWN4, the firmware
+flashed). See **Back-ends** above for what each back-end is; verified = exercised
+on hardware in these sessions.
+
+| Reader | Launch | Back-end | Verified / notes |
 | --- | --- | --- | --- |
-| **SCL3711** (PN53x USB) | `-f 0` or `-f pn53x_usb` | libnfc `pn53x_usb` | primary dev reader |
-| **ACR122U / Touchatag (tikitag)** | `-f 0` | libnfc `acr122_usb` | EMV + ePassport verified |
-| **ACR122U-WB-R** | `-f ccid` | direct CCID (usbdevfs) | EMV + ePassport verified |
-| **OMNIKEY CardMan 5321** | `-r 0` (contact) / `-r 1` (contactless) | PC/SC (OMNIKEY) | dev reader |
-| **Chameleon Ultra** | `-R READER_CHAMELEON` | serial (USB CDC) | EMV + 14443-A verified |
-| **ELATEC TWN4 MultiTech 2** | `-R READER_TWN4` | Simple Protocol (USB CDC) | EMV + ePassport (A/B, BAC + PACE) verified |
-| **PN532 module** (emulator) | `pn532mitm.py` / `pn532emulate.py` | ACS / PC-SC | MITM relay verified |
-
-## Readers with more than one back-end
-
-Several readers can be driven through more than one RFIDIOt back-end. Which one
-you get depends only on the selector you pass, and each back-end needs its own
-driver set-up (libnfc wants the device free of `pcscd`; PC/SC wants `pcscd`
-running with a driver for it). The routes differ in what they can do: libnfc
-gives raw ISO 14443-3 frames and card emulation, PC/SC gives ISO 7816 APDUs
-(plus MIFARE through the reader's pseudo-APDUs).
-
-| Model | Routes | Notes |
-| --- | --- | --- |
-| **SCL3711** | libnfc `-f pn53x_usb[:bus:dev]` | the dev route: raw frames, MIFARE, `pn532emulate.py` |
-| | PC/SC `-r <n>` (subtype `READER_SCM`) | needs SCM/Identiv's own driver - libccid doesn't list `04e6:5591`. Not verified here |
-| **ACR122U / Touchatag** | libnfc `-f <n>` (`acr122_usb`) | software T=CL; EMV + ePassport verified |
-| | PC/SC `-r <n>` (subtype `READER_ACS`) | via libccid (it lists `072f:2200` "ACR122U PICC Interface"); used by `pn532mitm.py` / `pn532emulate.py` |
-| | direct CCID `-f ccid[:bus:dev]` | opens any `072f:*` ACS device; `pcscd` stopped. Verified on the WB-R only |
-| **ACR122U-WB-R** | direct CCID `-f ccid` | the only route that works on this unit: libnfc's `acr122_usb` won't open it and libccid treats it as an ACR38 contact reader |
-| **ELATEC TWN4** | Simple Protocol `-R READER_TWN4` | needs the Simple Protocol firmware (`PRS`); verified |
-| | PC/SC `-r <n>` | needs ELATEC's PC/SC firmware (libccid lists `09d8:0427`/`0428`); standard CCID reader. Verified: EMV, ePassport, MIFARE |
-| | raw CCID `-r ccid[:bus:dev]` | same firmware, driven straight over usbdevfs with no pcscd (`CCIDDev`). Stop pcscd first. Verified: IDENTIFY, MIFARE, ePassport |
+| **SCL3711** (`04e6:5591`) | `-f 0` / `-f pn53x_usb[:bus:dev]` | libnfc | primary dev reader; raw frames, MIFARE, UID emulation (`emulateuid`) |
+| | `-r <n>` | PC/SC, subtype SCM | needs SCM/Identiv's driver (libccid doesn't list `04e6:5591`); not verified |
+| **ACR122U / Touchatag (tikitag)** | `-f 0` / `-f acr122_usb[:bus:dev]` | libnfc | EMV + ePassport + MIFARE verified |
+| | `-r <n>` | PC/SC, subtype ACS | libccid "ACR122U PICC Interface" (`072f:2200`); used by `pn532emulate` / `pn532mitm` |
+| | `-f ccid[:bus:dev]` | direct CCID (PN532) | stop `pcscd` first; emulation-capable |
+| **ACR122U-WB-R** (`072f:90cc`) | `-f ccid[:bus:dev]` | direct CCID (PN532) | the **only** working route (libnfc won't open it; libccid IDs it as an ACR38 contact reader). EMV + ePassport + MIFARE + Type 4 emulation verified |
+| **OMNIKEY CardMan 5321** | `-r 0` | PC/SC, subtype OMNIKEY | contact slot (libccid) |
+| | `-r 1` | PC/SC, subtype OMNIKEY | contactless slot - needs HID's `ifdokccid` driver (appears as a 2nd slot) |
+| **ELATEC TWN4** - *Simple Protocol fw* (`09d8:0420`) | `-R READER_TWN4` (`-l <port>` for UART) | ELATEC Simple Protocol (serial) | firmware `PRS…`; EMV + ePassport (A/B, BAC + PACE) verified |
+| **ELATEC TWN4** - *PC/SC fw* (`09d8:0427`/`0428`) | `-r <n>` | PC/SC (via `pcscd`) | firmware `NPF…/S1SC…`; EMV + ePassport + MIFARE verified |
+| | `-r ccid[:bus:dev]` | raw CCID (`CCIDDev`) | same firmware, straight over usbdevfs, **no `pcscd`** (stop it first); IDENTIFY + MIFARE + ePassport verified |
+| **Chameleon Ultra** | `-R READER_CHAMELEON` | serial (USB CDC) | ISO 14443-A reader; EMV + 14443-A verified. Slot emulation via `chameleon.py` |
+| **PN532 module** (bare) | `pn532emulate.py` / `pn532mitm.py` | ACS PC/SC or libnfc | card emulation / MITM relay (see those tools) |
+| **ACG** (serial) | `-R READER_ACG -l <port>` | serial | incl. 125 kHz LF (LFX models); not hardware-tested in Py3 |
+| **Frosch HTRM112** (serial) | `-R READER_FROSCH -l <port>` | serial | Hitag / 125 kHz; not hardware-tested in Py3 |
+| **IAIK DemoTag** (serial) | `-R READER_DEMOTAG -l <port>` | serial | vestigial; not hardware-tested in Py3 |
+| **Android phone** | `-R READER_ANDROID` | TCP socket (`pyandroid`) | companion-app reader; dormant / Py3-broken (see TODO 15) |
 
 The firmware on a TWN4 decides its route: a Simple Protocol TWN4 is a serial
-device, a PC/SC one is a CCID reader, and reflashing switches between them.
+device, a PC/SC one is a CCID reader (driven via `pcscd` with `-r <n>` or directly
+with `-r ccid`), and reflashing switches between them.
 
 ---
 
