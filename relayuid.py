@@ -117,9 +117,13 @@ for n, part in enumerate(parts):
     levels.append((0x93 + 2 * n, part + bytes([bcc]), bytes([level_sak]) + crc_a(bytes([level_sak]))))
 
 # ATS we present after the RATS: TL=05, T0=78 (TA1/TB1/TC1 present, FSCI=8 -> 256),
-# TA1=80 (106 kbps both ways), TB1=80 (FWI=8 ~77 ms, room for a relayed reply),
-# TC1=00 (no CID, no NAD). No historical bytes.
-ATS = bytes.fromhex("0578808000")
+# TA1=80 (106 kbps both ways), TB1=E0 (FWI=14 -> FWT ~4.9 s, so a slow relayed reply
+# never trips the reader's frame-wait timeout; avoids needing S(WTX)), TC1=00 (no
+# CID, no NAD). No historical bytes.
+ATS = bytes.fromhex("0578 80 E0 00".replace(" ", ""))
+# largest INF we put in one response I-block before chaining (< FSD 256 and the
+# PN53x target frame limit); mrpkey's reads are ~118 B so this rarely triggers
+FRAG = 240
 
 # --- APDU responder: stub, or relay to a real card --------------------------
 relay_reader = None
@@ -235,19 +239,41 @@ try:
             send(ATS, crc=True)
             continue
         if activated and rx and (rx[0] & 0xC0) == 0x00:            # I-block (command APDU)
-            body = rx[:-2] if len(rx) >= 2 else rx                 # strip CRC
-            pcb = body[0]
-            inf = body[1:]                                         # no CID negotiated (TC1=00)
+            pcb = rx[0]
+            inf = rx[1:-2]                                         # strip PCB + CRC (no CID)
+            # receive-side (command) chaining: the reader splits a long command into
+            # chained I-blocks (PCB bit 0x10); R(ACK) each and accumulate the INF
+            while pcb & 0x10:
+                send(bytes([0xA2 | ((pcb & 0x01) ^ 1)]), crc=True)  # R(ACK), toggled block
+                ok, f2 = card.nfc.targetReceive(2000, quiet=True)
+                if not ok or not f2:
+                    break
+                n = bytes.fromhex(f2)
+                pcb = n[0]
+                inf += n[1:-2]
             apdu = inf.hex().upper()
             resp = responder(apdu)
-            print("  %.3f << %s   >> %s" % (time.time(), apdu, resp))
+            print("  %.3f << %s   >> %s" % (time.time(), apdu, (resp[:40] + "..") if resp and len(resp) > 40 else resp))
             if resp is None:
-                # R(NAK)? for now just drop; a real card would not. (prototype)
                 continue
-            rpcb = bytes([0x02 | (pcb & 0x01)])                    # I-block, echo block number
-            send(rpcb + bytes.fromhex(resp), crc=True)
+            rbytes = bytes.fromhex(resp)
+            # send-side (response) chaining: split INF > FRAG into chained I-blocks,
+            # each ACKed by the reader with an R(ACK); block number toggles per block
+            block = pcb & 0x01                                     # response echoes the command block number
+            off = 0
+            while True:
+                frag = rbytes[off:off + FRAG]
+                off += FRAG
+                last = off >= len(rbytes)
+                send(bytes([0x02 | block | (0x00 if last else 0x10)]) + frag, crc=True)
+                if last:
+                    break
+                ok, _ack = card.nfc.targetReceive(2000, quiet=True)  # R(ACK) from reader
+                if not ok:
+                    break
+                block ^= 1
             continue
-        if activated and rx and (rx[0] & 0xE6) == 0xF2:            # S(WTX) request
+        if activated and rx and (rx[0] & 0xE6) == 0xF2:            # S(WTX) request (fallback)
             send(bytes([0xF2]) + rx[1:2], crc=True)                # echo WTX back
             continue
         # unhandled

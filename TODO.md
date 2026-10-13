@@ -784,7 +784,7 @@ is the reverse of a merge: once host-anticollision **plus** host-side T=CL works
 full relay below), that becomes a shared engine both a UID-aware emulator and the MITM
 call - rather than cramming two paths into today's tools.
 
-### 17a. Full relay: real UID **and** APDU relay on one chip - **[IN PROGRESS]**
+### 17a. Full relay: real UID **and** APDU relay on one chip - **[DONE]** (`relayuid.py`)
 Goal: host answers anticollision with a chosen UID (`emulateuid`'s raw-frame mode) AND
 then runs the ISO 14443-4 block protocol (T=CL) on the target side - answer the RATS
 with an ATS, relay each I-block's APDU to a real card on another reader, wrap the reply
@@ -798,13 +798,16 @@ back - so a reader sees our UID and talks to the real card. This is the thing a 
 - Milestones: (1) **[DONE]** answer RATS with an ATS and confirm the victim then sends
   an I-block APDU (stub reply); (2) **[DONE]** target-side T=CL framing (I-block, block
   toggle); (3) relay the APDU to a real card (reuse `pn532mitm`'s reader side) and
-  return the reply; (4) **[DONE]** end-to-end with a chosen UID; (5) chaining + WTX for
-  long responses (DG2), for a full mrpkey/BAC read. Prototype `relayuid.py` (branch `full-relay`): verified (1)+(2) on an
+  return the reply; (4) **[DONE]** end-to-end with a chosen UID; (5) **[DONE]** target-side chaining +
+  a long FWT (FWI=14) for a full mrpkey/BAC read. Prototype `relayuid.py` (branch `full-relay`): verified (1)+(2) on an
   SCL3711 emulating + ACR122U-WB-R (`-f ccid`) victim - UID CAFE1234 read with our ATS
   0578808000, GET CHALLENGE relayed to the stub and the reply (08..9000) returned. Milestones
   3+4 (`-c eccid` relay to a real card) verified too: victim on the ACR122 saw UID
   CAFE1234 and, through SCL3711->Elatec, selected the real passport's eMRTD AID
-  (9000) and got a real GET CHALLENGE - single-block APDUs only (milestone 5 next).
+  (9000) and got a real GET CHALLENGE - then a FULL mrpkey BAC read (EF.COM/SOD/DG1/18 KB DG2/DG14, PA hashes OK, 196 APDUs)
+  through the relay with the victim seeing UID CAFE1234 - all 5 milestones done. The
+  long FWT (ATS FWI=14 ~4.9 s) covers the slow relay round-trip; response chaining is
+  implemented but rarely triggers (mrpkey reads in ~118 B chunks).
 - Constraints: SCL3711 (PN533) works only in RAW target mode here (it cannot be an
   easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
   UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
