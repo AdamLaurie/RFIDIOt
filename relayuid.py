@@ -20,12 +20,15 @@
 
 import getopt
 import os
+import socket
 import sys
 import time
 
 import rfidiot
 
-card = rfidiot.card
+# NB: rfidiot.card is accessed lazily (it opens the reader on first touch). Agent
+# mode (-S) drives its reader via open_relay and never touches rfidiot.card, so it
+# needs no -f/-r/-R emulator; emulator mode binds `card` below.
 args = rfidiot.args
 
 
@@ -55,15 +58,19 @@ def usage():
     print("  Options:")
     print("    -a <ATQA>     ATQA on the wire (default 0400/4400/8400 by UID size)")
     print("    -k <SAK>      final SAK (default 20 = ISO 14443-4; the reader then sends RATS)")
-    print("    -c <READER>   relay APDUs to a real card on this reader:")
-    print("                    <libnfc connstring>   a libnfc PN53x reader")
-    print("                    ccid[:bus:dev]        ACR122U (direct CCID / PN532)")
-    print("                    eccid[:bus:dev]       standard CCID reader (ELATEC TWN4 PC/SC fw)")
+    print("    -c <TARGET>   relay APDUs to a real card on:")
+    print("                    <libnfc connstring>   a libnfc PN53x reader (local)")
+    print("                    ccid[:bus:dev]        ACR122U, direct CCID / PN532 (local)")
+    print("                    eccid[:bus:dev]       standard CCID reader, e.g. TWN4 (local)")
+    print("                    tcp:HOST:PORT         a relayuid agent (-S) on another machine")
     print("                  without -c a stub answers (9000 / GET CHALLENGE)")
+    print("    -S <PORT>     AGENT mode: serve the local -c reader's card over TCP to a")
+    print("                  remote relayuid (its -c tcp:HOST:PORT). No -f needed.")
     print("    -w <SECONDS>  stop after this many seconds (default: run until Ctrl-C)")
     print()
-    print("  The emulator must be a libnfc PN53x (-f), e.g. an SCL3711. Priming works as")
-    print("  in emulateuid.py: a reader that retries after the failed RATS, then our UID.")
+    print("  Emulator mode needs a libnfc PN53x (-f), e.g. an SCL3711. Split across two")
+    print("  machines: run  relayuid.py -S 5000 -c eccid:3:66  on the card's host, and")
+    print("  relayuid.py -f pn53x_usb:... -c tcp:<cardhost>:5000 auto  on the emulator's.")
     print()
 
 
@@ -71,10 +78,8 @@ if rfidiot.help:
     usage()
     sys.exit(False)
 
-card.info("relayuid v0.1a (EXPERIMENTAL)")
-
 try:
-    opts, args = getopt.getopt(args, "a:k:c:w:")
+    opts, args = getopt.getopt(args, "a:k:c:w:S:")
 except getopt.GetoptError as e:
     print("  " + str(e))
     usage()
@@ -84,6 +89,7 @@ atqa = None
 sak = 0x20
 sak_explicit = False
 relay = None
+serve_port = None
 wait = 0
 try:
     for o, a in opts:
@@ -95,6 +101,8 @@ try:
             sak_explicit = True
         elif o == "-c":
             relay = a
+        elif o == "-S":
+            serve_port = int(a)
         elif o == "-w":
             wait = float(a)
     # UID is optional now: a hex value, the word "random", or omitted
@@ -102,11 +110,6 @@ try:
 except (ValueError, AssertionError, IndexError):
     usage()
     sys.exit(True)
-
-if card.readertype != card.READER_LIBNFC or not hasattr(card.nfc, "initAsTarget"):
-    print("  The emulator must be a libnfc PN53x reader (-f <connstring>)")
-    sys.exit(True)
-
 
 def random_uid():
     "a random 4-byte UID with the ISO 14443-3 random-UID marker 0x08 on the front"
@@ -125,8 +128,21 @@ relay_reader = None
 
 
 def open_relay(spec):
-    """open a second reader to relay APDUs to a real card; returns
-    (reader, send(apdu_hex)->resp_hex, card_uid_hex_or_None)"""
+    """open a relay target for APDUs; returns (handle, send(apdu_hex)->resp_hex,
+    card_uid_hex_or_None). The target is a local reader, or - with "tcp:HOST:PORT" -
+    a relayuid agent (-S) on another machine driving the real card there."""
+    if spec.lower().startswith("tcp:"):
+        _, host, port = spec.split(":")
+        s = socket.create_connection((host, int(port)), timeout=10)
+        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        f = s.makefile("rwb", buffering=0)
+        line = f.readline().decode("ascii", "replace").strip()   # agent sends the card UID first
+        carduid = None if line in ("", "-") else line
+        def send(apdu_hex):
+            f.write((apdu_hex + "\n").encode("ascii"))
+            r = f.readline().decode("ascii", "replace").strip()
+            return None if r in ("", "ERR") else r
+        return s, send, carduid
     if spec.lower().startswith("eccid"):
         # standard CCID reader (ELATEC TWN4 in PC/SC firmware, etc.) via CCIDDev;
         # spec "eccid[:bus:dev]" -> CCIDDev("ccid[:bus:dev]"). The reader does T=CL.
@@ -164,6 +180,64 @@ def stub(apdu_hex):
         return os.urandom(8).hex().upper() + "9000"
     return "9000"
 
+
+def serve(port, spec):
+    "AGENT mode (-S): open the local real-card reader (-c spec) and relay APDUs over TCP"
+    reader, send, carduid = open_relay(spec)
+    print("  agent: serving %s on 0.0.0.0:%d (card UID %s)" % (spec, port, carduid or "-"))
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("0.0.0.0", port))
+    srv.listen(1)
+    try:
+        while True:
+            conn, addr = srv.accept()
+            conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            f = conn.makefile("rwb", buffering=0)
+            f.write(((carduid or "-") + "\n").encode("ascii"))   # report the card UID first
+            print("  agent: client %s:%d" % addr)
+            try:
+                while True:
+                    line = f.readline()
+                    if not line:
+                        break
+                    apdu = line.decode("ascii", "replace").strip()
+                    if not apdu:
+                        continue
+                    resp = send(apdu)
+                    f.write(((resp or "ERR") + "\n").encode("ascii"))
+                    print("  agent << %s   >> %s" % (apdu, (resp or "ERR")[:40]))
+            except OSError:
+                pass
+            finally:
+                conn.close()
+                print("  agent: client gone")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for meth in ("disconnect", "powerOff", "deconfigure"):
+            fn = getattr(reader, meth, None)
+            if fn:
+                try:
+                    fn()
+                except Exception:
+                    pass
+
+
+if serve_port is not None:
+    if not relay:
+        print("  agent mode (-S) needs -c <local-reader> (the real card's reader)")
+        sys.exit(True)
+    print("relayuid v0.1a (EXPERIMENTAL) - agent mode")
+    serve(serve_port, relay)
+    sys.exit(False)
+
+# --- emulator mode from here (open the libnfc PN53x only now) ---
+card = rfidiot.card
+card.info("relayuid v0.1a (EXPERIMENTAL)")
+if card.readertype != card.READER_LIBNFC or not hasattr(card.nfc, "initAsTarget"):
+    print("  The emulator must be a libnfc PN53x reader (-f <connstring>)")
+    sys.exit(True)
 
 carduid = None
 if relay:
