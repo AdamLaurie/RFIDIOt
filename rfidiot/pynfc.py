@@ -1312,14 +1312,14 @@ class ACR122CCID(_ISODEP):
                   0x02: NFC_ERFTRANS, 0x03: NFC_ERFTRANS, 0x13: NFC_ERFTRANS}
 
     TG_BUSY = ("the ACR122U is still in target (emulation) mode and can't be "
-               "interrupted: present a reader to it to finish, or replug it")
+               "interrupted: let a reader send it a command to finish, or replug it")
 
     def _release_target(self):
         "before closing: never leave the reader blocked in a target command"
         if getattr(self, "_tg_pending", None) is None:
             return
-        print("  The ACR122U is still in target (emulation) mode: present any reader to it")
-        print("  to finish (Ctrl-C to give up - it then needs replugging before use)", flush=True)
+        print("  The ACR122U is still in target (emulation) mode: let a reader send it a")
+        print("  command to finish (Ctrl-C to give up - it then needs replugging before use)", flush=True)
         try:
             while not self._tg_wait(1000):
                 pass
@@ -1343,10 +1343,18 @@ class ACR122CCID(_ISODEP):
         if self._tg_pending is None:
             apdu = [0xFF, 0x00, 0x00, 0x00, len(cmd)] + list(cmd)
             self._tg_pending = self._xfr_send(apdu, 3000)
-        try:
-            r = self._xfr_recv(self._tg_pending, int(timeout))
-        except TimeoutError:
-            return None
+        # wait in short slices: a single endless USB wait can't be interrupted
+        # (the process sits in the kernel and ignores Ctrl-C)
+        deadline = _time.time() + timeout / 1000.0 if timeout else None
+        while True:
+            left = 1000 if deadline is None else min(1000, int((deadline - _time.time()) * 1000))
+            if left <= 0:
+                return None
+            try:
+                r = self._xfr_recv(self._tg_pending, left)
+                break
+            except TimeoutError:
+                pass
         self._tg_pending = None
         out = bytearray()
         while len(r) >= 2 and r[-2] == 0x61:

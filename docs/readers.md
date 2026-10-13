@@ -241,7 +241,7 @@ hardware-verified.
 | | `eeprom.py` | ACG only |
 | HID Prox | `hidprox.py` | OMNIKEY (PC/SC) only |
 | card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`). Type 4 (ISO 14443-4) emulation needs a PN532 (ACR122U): a PN533 such as the SCL3711 can't meet the activation timing. Also works over `-f ccid` (ACR122U-WB-R), which can't be interrupted while it waits: a tool that stops early waits for any reader to be presented to it, and a hard kill leaves it needing a replug |
-| | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc reader when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC |
+| | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc / `-f ccid` ACR122U when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC, unless the emulator is remote (`emulator:HOST:PORT`) - then any reader that sends APDUs, Type A or B card. Verified: TWN4 reading a Type B ePassport, ACR122U-WB-R (`-f ccid`) emulating, SCL3711 as the victim |
 | | `chameleon.py`, `rfidiot-cli.py` (CHAMELEON) | Chameleon Ultra only (`-R READER_CHAMELEON`) |
 | other | `demotag.py` (IAIK DemoTag, vestigial), `nfcid.py` (Android only) | as named |
 | no reader | `passiveauth.py`, `sod.py`, `mifarekeys.py`, `AID_lookup.py`, `AID-get-data.py`, the generate/decode side of `unique.py`, `fdxbnum.py`, `transit.py` | none |

@@ -88,11 +88,21 @@ def send_data(chost, cdata):
     chost.send(("%02x" % lrc).encode("latin-1"))
 
 
+def _recv(chost, n):
+    "read up to n bytes; exit if the remote end has closed the connection"
+    chunk = chost.recv(n)
+    if not chunk:
+        print("  Remote closed the connection")
+        chost.close()
+        sys.exit(True)
+    return chunk.decode("latin-1")
+
+
 # receive data of specified length and check CRC
 def recv_data(chost):
     out = ""
     while len(out) < 3:
-        out += chost.recv(3 - len(out)).decode("latin-1")
+        out += _recv(chost, 3 - len(out))
     length = int(out, 16)
     lrc = 0
     for x in out:
@@ -100,7 +110,7 @@ def recv_data(chost):
         lrc ^=  ord(x)
     out = ""
     while len(out) < length:
-        out += chost.recv(length - len(out)).decode("latin-1")
+        out += _recv(chost, length - len(out))
     for x in out[:-2]:
         # lrc = operator.xor(lrc, ord(x))
         lrc ^=  ord(x)
@@ -148,7 +158,10 @@ if chelp or len(args) < 1:
     print("\t                        or -f <n> (libnfc ACR122U / tikitag).")
     print()
     print("\t    emulator:HOST:PORT  REMOTE (HOST:PORT) = EMULATOR.")
-    print("\t                        LOCAL = READER, the default PC/SC reader (-r <n>).")
+    print("\t                        LOCAL = READER: an ACS PC/SC reader (-r <n>), or any")
+    print("\t                        reader that sends APDUs (e.g. -R READER_TWN4, -f <n>).")
+    print("\t                        The real card may be Type A or B (e.g. a Type B")
+    print("\t                        ePassport); the EMULATOR always presents Type A.")
     print()
     print("\t  COMMANDS and RESPONSES are relayed between the READER and the")
     print("\t  EMULATOR, and the relayed traffic is displayed (and logged if")
@@ -173,21 +186,27 @@ if chelp or len(args) < 1:
     print("\t    This host is the READER (default PC/SC); EMULATOR is on another host:")
     print("\t      " + sys.argv[0] + " emulator:192.168.1.3:5000")
     print()
+    print("\t    One host, three readers: TWN4 reads the card, ACR122U-WB-R emulates:")
+    print("\t      " + sys.argv[0] + " -R READER_TWN4 emulator:127.0.0.1:5000")
+    print("\t      " + sys.argv[0] + " -f ccid reader:127.0.0.1:5000")
+    print()
     print("\t  Coupling: the EMULATOR couples to the victim target reader only over")
     print("\t  the air, so reliability is antenna coupling, not host count. An")
     print("\t  all-PC/SC run can put all three (READER, EMULATOR, target reader) on")
     print("\t  one host if the target couples well (the OMNIKEY CardMan 5321 couples")
     print("\t  poorly and fails larger transfers; most other PC/SC readers are fine).")
     print()
-    print("\t  libnfc EMULATOR: a libnfc ACR122U/tikitag (-f <n>) can be the local")
-    print("\t  EMULATOR, but ONLY over the socket (reader:HOST:PORT) with the READER")
-    print("\t  on another host - a libnfc reader and emulator contend for the device")
-    print("\t  on the same host. It emulates an ISO 14443-4 (Type 4 / APDU) target;")
-    print("\t  the SCL3711 (PN533) cannot be a Type 4 target and is refused.")
+    print("\t  libnfc EMULATOR: a libnfc ACR122U/tikitag (-f <n>), or an ACR122U over")
+    print("\t  direct CCID (-f ccid), can be the local EMULATOR, but ONLY over the socket")
+    print("\t  (reader:HOST:PORT) - run the READER as a second process (or on another")
+    print("\t  host). It emulates an ISO 14443-4 (Type 4 / APDU) target; the SCL3711")
+    print("\t  (PN533) cannot be a Type 4 target and is refused. An -f ccid emulator")
+    print("\t  can't be interrupted while it waits: after Ctrl-C it waits for the victim")
+    print("\t  reader to send one more command (a hard kill means replugging it).")
     print()
     sys.exit(True)
 
-card.info("pn532mitm v3.0e")
+card.info("pn532mitm v3.0f")
 
 # logging = False
 logfile = None
@@ -264,8 +283,16 @@ else:
 em_libnfc = rd_remote and card.readertype == card.READER_LIBNFC
 em_pending = None  # first APDU captured during libnfc activation, if any
 
+# The READER side may be any reader that sends APDUs (TWN4, libnfc, Chameleon,
+# PC/SC) when the EMULATOR is remote (emulator:HOST:PORT): it only selects the
+# real card and relays APDUs, so no PN532 is needed there. We synthesize the
+# PN532 replies the EMULATOR side expects (firmware, status) and relay with the
+# ordinary send_apdu(). The source card may be Type A or Type B (e.g. a Type B
+# ePassport); the emulator always presents Type A.
+rd_generic = em_remote and card.readersubtype != card.READER_ACS
+
 # always check at least one device locally
-if not em_libnfc and card.readersubtype != card.READER_ACS:
+if not em_libnfc and not rd_generic and card.readersubtype != card.READER_ACS:
     print("Local reader is not an ACS")
     if remote:
         connection.close()
@@ -277,6 +304,11 @@ if em_libnfc:
     fwdata = "D50332010607"
     send_data(connection, fwdata)
     print("  Local firmware (libnfc emulator - synthetic):")
+    pn532_print_firmware(fwdata)
+elif rd_generic:
+    fwdata = "D50332010607"
+    send_data(connection, fwdata)
+    print("  Local firmware (non-PN532 READER - synthetic):")
     pn532_print_firmware(fwdata)
 elif card.acs_send_apdu(PN532_APDU["GET_PN532_FIRMWARE"]):
     if remote:
@@ -309,7 +341,16 @@ if data[:4] != PN532_OK:
 else:
     pn532_print_firmware(data)
 
-if not remote or remote_type == "EMULATOR":
+if rd_generic:
+    print("  Waiting for source TAG...", end=" ", flush=True)
+    while not (card.select("A") or card.select("B")):
+        time.sleep(0.1)
+    print(card.tagtype)
+    full_uid = card.uid
+    # a Type B source has no ATQA/SAK: present it as a Type A ISO 14443-4 card
+    sens_res = [card.sens_res or "0004"]
+    sel_res = [card.sel_res or "20"]
+elif not remote or remote_type == "EMULATOR":
     card.waitfortag("  Waiting for source TAG...")
     full_uid = card.uid
     sens_res = [card.sens_res]
@@ -322,9 +363,9 @@ if remote:
         sens_res = [recv_data(connection)]
         sel_res = [recv_data(connection)]
     else:
-        send_data(connection, card.uid)
-        send_data(connection, card.sens_res)
-        send_data(connection, card.sel_res)
+        send_data(connection, full_uid)
+        send_data(connection, sens_res[0])
+        send_data(connection, sel_res[0])
 
 # TgInitAsTarget mode (bitfield): 00=any, 01=passive, 02=DEP, 04=PICC-only.
 # A plain reader (e.g. OMNIKEY) activates the emulator as an ISO/IEC 14443-4 PICC
@@ -361,7 +402,10 @@ except:
     lentk = ["00"]
     tk = [""]
 
-if not remote or remote_type == "EMULATOR":
+if rd_generic:
+    # one 106 kbps ISO 14443-A target, no error, no external field
+    data = "D505000001000000" + "00" + "00"
+elif not remote or remote_type == "EMULATOR":
     if card.acs_send_apdu(PN532_APDU["GET_GENERAL_STATUS"]):
         data = card.data
 if remote:
@@ -506,7 +550,12 @@ try:
             logfile.write("<< %s\n" % data[6:])
             logfile.flush()
         # relay command to tag
-        if not remote or remote_type == "EMULATOR":
+        if rd_generic:
+            apdu = data[6:]
+            card.send_apdu("", "", "", "", apdu[0:2], apdu[2:4], apdu[4:6], apdu[6:8], "", apdu[8:], "")
+            data = card.data
+            errorcode = card.errorcode
+        elif not remote or remote_type == "EMULATOR":
             status = card.acs_send_direct_apdu(data[6:])
             data = card.data
             errorcode = card.errorcode

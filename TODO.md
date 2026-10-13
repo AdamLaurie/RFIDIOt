@@ -661,3 +661,10 @@ hardware-tested), and its Set Timeout (FF 00 41) is refused with 63 00. So the b
 never sends while one is pending, and on close waits for any reader to be presented
 (Ctrl-C again gives up; a hard kill can't be handled - replug). Note also that a raw
 7-bit REQA sent through that path as an initiator wedges it.
+- `pn532mitm` with a non-ACS READER side: when the EMULATOR is remote the READER only
+  selects the real card and relays APDUs, so it now runs on any APDU reader (synthetic
+  PN532 firmware/status replies; Type B sources presented as Type A, ATQA 0004 SAK 20).
+  Verified on one host over loopback: TWN4 reading a Type B ePassport, ACR122U-WB-R
+  `-f ccid` emulating, SCL3711 as the victim (SELECT AID + GET CHALLENGE relayed).
+  The session didn't end on its own when the victim left - the emulator never saw a
+  field drop, probably because the TWN4's field also reached it; stop it with Ctrl-C.
