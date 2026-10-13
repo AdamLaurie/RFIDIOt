@@ -676,3 +676,31 @@ never sends while one is pending, and on close waits for any reader to be presen
   (TWN4 + passport ~43 ms), 5/5 full reads. Across two hosts the network round trip
   comes out of the remaining ~100 ms. Once, the session didn't end when the victim
   left (no field drop seen, probably the TWN4's field reaching the emulator) - Ctrl-C.
+
+## 15. Replacement Android target + "rfidiot" Android app
+The current `READER_ANDROID` back-end (`rfidiot/pyandroid.py`, 2011, Lateral Security)
+is dormant and broken under Python 3: it is a plain-text TCP server on port 4444 that a
+companion Android app connects to, but `self.c.send("getUID\n")` sends a `str` where
+Py3 sockets need `bytes` (TypeError on the first call), `select()` returns raw `recv`
+bytes that are later string-concatenated, framing is newline-split with a fixed 1024-byte
+`recv` (breaks on larger or newline-bearing responses), and `sendResults()` has a
+`results`/`result` name bug. There is no matching open app in the repo.
+Plan - rebuild it as two pieces:
+- **Back-end (`READER_ANDROID`):** a clean Py3 transport. Binary-safe, length-framed
+  messages (not newline-split); encode/decode at the socket edge; handle responses of
+  any size; proper connect/teardown and timeouts. Keep the existing API surface
+  (`select()` -> UID + ideally tag type / `sens_res` / `sel_res`, `sendAPDU()` /
+  `send_apdu()`), so `ChAP`, `mrpkey`, `send_apdu`, `nfcid` work over it unchanged.
+  Decide transport: TCP over Wi-Fi, or USB via `adb forward` (more reliable, no LAN).
+- **"rfidiot" Android app:** the companion on the phone, speaking that protocol.
+  - **Reader (PCD) role:** use Android's NFC `IsoDep`/`NfcA`/`NfcB` to read a card held
+    to the phone and relay APDUs - the phone becomes the reader.
+  - **Card-emulation (HCE) role:** Android Host Card Emulation can present a Type 4
+    (ISO 14443-4) target with arbitrary AIDs and answer APDUs from the host - something
+    neither the PN532 nor the PN533 UID limit allows cleanly. This would give a real
+    EMULATOR and MITM back-end on commodity hardware (cf. sections 12/14), and HCE is
+    not bound to the `08` first-UID-byte limit the PN53x target mode has (section 9).
+    Caveat: stock Android HCE does not let an app set the UID (the NFC controller sends
+    a random one), so a chosen UID still needs a rooted device or a patched controller.
+  - Nice to have: show tag info / dumps on the phone, drive LF where the phone can't
+    (it can't - HF only), act as the victim-side logger for MITM runs.
