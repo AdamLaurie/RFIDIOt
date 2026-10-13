@@ -52,8 +52,11 @@ def usage():
     print("  Options:")
     print("    -a <ATQA>     ATQA on the wire (default 0400/4400/8400 by UID size)")
     print("    -k <SAK>      final SAK (default 20 = ISO 14443-4; the reader then sends RATS)")
-    print("    -c <READER>   relay APDUs to a real card on this reader (libnfc connstring,")
-    print("                  or ccid[:bus:dev]); without -c a stub answers (9000 / GET CHALLENGE)")
+    print("    -c <READER>   relay APDUs to a real card on this reader:")
+    print("                    <libnfc connstring>   a libnfc PN53x reader")
+    print("                    ccid[:bus:dev]        ACR122U (direct CCID / PN532)")
+    print("                    eccid[:bus:dev]       standard CCID reader (ELATEC TWN4 PC/SC fw)")
+    print("                  without -c a stub answers (9000 / GET CHALLENGE)")
     print("    -w <SECONDS>  stop after this many seconds (default: run until Ctrl-C)")
     print()
     print("  The emulator must be a libnfc PN53x (-f), e.g. an SCL3711. Priming works as")
@@ -123,7 +126,20 @@ relay_reader = None
 
 
 def open_relay(spec):
-    "open a second reader to relay APDUs to a real card; returns a send(apdu_hex)->resp_hex"
+    "open a second reader to relay APDUs to a real card; returns (reader, send(apdu_hex)->resp_hex)"
+    if spec.lower().startswith("eccid"):
+        # standard CCID reader (ELATEC TWN4 in PC/SC firmware, etc.) via CCIDDev;
+        # spec "eccid[:bus:dev]" -> CCIDDev("ccid[:bus:dev]"). The reader does T=CL.
+        from rfidiot.pynfc import CCIDDev
+        r = CCIDDev(spec[1:])
+        r.connect()                           # IccPowerOn: activate the card, get ATR
+        def send(apdu_hex):
+            try:
+                data, s1, s2 = r.transmit([int(apdu_hex[i:i + 2], 16) for i in range(0, len(apdu_hex), 2)])
+            except Exception:
+                return None
+            return "".join("%02X" % b for b in data) + "%02X%02X" % (s1, s2)
+        return r, send
     if spec.lower().startswith("ccid"):
         from rfidiot.pynfc import ACR122CCID
         r = ACR122CCID(spec)
@@ -243,9 +259,11 @@ except KeyboardInterrupt:
     pass
 print()
 if relay_reader is not None:
-    try:
-        relay_reader.powerOff()
-        relay_reader.deconfigure()
-    except Exception:
-        pass
+    for meth in ("disconnect", "powerOff", "deconfigure"):
+        fn = getattr(relay_reader, meth, None)
+        if fn:
+            try:
+                fn()
+            except Exception:
+                pass
 card.shutdown()
