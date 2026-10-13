@@ -704,3 +704,19 @@ Plan - rebuild it as two pieces:
     a random one), so a chosen UID still needs a rooted device or a patched controller.
   - Nice to have: show tag info / dumps on the phone, drive LF where the phone can't
     (it can't - HF only), act as the victim-side logger for MITM runs.
+
+## 16. PC/SC MIFARE Classic via General Authenticate (FF 86) - **[DONE, partial hw]**
+The generic PC/SC MIFARE path used the deprecated FF 88 authenticate and SCM-style key
+slots (0x60), which modern CCID readers reject; fixed to load the key to volatile slot 0
+(FF 82 00 00) and use PC/SC v2.01 General Authenticate (FF 86), with a full 16-byte block
+read (FF B0 .. 10) instead of the SCM Le=01 size-probe. Unknown readers now default to
+generic PC/SC, not OMNIKEY. ACS keeps acs_mifare_login; OMNIKEY/SCM keep the legacy FF 88.
+Verified on an Elatec TWN4 (CCID firmware, -r 0): auth + read sectors 0 and 1, trailer,
+wrong-key reject; ACR122U-WB-R (-f ccid) and tikitag (libnfc) confirmed unbroken (regression).
+Still to verify when the hardware is to hand:
+- **OMNIKEY CardMan 5321** (legacy FF 88 path, left untouched) - not used in any recorded
+  session; check MIFARE auth/read still works on it, and that it is still detected as
+  READER_OMNIKEY (name starts "OMNIKEY").
+- a real **ACS ACR122U PICC over PC/SC** (-r), to exercise acs_mifare_login - the WB-R and
+  tikitag both go via direct-CCID / libnfc instead, so that path was not exercised here.
+- an **SCM SDI010** (legacy FF 88 + 0x60 slots), if one is ever available.
