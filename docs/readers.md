@@ -36,6 +36,29 @@ Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 | **ELATEC TWN4 MultiTech 2** | `-R READER_TWN4` | Simple Protocol (USB CDC) | EMV + ePassport (A/B, BAC + PACE) verified |
 | **PN532 module** (emulator) | `pn532mitm.py` / `pn532emulate.py` | ACS / PC-SC | MITM relay verified |
 
+## Readers with more than one back-end
+
+Several readers can be driven through more than one RFIDIOt back-end. Which one
+you get depends only on the selector you pass, and each back-end needs its own
+driver set-up (libnfc wants the device free of `pcscd`; PC/SC wants `pcscd`
+running with a driver for it). The routes differ in what they can do: libnfc
+gives raw ISO 14443-3 frames and card emulation, PC/SC gives ISO 7816 APDUs
+(plus MIFARE through the reader's pseudo-APDUs).
+
+| Model | Routes | Notes |
+| --- | --- | --- |
+| **SCL3711** | libnfc `-f pn53x_usb[:bus:dev]` | the dev route: raw frames, MIFARE, `pn532emulate.py` |
+| | PC/SC `-r <n>` (subtype `READER_SCM`) | needs SCM/Identiv's own driver - libccid doesn't list `04e6:5591`. Not verified here |
+| **ACR122U / Touchatag** | libnfc `-f <n>` (`acr122_usb`) | software T=CL; EMV + ePassport verified |
+| | PC/SC `-r <n>` (subtype `READER_ACS`) | via libccid (it lists `072f:2200` "ACR122U PICC Interface"); used by `pn532mitm.py` / `pn532emulate.py` |
+| | direct CCID `-f ccid[:bus:dev]` | opens any `072f:*` ACS device; `pcscd` stopped. Verified on the WB-R only |
+| **ACR122U-WB-R** | direct CCID `-f ccid` | the only route that works on this unit: libnfc's `acr122_usb` won't open it and libccid treats it as an ACR38 contact reader |
+| **ELATEC TWN4** | Simple Protocol `-R READER_TWN4` | needs the Simple Protocol firmware (`PRS`); verified |
+| | PC/SC `-r <n>` | needs ELATEC's PC/SC firmware instead (libccid lists e.g. `09d8:0427` "Elatec TWN4 SmartCard NFC"); APDU-level only. Not verified here |
+
+The firmware on a TWN4 decides its route: a Simple Protocol TWN4 is a serial
+device, a PC/SC one is a CCID reader, and reflashing switches between them.
+
 ---
 
 ## SCL3711 (libnfc PN53x USB stick)
@@ -51,6 +74,9 @@ python3 rfidiot-cli.py -N                      # list libnfc devices
 
 The in-kernel `pn533_usb` driver otherwise grabs these sticks; `linux/` holds a
 udev rule and a modprobe blacklist so libnfc can claim it non-root.
+
+It can also be used as a PC/SC reader (`-r <n>`) with SCM/Identiv's proprietary
+driver installed - see [Readers with more than one back-end](#readers-with-more-than-one-back-end).
 
 ## ACR122U / Touchatag (tikitag)
 
@@ -141,7 +167,8 @@ python3 mrpkey.py -R READER_TWN4 <MRZ> [PACE]
 
 The USB CDC port is auto-detected (`09d8:0420`); for a true serial (UART) TWN4
 pass the port with `-l`. The tool refuses a TWN4 whose firmware isn't the
-Simple Protocol app.
+Simple Protocol app; a TWN4 flashed with ELATEC's PC/SC firmware is a CCID
+reader instead and is used with `-r <n>` (not verified here).
 
 The TWN4's own ISO 14443-4 exchange (`ISO14443_4_TDX`) can return at most 255
 bytes, and its own RATS asks for 256-byte frames, so long responses (EMV
@@ -179,6 +206,45 @@ python3 readtag.py -R READER_ACG    -l /dev/ttyUSB0
 python3 readtag.py -R READER_FROSCH -l /dev/ttyUSB0
 python3 readtag.py -R READER_ANDROID            # Android NFC over a socket
 ```
+
+## Which tools work with which readers
+
+What a tool can do depends on which back-end implements the library calls it
+uses. This is from the code (the `READER_*` branches in `rfidiot/RFIDIOt.py` and
+the tools' own reader checks); see the model sections above for what has been
+hardware-verified.
+
+### Capabilities by back-end
+
+| Capability | libnfc (`-f <n>`) | direct CCID (`-f ccid`) | PC/SC (`-r <n>`) | Chameleon | TWN4 | ACG / Frosch serial | Android |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ISO 14443-A select / UID | yes | yes | yes | yes | yes | ACG yes | yes |
+| ISO 14443-B select | yes | yes | card/driver dependent | no | yes | not checked | not checked |
+| ISO 7816 APDUs | yes | yes | yes | yes | yes | no | yes |
+| MIFARE Classic auth / read / write | yes | yes | yes (ACS, OMNIKEY) | yes | no | ACG yes | no |
+| MIFARE Ultralight read | yes | yes | yes | yes | no | ACG yes | no |
+| 125 kHz LF (EM4x02, Hitag 2, Q5, FDX-B) | no | no | no | no | no (not implemented yet) | yes | no |
+| HID Prox / iCLASS | no | no | OMNIKEY only | no | no (not implemented yet) | no | no |
+| Card emulation | PN53x target mode | no | ACS (ACR122U) only | its own slots | no | no | no |
+
+### Tools by what they need
+
+| Needs | Tools | Readers |
+| --- | --- | --- |
+| a 14443 select | `cardselect.py`, `multiselect.py`, `isotype.py`, `rfidiot-cli.py` (IDENTIFY, SELECT) | any HF back-end |
+| ISO 7816 APDUs | `ChAP.py`, `mrpkey.py`, `jcoptool.py`, `jcopsetatrhist.py`, `rfidiot-cli.py` (APDU, SCRIPT) | libnfc, direct CCID, PC/SC, Chameleon, TWN4 (Chameleon: Type A only) |
+| | `jcopmifare.py` (uses `hsselect`) | libnfc, direct CCID, PC/SC |
+| | `send_apdu.py` (uses the PC/SC APDU call directly) | PC/SC only |
+| MIFARE Classic / Ultralight | `readmifare1k.py`, `readmifaresimple.py`, `writemifare1k.py`, `formatmifare1kvalue.py`, `loginall.py`, `bruteforce.py`, `copytag.py`, `readtag.py`, `readmifareultra.py`, `rfidiot-cli.py` (MF, DUMP) | libnfc, direct CCID, PC/SC, Chameleon, ACG - **not the TWN4** |
+| 125 kHz LF | `lfxtype.py`, `readlfx.py`, `writelfx.py`, `q5reset.py`, `hitag2reset.py`, `hitag2brute.py`, and the write side of `unique.py`, `fdxbnum.py`, `transit.py` | ACG (LFX) and Frosch serial readers only |
+| | `froschtest.py` | Frosch only |
+| | `eeprom.py` | ACG only |
+| HID Prox | `hidprox.py` | OMNIKEY (PC/SC) only |
+| card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`). Type 4 (ISO 14443-4) emulation needs a PN532 (ACR122U): a PN533 such as the SCL3711 can't meet the activation timing. Not available on `-f ccid` (no target mode in that back-end) |
+| | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc reader when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC |
+| | `chameleon.py`, `rfidiot-cli.py` (CHAMELEON) | Chameleon Ultra only (`-R READER_CHAMELEON`) |
+| other | `demotag.py` (IAIK DemoTag, vestigial), `nfcid.py` (Android only) | as named |
+| no reader | `passiveauth.py`, `sod.py`, `mifarekeys.py`, `AID_lookup.py`, `AID-get-data.py`, the generate/decode side of `unique.py`, `fdxbnum.py`, `transit.py` | none |
 
 ## Enumerate what's attached
 
