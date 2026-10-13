@@ -642,3 +642,22 @@ Remaining:
 - True serial (UART) TWN4 untested (only USB CDC).
 - `chameleon`-style `twn4.py` tool for reader config (beep/LEDs, tag types)? Optional.
 
+## 14. Card emulation on the ACR122U over direct CCID (`-f ccid`) - **[DONE]**
+The direct-CCID back-end now has target (card-emulation) mode: TgInitAsTarget,
+TgGetData/TgSetData (the PN532 runs ISO 14443-4 itself) and TgGetInitiatorCommand/
+TgResponseToInitiator (raw frames) - the same calls as the libnfc back-end, so
+`pn532emulate` and `pn532mitm` run over `-f ccid`, the only route that works on the
+ACR122U-WB-R. Verified with the WB-R emulating and the SCL3711 reading: a plain target
+(`08AABBCC`, ATQA byte order as libnfc sends it), and `pn532emulate` Type 4 (the PN532
+answers the RATS; the APDU arrives and gets 9000). A host answering ISO 14443-3
+anticollision itself (to beat the hard-wired `08` first UID byte) gets REQA -> ATQA and
+ANTICOL -> UID+BCC answered, but the PN533 reader's SELECT arrives as a bare `93` (no
+CIU error flags) and no select completes - unknown whether that is the PN533 reader or
+the PN532 emulator; needs another real reader (a PN532 one, or a phone).
+**The WB-R can't be interrupted in target mode**: sending anything while a target
+command is pending wedges it until replugged - libnfc's PN532 ACK-frame abort, the
+CCID ABORT request, a USB reset, or simply the next process opening it (all
+hardware-tested), and its Set Timeout (FF 00 41) is refused with 63 00. So the back-end
+never sends while one is pending, and on close waits for any reader to be presented
+(Ctrl-C again gives up; a hard kill can't be handled - replug). Note also that a raw
+7-bit REQA sent through that path as an initiator wedges it.

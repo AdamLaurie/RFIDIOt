@@ -225,7 +225,7 @@ hardware-verified.
 | MIFARE Ultralight read | yes | yes | yes | yes | no | ACG yes | no |
 | 125 kHz LF (EM4x02, Hitag 2, Q5, FDX-B) | no | no | no | no | no (not implemented yet) | yes | no |
 | HID Prox / iCLASS | no | no | OMNIKEY only | no | no (not implemented yet) | no | no |
-| Card emulation | PN53x target mode | no | ACS (ACR122U) only | its own slots | no | no | no |
+| Card emulation | PN53x target mode | PN532 target mode | ACS (ACR122U) only | its own slots | no | no | no |
 
 ### Tools by what they need
 
@@ -240,7 +240,7 @@ hardware-verified.
 | | `froschtest.py` | Frosch only |
 | | `eeprom.py` | ACG only |
 | HID Prox | `hidprox.py` | OMNIKEY (PC/SC) only |
-| card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`). Type 4 (ISO 14443-4) emulation needs a PN532 (ACR122U): a PN533 such as the SCL3711 can't meet the activation timing. Not available on `-f ccid` (no target mode in that back-end) |
+| card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`). Type 4 (ISO 14443-4) emulation needs a PN532 (ACR122U): a PN533 such as the SCL3711 can't meet the activation timing. Also works over `-f ccid` (ACR122U-WB-R), which can't be interrupted while it waits: a tool that stops early waits for any reader to be presented to it, and a hard kill leaves it needing a replug |
 | | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc reader when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC |
 | | `chameleon.py`, `rfidiot-cli.py` (CHAMELEON) | Chameleon Ultra only (`-R READER_CHAMELEON`) |
 | other | `demotag.py` (IAIK DemoTag, vestigial), `nfcid.py` (Android only) | as named |

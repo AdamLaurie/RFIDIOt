@@ -944,6 +944,7 @@ class NFC(_ISODEP):
 import os as _os
 import glob as _glob
 import time as _time
+import atexit as _atexit
 
 # usbdevfs ioctls (asm-generic _IOC encoding)
 def _IOC(d, t, nr, sz):
@@ -985,7 +986,11 @@ class ACR122CCID(_ISODEP):
         self.LIBNFC_CONNSTRING = spec
         self.LIBNFC_VER = "direct-ccid"
         self.poweredUp = False
-        self._seq = 0
+        # random start: a reply still queued from an earlier process (e.g. one
+        # that exited while emulating) must not match our first bSeq
+        self._seq = _os.urandom(1)[0]
+        self._tg_pending = None   # bSeq of a target command still waiting in the reader
+        self._tg_easy = False
         self._libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
         self.log = logging.getLogger("pynfc.ccid")
         if not self.log.handlers:
@@ -1009,6 +1014,8 @@ class ACR122CCID(_ISODEP):
             )
         if not listonly:
             self._pn532_init()
+        # tools often exit without shutdown(): still release the reader
+        _atexit.register(self.deconfigure)
 
     # -- device discovery ---------------------------------------------------
     @staticmethod
@@ -1058,28 +1065,46 @@ class ACR122CCID(_ISODEP):
 
     def _xfrblock(self, apdu, timeout_ms):
         "one CCID PC_to_RDR_XfrBlock -> the reader's response data (after header)"
+        seq = self._xfr_send(apdu, timeout_ms)
+        try:
+            return self._xfr_recv(seq, timeout_ms)
+        except TimeoutError:
+            # no reply in time: report a failed exchange rather than raise; a
+            # late reply is then dropped by the bSeq check on the next exchange
+            if rfidiotglobals.Debug:
+                self.log.error("CCID: no reply within %d ms" % timeout_ms)
+            return b""
+
+    def _xfr_send(self, apdu, timeout_ms):
+        "send a CCID PC_to_RDR_XfrBlock; returns its bSeq"
         self._seq = (self._seq + 1) & 0xFF
         n = len(apdu)
         hdr = [0x6F, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF,
                0x00, self._seq, 0x00, 0x00, 0x00]
         self._bulk(self.EP_OUT, hdr + list(apdu), timeout_ms)
+        return self._seq
+
+    def _xfr_recv(self, seq, timeout_ms):
+        """the response data to XfrBlock <seq>; raises TimeoutError if none comes
+        within timeout_ms (0 = wait for ever)"""
+        # an overall deadline: the reader sends a time-extension reply every few
+        # seconds while a command blocks, and each would restart a plain timeout
+        deadline = _time.time() + timeout_ms / 1000.0 if timeout_ms else None
         while True:
-            try:
-                r = self._bulk(self.EP_IN, None, timeout_ms)
-            except TimeoutError:
-                # no reply in time: report a failed exchange rather than raise; a
-                # late reply is then dropped by the bSeq check on the next exchange
-                if rfidiotglobals.Debug:
-                    self.log.error("CCID: no reply within %d ms" % timeout_ms)
-                return b""
+            left = timeout_ms
+            if deadline is not None:
+                left = int((deadline - _time.time()) * 1000)
+                if left <= 0:
+                    raise TimeoutError("CCID: no reply to seq %02X" % seq)
+            r = self._bulk(self.EP_IN, None, left)
             if len(r) < 10:
                 return b""
             # drop a stale reply to an earlier command (e.g. one the reader gave up
             # on, whose late answer is still queued): otherwise every following
             # exchange gets the previous command's reply
-            if r[0] != 0x80 or r[6] != self._seq:
+            if r[0] != 0x80 or r[6] != seq:
                 if rfidiotglobals.Debug:
-                    self.log.debug("CCID: dropping stale reply seq %02X (want %02X)" % (r[6], self._seq))
+                    self.log.debug("CCID: dropping stale reply seq %02X (want %02X)" % (r[6], seq))
                 continue
             # bStatus bmCommandStatus == 10b: "time extension", card still working
             if (r[7] & 0xC0) == 0x80:
@@ -1100,6 +1125,8 @@ class ACR122CCID(_ISODEP):
 
     def _pn532(self, cmd, timeout_ms=3000):
         "wrap a PN532 command (starting 0xD4) in the ACR122U direct-transmit pseudo-APDU"
+        if not self._tg_wait(0 if self._tg_pending is None else 100):
+            raise IOError(self.TG_BUSY)       # sending now would wedge the reader
         apdu = [0xFF, 0x00, 0x00, 0x00, len(cmd)] + list(cmd)
         r = self._apdu(apdu, timeout_ms)
         if len(r) >= 2 and r[-2] == 0x90 and r[-1] == 0x00:
@@ -1143,6 +1170,8 @@ class ACR122CCID(_ISODEP):
         self.poweredUp = True
 
     def powerOff(self):
+        if self._tg_pending is not None:      # still emulating; see TG_BUSY
+            return
         self._pn532([0xD4, 0x32, 0x01, 0x00])   # RFConfiguration: RF field off
         self.poweredUp = False
 
@@ -1257,6 +1286,150 @@ class ACR122CCID(_ISODEP):
             return False, -1
         return True, "".join("%02X" % b for b in r[3:])
 
+    # -- target (card emulation) mode --------------------------------------
+    # The same calls as NFC (initAsTarget, targetReceive, targetSend,
+    # targetHandleCRC), so pn532emulate.py and pn532mitm.py run unchanged over
+    # -f ccid. They are the PN532's own target commands wrapped
+    # like any other: TgInitAsTarget, then TgGetData/TgSetData when the PN532
+    # runs ISO 14443-4 itself (raw=False), or TgGetInitiatorCommand/
+    # TgResponseToInitiator for raw frames (raw=True) - as libnfc does.
+    #
+    # These commands block in the reader until the initiator acts. On a
+    # host-side timeout the command is left pending, and the next target call
+    # resumes waiting for its reply instead of sending another.
+    #
+    # A pending command can't be aborted on the ACR122U-WB-R: anything sent
+    # while one is pending - libnfc's PN532 ACK-frame abort, the CCID-spec
+    # ABORT, a USB reset, even the next process's first command - wedged it
+    # until replugged, and it has no command timeout of its own (Set Timeout
+    # FF 00 41 is refused with 63 00). So nothing else is sent while one is
+    # pending, and closing waits for an initiator to finish it (_release_target)
+    # rather than leave the reader blocked.
+
+    make_iso14443a_target = NFC.make_iso14443a_target
+
+    _TG_ERRORS = {0x01: NFC_ETIMEOUT, 0x29: NFC_ETGRELEASED,
+                  0x02: NFC_ERFTRANS, 0x03: NFC_ERFTRANS, 0x13: NFC_ERFTRANS}
+
+    TG_BUSY = ("the ACR122U is still in target (emulation) mode and can't be "
+               "interrupted: present a reader to it to finish, or replug it")
+
+    def _release_target(self):
+        "before closing: never leave the reader blocked in a target command"
+        if getattr(self, "_tg_pending", None) is None:
+            return
+        print("  The ACR122U is still in target (emulation) mode: present any reader to it")
+        print("  to finish (Ctrl-C to give up - it then needs replugging before use)", flush=True)
+        try:
+            while not self._tg_wait(1000):
+                pass
+        except KeyboardInterrupt:
+            print("  Left the ACR122U in target mode: replug it before using it again")
+            self._tg_pending = None
+
+    def _tg_wait(self, timeout_ms):
+        "wait up to timeout_ms for a pending target command to finish; True if none left"
+        if self._tg_pending is None:
+            return True
+        try:
+            self._xfr_recv(self._tg_pending, int(timeout_ms))
+        except TimeoutError:
+            return False
+        self._tg_pending = None
+        return True
+
+    def _tg_command(self, cmd, timeout):
+        "send (or keep waiting for) a blocking target command; None on timeout"
+        if self._tg_pending is None:
+            apdu = [0xFF, 0x00, 0x00, 0x00, len(cmd)] + list(cmd)
+            self._tg_pending = self._xfr_send(apdu, 3000)
+        try:
+            r = self._xfr_recv(self._tg_pending, int(timeout))
+        except TimeoutError:
+            return None
+        self._tg_pending = None
+        out = bytearray()
+        while len(r) >= 2 and r[-2] == 0x61:
+            out += r[:-2]
+            r = self._xfrblock([0xFF, 0xC0, 0x00, 0x00, r[-1]], 3000)
+        out += r
+        if len(out) >= 2 and out[-2] == 0x90 and out[-1] == 0x00:
+            out = out[:-2]
+        return bytes(out)
+
+    def _tg_status(self, r, code, what, quiet=False):
+        "check a D5 <code+1> <status> reply: 0 if good, else a libnfc error code"
+        if len(r) < 3 or r[0] != 0xD5 or r[1] != code + 1:
+            err = NFC_EIO
+        elif r[2] & 0x3F:                    # bit 6 is MI (more data), not an error
+            err = self._TG_ERRORS.get(r[2] & 0x3F, NFC_ECHIP)
+        else:
+            return 0
+        if not quiet:
+            self.log.error("%s: %s" % (what, r.hex().upper() or "no reply"))
+        return err
+
+    def initAsTarget(self, nfc_target, timeout=0, raw=True):
+        """Enter target (card-emulation) mode and block until an initiator
+        activates us; as NFC.initAsTarget. timeout is in ms (0 = for ever)."""
+        nai = nfc_target.nti.nai
+        uid = list(nai.abtUid[:nai.uiUidLen])
+        if len(uid) != 4 or uid[0] != 0x08:  # the PN532 only sends 08 + NFCID1t
+            return False, NFC_EINVARG
+        tk = list(nai.abtAts[:nai.uiAtsLen])
+        self._tg_easy = not raw
+        # with raw=False and an ISO 14443-4 SAK the PN532 answers the RATS and runs
+        # the block protocol itself; otherwise the RATS is handed up like any frame
+        picc = (not raw) and bool(nai.btSak & 0x20)
+        # SetParameters: keep the power-on defaults (automatic RATS 0x10,
+        # automatic ATR_RES 0x04) and set or clear ISO 14443-4 PICC (0x20)
+        self._pn532([0xD4, 0x12, 0x14 | (0x20 if picc else 0x00)])
+        mode = 0x01 | (0x04 if picc else 0x00)   # passive only (+ PICC only)
+        cmd = ([0xD4, 0x8C, mode]
+               + [nai.abtAtqa[1], nai.abtAtqa[0]]   # SENS_RES, as libnfc sends it
+               + uid[1:4] + [nai.btSak]
+               + [0x00] * 18                        # FeliCa params (unused)
+               + [0x00] * 10                        # NFCID3t (unused)
+               + [0x00]                             # no General Bytes
+               + [len(tk)] + tk)                    # historical bytes for the ATS
+        r = self._tg_command(cmd, timeout)
+        if r is None:
+            return False, NFC_ETIMEOUT
+        if len(r) < 3 or r[0] != 0xD5 or r[1] != 0x8D:
+            self.log.error("TgInitAsTarget: %s" % (r.hex().upper() or "no reply"))
+            return False, NFC_EIO
+        if raw:
+            self._set_crc(True)                  # as libnfc: the chip handles CRC
+        first = r[3:]                            # D5 8D <mode> <first command>
+        if picc and first[:1] == b"\xE0":
+            first = b""                          # a RATS the PN532 has already answered
+        return True, first.hex().upper()
+
+    def targetReceive(self, timeout=0, quiet=False):
+        "receive one frame from the initiator; (True, hex) or (False, rc)"
+        code = 0x86 if self._tg_easy else 0x88  # TgGetData / TgGetInitiatorCommand
+        r = self._tg_command([0xD4, code], timeout)
+        if r is None:
+            return False, NFC_ETIMEOUT
+        err = self._tg_status(r, code, "target receive", quiet)
+        if err:
+            return False, err
+        return True, r[3:].hex().upper()
+
+    def targetHandleCRC(self, on):
+        "let the chip add/check CRC_A on target frames (on), or leave it to the caller (off)"
+        self._set_crc(on)
+
+    def targetSend(self, apdu, timeout=0):
+        "send one frame (hex in) back to the initiator; (True, nbytes) or (False, rc)"
+        data = [int(apdu[i:i + 2], 16) for i in range(0, len(apdu), 2)]
+        code = 0x8E if self._tg_easy else 0x90  # TgSetData / TgResponseToInitiator
+        r = self._pn532([0xD4, code] + data, max(int(timeout), 3000))
+        err = self._tg_status(r, code, "target send")
+        if err:
+            return False, err
+        return True, len(data)
+
     def listreaders(self, target=None):
         print("Direct-CCID reader:", self.LIBNFC_READER)
         return None
@@ -1264,6 +1437,7 @@ class ACR122CCID(_ISODEP):
     def deconfigure(self):
         fd = getattr(self, "_fd", None)
         if fd is not None:
+            self._release_target()
             try:
                 if getattr(self, "_claimed", False):
                     self._ioctl(_USBDEVFS_RELEASEINTERFACE, ctypes.byref(ctypes.c_uint(0)))
