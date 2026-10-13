@@ -764,3 +764,42 @@ Remaining:
   isn't available in PN53x target mode).
 - ACR122U (PN532) as the emulator via the direct-CCID path: not tried - note a raw
   7-bit REQA sent through that path wedges the ACR122U-WB-R until replugged.
+
+### Why `emulateuid` stays separate from `pn532emulate` / `pn532mitm` (not a merge)
+They are two mutually exclusive modes of the PN53x target, not a feature flag:
+- `pn532emulate` / `pn532mitm`: the **chip** owns ISO 14443-3 (anticollision + CRC,
+  and for Type 4 the T=CL block protocol via easy framing); the host trades APDUs.
+  Consequence: the UID first byte is forced to `08`, but you get real card behaviour
+  (Type 4 APDU relay, Type 2 reads).
+- `emulateuid`: the **host** owns ISO 14443-3 (`targetHandleCRC(False)`, raw frames,
+  host answers REQA/ANTICOL/SELECT by hand). Consequence: any UID, but nothing above
+  the UID layer (RATS/APDUs are shown, not answered), and only via the AutoColl
+  priming trick (retry, or a primer whose field overlaps the target reader's).
+You cannot have both on one activation: either the chip answers anticollision (08 +
+APDU relay) or the host does (custom UID, no higher layers). A "merge" is therefore a
+second, incompatible plumbing with a different, fragile activation model - and it would
+overload each tool's interface (against RFIDIOt's one-small-tool-per-task convention),
+and risk the verified relay tools with experimental code. The convergence worth having
+is the reverse of a merge: once host-anticollision **plus** host-side T=CL works (the
+full relay below), that becomes a shared engine both a UID-aware emulator and the MITM
+call - rather than cramming two paths into today's tools.
+
+### 17a. Full relay: real UID **and** APDU relay on one chip - **[IN PROGRESS]**
+Goal: host answers anticollision with a chosen UID (`emulateuid`'s raw-frame mode) AND
+then runs the ISO 14443-4 block protocol (T=CL) on the target side - answer the RATS
+with an ATS, relay each I-block's APDU to a real card on another reader, wrap the reply
+back - so a reader sees our UID and talks to the real card. This is the thing a naive
+"merge" would imply, but it is new work, not a refactor.
+- Foundation: `emulateuid` already gets REQA->ATQA, ANTICOL->UID+BCC, SELECT->SAK on a
+  libnfc PN53x (SCL3711), and the RATS then arrives as a raw frame (currently "not
+  handled"). So target-side software T=CL is implementable on top: answer `E0xx` (RATS)
+  with an ATS, then handle I-/R-/S-blocks (PCB block numbers, chaining, WTX) - the
+  mirror of the reader-side `_tcl_exchange`.
+- Milestones: (1) answer RATS with an ATS and confirm the victim then sends an I-block
+  APDU (stub reply 9000); (2) add target-side T=CL framing (block toggle, chaining,
+  WTX); (3) relay the APDU to a real card (reuse `pn532mitm`'s reader side) and return
+  the reply; (4) end-to-end with a chosen UID.
+- Constraints: SCL3711 (PN533) works only in RAW target mode here (it cannot be an
+  easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
+  UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
+  of scope (Crypto1 not available in target mode).
