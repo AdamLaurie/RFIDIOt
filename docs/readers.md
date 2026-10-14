@@ -10,16 +10,16 @@ the commands below work with `rfidiot-cli.py`, `ChAP.py`, `mrpkey.py`,
 
 | Option | Meaning |
 | --- | --- |
+| `-C` | list CCID-class readers (the `-f ccid` / `-r ccid` back-ends, which `-N`/`-L` don't show) and exit |
 | `-f <n>` | libnfc device number `<n>` (implies `-R READER_LIBNFC`) |
 | `-f <connstring>` | open a specific libnfc device directly, e.g. `pn53x_usb` or `pn53x_usb:003:087` (no intrusive probe that would grab other readers) |
 | `-f ccid` / `-f ccid:<bus>:<dev>` | **direct-CCID ACR122U back-end** (talks straight to the PN532 over usbdevfs; for ACR122U units libnfc/pcscd misidentify) |
+| `-l <port>` | serial port for the serial readers, e.g. `/dev/ttyUSB0` |
+| `-L` | list PC/SC readers and exit |
+| `-N` | list libnfc devices and exit (does not open one) |
 | `-r <n>` | PC/SC reader number `<n>` (implies `-R READER_PCSC`; subtype ACS/OMNIKEY/SCM auto-detected) |
 | `-r ccid` / `-r ccid:<bus>:<dev>` | **raw-CCID back-end** for a standard CCID reader (e.g. an ELATEC TWN4 in PC/SC firmware) straight over usbdevfs, no pcscd; stop pcscd first |
 | `-R READER_*` | select a reader type explicitly (e.g. `-R READER_CHAMELEON`) |
-| `-l <port>` | serial port for the serial readers, e.g. `/dev/ttyUSB0` |
-| `-N` | list libnfc devices and exit (does not open one) |
-| `-L` | list PC/SC readers and exit |
-| `-C` | list CCID-class readers (the `-f ccid` / `-r ccid` back-ends, which `-N`/`-L` don't show) and exit |
 
 Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 0x02, `READER_DEMOTAG` 0x03, `READER_PCSC` 0x04, `READER_OMNIKEY` 0x05,
@@ -272,6 +272,7 @@ hardware-verified.
 ## Enumerate what's attached
 
 ```sh
-python3 rfidiot-cli.py -N        # libnfc devices (numbers for -f)
+python3 rfidiot-cli.py -C        # CCID-class readers (connstrings for -f ccid / -r ccid)
 python3 rfidiot-cli.py -L        # PC/SC readers (numbers for -r)
+python3 rfidiot-cli.py -N        # libnfc devices (numbers for -f)
 ```
