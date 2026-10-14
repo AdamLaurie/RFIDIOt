@@ -107,6 +107,7 @@ if chelp or len(sys.argv) == 1:
     print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
     print("        KEYVERSION <KEYNO>                              GetKeyVersion")
     print("        FILEIDS                                         GetFileIDs")
+    print("        ISOFILEIDS                                      GetISOFileIDs (2-byte ISO FIDs)")
     print("        FILESETTINGS <FILENO>                           GetFileSettings (type, comm, access rights, size)")
     print("        READ <FILENO> <OFFSET> <LENGTH>                 ReadData (hex; LENGTH 0 = whole file)")
     print("        GETVALUE <FILENO>                               GetValue (value file)")
@@ -439,6 +440,14 @@ while args:
             fids = [d[i:i + 2] for i in range(0, len(d), 2)]
             print("  Files (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
             continue
+        if dfcommand == "ISOFILEIDS":              # GetISOFileIDs (0x61): 2-byte ISO FIDs
+            d, sw = df_full("61")
+            if sw != "9100":
+                print("  GetISOFileIDs: " + df_status(sw)); continue
+            # ISO FIDs are 2 bytes each, LSB-first on the wire; show MSB-first
+            fids = [d[i + 2:i + 4] + d[i:i + 2] for i in range(0, len(d), 4)]
+            print("  ISO FIDs (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
+            continue
         if dfcommand == "FILESETTINGS":            # GetFileSettings (0xF5) <fileno>
             fileno = args.pop().upper()
             d, sw = df_apdu("F5", fileno)
@@ -522,8 +531,8 @@ while args:
             continue
         print("  Unknown DESFIRE command:", dfcommand)
         print("  commands: VERSION AIDS SELECT AUTH SESSION FREEMEM KEYSETTINGS")
-        print("            KEYVERSION FILEIDS FILESETTINGS GETVALUE READ RECORDS")
-        print("            DFNAMES CMD")
+        print("            KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS GETVALUE READ")
+        print("            RECORDS DFNAMES CMD")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
