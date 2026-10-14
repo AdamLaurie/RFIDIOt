@@ -608,6 +608,27 @@ TAGS = {
     0x9F0A: ["Application Selection Registered Proprietary Data", BINARY, ITEM],
     0x9F10: ["Issuer Application Data", BINARY, ITEM],
     0x9F5A: ["Application Program Identifier", BINARY, ITEM],
+    # further commonly-seen tags (incl. text-bearing fields previously "Unknown TAG")
+    0x42: ["Issuer Identification Number (IIN)", BINARY, ITEM],
+    0x56: ["Track 1 Data", TEXT, ITEM],
+    0x9F0B: ["Cardholder Name Extended", TEXT, ITEM],
+    0x9F1C: ["Terminal Identification", TEXT, ITEM],
+    0x9F4F: ["Log Format", BINARY, ITEM],
+    0x9F5D: ["Available Offline Spending Amount (AOSA)", BINARY, VALUE],
+    0x9F6A: ["Unpredictable Number (Numeric)", BINARY, VALUE],
+    0x9F6B: ["Track 2 Data", BINARY, ITEM],
+    0x9F7E: ["Mobile Support Indicator", BINARY, ITEM],
+    0x5F53: ["International Bank Account Number (IBAN)", TEXT, ITEM],
+    0x5F54: ["Bank Identifier Code (BIC)", TEXT, ITEM],
+    0x5F55: ["Issuer Country Code (alpha2)", TEXT, ITEM],
+    0x5F56: ["Issuer Country Code (alpha3)", TEXT, ITEM],
+    0x5F57: ["Account Type", NUMERIC, ITEM],
+    # contactless mag-stripe (MSD) bit maps (Visa payWave / Mastercard PayPass)
+    0x9F62: ["Track 1 bit map for CVC3 (PCVC3)", BINARY, ITEM],
+    0x9F63: ["Track 1 bit map for UN and ATC (PUNATC)", BINARY, ITEM],
+    0x9F64: ["Track 1 number of ATC digits (NATC)", BINARY, ITEM],
+    0x9F65: ["Track 2 bit map for CVC3 (PCVC3)", BINARY, ITEM],
+    0x9F67: ["Track 2 number of ATC digits (NATC)", BINARY, ITEM],
     0xBF0C: [
         "File Control Information (FCI) Issuer Discretionary Data",
         BER_TLV,
@@ -854,6 +875,17 @@ def decode_pse(data, indent=""):
         constructed = bool(data[index] & 0x20)
         known = tag in TAGS
         name = TAGS[tag][0] if known else "Unknown TAG"
+        # 9F66 is a genuine collision - Terminal Transaction Qualifiers (TTQ, a
+        # terminal element seen on Visa) vs PUNATC(Track2) (Mastercard PayPass
+        # card data). It can't be told apart from the value, so show both.
+        if tag == 0x9F66 and not constructed:
+            EMVData[tag] = list(value)
+            hexval = "".join("%02x" % b for b in value)
+            print(f"{indent}  {tag:02x}: Terminal Transaction Qualifiers (TTQ) ({itemlength} bytes):{hexval}")
+            print(f"{indent}  {tag:02x}: PUNATC(Track2) ({itemlength} bytes):{hexval}"
+                  "  [9F66 is scheme-dependent: TTQ (terminal/Visa) or PUNATC(Track2) (Mastercard card data)]")
+            index = vstart + itemlength
+            continue
         print(f"{indent}  {tag:02x}: {name} ({itemlength} bytes):", end="")
         # store CDOLs for later use
         if tag == CDOL1:
@@ -1881,7 +1913,7 @@ if EncipheredPIN and not PIN:
     sys.exit(True)
 
 try:
-    print("ChAP v3.1a (using RFIDIOt v%s)" % getattr(card, "VERSION", "?"))
+    print("ChAP v3.1b (using RFIDIOt v%s)" % getattr(card, "VERSION", "?"))
     print("using reader:", getattr(card, "readername", "unknown"))
     if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON, card.READER_TWN4):
         # contactless: run ISO 14443-A (then -B) anticollision/select to power and
