@@ -582,19 +582,14 @@ class NFC(_ISODEP):
             return None   # ???  Missing return VAl
         for i in range(nfc_num_devices):
             if devices[i]:
-                self.log.debug(
-                    "nfc_open: %s"
-                    % ctypes.cast(devices[i].connstring, ctypes.c_char_p).value
-                )
-                dev = self.libnfc.nfc_open(self.context, ctypes.byref(devices[i]))
-                devname = self.libnfc.nfc_device_get_name(dev).decode("utf-8")
-                print(f"    No: {i}\t\t{devname}")
-                self.libnfc.nfc_close(dev)
-                # print '    No: %d\t\t%s (%s)' % (i,devname,devices[i].acDevice)
-                # print '    \t\t\t\tDriver:',devices[i].pcDriver
-                # if devices[i].pcPort != None:
-                #       print '    \t\t\t\tPort:', devices[i].pcPort
-                #       print '    \t\t\t\tSpeed:', devices[i].uiSpeed
+                # print the connstring from nfc_list_devices rather than nfc_open()ing
+                # each device to read its friendly name: opening can crash inside
+                # libnfc for units its driver can't bring up (e.g. the ACR122U-WB-R,
+                # whose acr122_usb init segfaults in libnfc 1.8.0). The connstring
+                # (driver:bus:dev) is what -f needs anyway.
+                conn = ctypes.cast(devices[i].connstring, ctypes.c_char_p).value
+                conn = conn.decode("utf-8", "replace") if conn else "?"
+                print(f"    No: {i}\t\t{conn}")
         return None   # ???  Missing return VAl
 
     def configure(self, nfcreader):
