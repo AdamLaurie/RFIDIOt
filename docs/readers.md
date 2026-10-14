@@ -10,13 +10,13 @@ the commands below work with `rfidiot-cli.py`, `ChAP.py`, `mrpkey.py`,
 
 | Option | Meaning |
 | --- | --- |
-| `-C` | list CCID-class readers (the `-f ccid` / `-r ccid` back-ends, which `-N`/`-L` don't show) and exit |
+| `-C` | list **all** CCID-class readers (both the `-f ccid` and `-r ccid` back-ends) and exit; `-N`/`-L` each show the subset relevant to their class |
 | `-f <n>` | libnfc device number `<n>` (implies `-R READER_LIBNFC`) |
 | `-f <connstring>` | open a specific libnfc device directly, e.g. `pn53x_usb` or `pn53x_usb:003:087` (no intrusive probe that would grab other readers) |
 | `-f ccid` / `-f ccid:<bus>:<dev>` | **direct-CCID ACR122U back-end** (talks straight to the PN532 over usbdevfs; for ACR122U units libnfc/pcscd misidentify) |
 | `-l <port>` | serial port for the serial readers, e.g. `/dev/ttyUSB0` |
-| `-L` | list PC/SC readers and exit |
-| `-N` | list libnfc devices and exit (does not open one) |
+| `-L` | list PC/SC readers and exit; also lists the `-r ccid` CCID readers (generic, non-ACS) |
+| `-N` | list libnfc devices and exit (does not open one); also lists the `-f ccid` CCID readers (ACS/PN532) |
 | `-r <n>` | PC/SC reader number `<n>` (implies `-R READER_PCSC`; subtype ACS/OMNIKEY/SCM auto-detected) |
 | `-r ccid` / `-r ccid:<bus>:<dev>` | **raw-CCID back-end** for a standard CCID reader (e.g. an ELATEC TWN4 in PC/SC firmware) straight over usbdevfs, no pcscd; stop pcscd first |
 | `-R READER_*` | select a reader type explicitly (e.g. `-R READER_CHAMELEON`) |
@@ -42,6 +42,15 @@ back-ends exist, so the same hardware can be driven more than one way.
 | `-R READER_CHAMELEON` | **Chameleon Ultra** | serial (USB CDC) | ISO 14443-A reader |
 | `-R READER_ACG` / `READER_FROSCH` / `READER_DEMOTAG` | **serial** | serial (`-l <port>`) | legacy serial readers (ACG LFX for 125 kHz LF, Frosch Hitag, DemoTag) |
 | `-R READER_ANDROID` | **Android** (`pyandroid`) | TCP socket | a phone running a companion app as the reader (dormant / Py3-broken - see TODO 15) |
+
+At the top level, **`-f` is the libnfc / NFC-chip stack** and **`-r` is the PC/SC
+smart-card stack**. With `-f` you drive an NFC chip (a PN53x) and the host/chip
+runs the RF - raw 14443 frames, MIFARE, card emulation. With `-r` the reader
+itself drives the card and hands you an activated ISO 7816 card over its transport.
+**Rule of thumb: `-f` = an NFC chip you drive; `-r` = a smart-card reader that
+drives the card for you.** The `ccid` variants are the no-daemon versions of each
+(they talk to the USB reader directly, so stop `pcscd` first); `-r <n>` and `-f <n>`
+use their daemon/library.
 
 The two **direct-CCID** paths are different protocols over the same USB plumbing:
 `-f ccid` speaks the ACR122U's **PN532** (so it can emulate, and it can reach the
@@ -272,7 +281,7 @@ hardware-verified.
 ## Enumerate what's attached
 
 ```sh
-python3 rfidiot-cli.py -C        # CCID-class readers (connstrings for -f ccid / -r ccid)
-python3 rfidiot-cli.py -L        # PC/SC readers (numbers for -r)
-python3 rfidiot-cli.py -N        # libnfc devices (numbers for -f)
+python3 rfidiot-cli.py -C        # all CCID-class readers (connstrings for -f ccid / -r ccid)
+python3 rfidiot-cli.py -L        # PC/SC readers (numbers for -r) + the -r ccid CCID readers
+python3 rfidiot-cli.py -N        # libnfc devices (numbers for -f) + the -f ccid CCID readers
 ```

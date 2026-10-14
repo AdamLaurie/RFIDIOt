@@ -93,8 +93,8 @@ nfcreader = None
 
 def printoptions():
     print("\nRFIDIOt Options:\n")
-    print("\t-C\t\tList available CCID readers (the -f ccid / -r ccid back-ends,")
-    print("\t\t\tnot shown by -N or -L; stop pcscd first)")
+    print("\t-C\t\tList all CCID readers (both -f ccid and -r ccid back-ends;")
+    print("\t\t\t-N and -L each show the relevant subset; stop pcscd first)")
     print("\t-d\t\tDebug on")
     print("\t-f <num|conn>\tUse LibNFC device number <num>, or a libnfc connstring such")
     print("\t\t\tas 'pn53x_usb' or 'pn53x_usb:003:087' to open that device")
@@ -105,9 +105,9 @@ def printoptions():
     print("\t-g\t\tNo GUI")
     print("\t-h\t\tPrint detailed help message")
     print("\t-l <line>\tLine to use for reader/writer")
-    print("\t-L\t\tList available PCSC devices")
+    print("\t-L\t\tList available PCSC devices (plus -r ccid CCID readers)")
     print("\t-n\t\tNo Init - do not initialise hardware")
-    print("\t-N\t\tList available LibNFC devices")
+    print("\t-N\t\tList available LibNFC devices (plus -f ccid CCID readers)")
     print("\t-r <num>\tUse PCSC device number <num> (implies -R READER_PCSC)")
     print("\t\t\tUse 'ccid[:<bus>:<dev>]' for a standard CCID reader over raw")
     print("\t\t\tusbdevfs, no pcscd (e.g. an ELATEC TWN4 in PC/SC firmware)")
@@ -267,11 +267,14 @@ try:
             os._exit(True)
         if o == "-N":
             # list libnfc devices without opening one (opening would make
-            # nfc_list_devices' intrusive probe fail with EBUSY)
-            from .pynfc import NFC
+            # nfc_list_devices' intrusive probe fail with EBUSY), then the CCID
+            # readers relevant to the libnfc family (-f ccid, the ACS/PN532 back-end)
+            from .pynfc import NFC, list_ccid_readers
 
             nfc = NFC(nfcreader, listonly=True)
             nfc.listreaders(None)
+            print()
+            list_ccid_readers(which="f")
             sys.stdout.flush()
             os._exit(True)
         if o == "-r":
@@ -285,19 +288,27 @@ try:
         if o == "-l":
             line = a
         if o == "-L":
-            readertype = RFIDIOt.rfidiot.READER_PCSC
-            readernum = 0
-            card = RFIDIOt.rfidiot(
-                readernum,
-                readertype,
-                line,
-                speed,
-                timeout,
-                rfidiotglobals.Debug,
-                noinit,
-                nfcreader,
-            )
-            card.pcsc_listreaders()
+            # list pcscd's PC/SC readers, then the CCID readers relevant to the
+            # PC/SC family (-r ccid, the generic raw-CCID back-end). Enumerate PC/SC
+            # directly (not via a full card, whose constructor sys.exit()s when there
+            # are 0 readers or no daemon) so both cases print cleanly, and so the
+            # -r ccid list - used with pcscd stopped - always follows.
+            from .pynfc import list_ccid_readers
+
+            print("PCSC devices:")
+            try:
+                import smartcard.System
+
+                _readers = smartcard.System.readers()
+                if _readers:
+                    for _n, _r in enumerate(_readers):
+                        print("    No: %d\t\t%s" % (_n, _r))
+                else:
+                    print("    (none)")
+            except Exception as e:
+                print("    (none - %s)" % e)
+            print()
+            list_ccid_readers(which="r")
             sys.stdout.flush()
             os._exit(True)
         if o == "-s":
