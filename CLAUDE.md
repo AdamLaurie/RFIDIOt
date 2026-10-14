@@ -111,6 +111,24 @@ Three layers:
      `UNTRUSTED`/`None`. `mrpkey.py` calls it automatically when `$RFIDIOT_MASTERLIST`
      (or `~/.rfidiot/masterlist.ml`, `/etc/rfidiot/masterlist.ml`) is set, flagging the
      passport SAFE/UNSAFE.
+   - `emulateuid.py` — emulate an ISO 14443-A UID of your choice (4/7/10 bytes) on a
+     libnfc PN53x (e.g. SCL3711), beating the chip's hard-wired `08` first UID byte. The
+     PN53x answers anticollision in hardware (AutoColl) from a 3-byte buffer; once AutoColl
+     has activated the chip (a select plus one more command — the "priming"), it relays raw
+     frames and the host answers REQA/ANTICOL/SELECT itself (as in libnfc's `nfc-emulate-uid`).
+     Emulates the UID (ISO 14443-3) layer only — later commands (RATS, APDUs) are not answered.
+   - `relayuid.py` — [EXPERIMENTAL] full ISO 14443-4 card emulation on a libnfc PN53x with a
+     UID of your choice (or `auto` to clone a real card's UID, or `random` → `08`+random):
+     builds on `emulateuid`'s raw-frame anticollision, then runs the T=CL block protocol on
+     the **host** in raw target mode (answers the RATS with an ATS, handles I-blocks with
+     chaining). Because the host runs T=CL, full Type 4 emulation works on a **PN533**
+     (SCL3711) — the chip-does-T=CL path in `pn532emulate`/`pn532mitm` needs a PN532. APDUs
+     are answered by a responder: a stub, a real card on a local reader (`-c ccid`/`eccid`/
+     libnfc connstring), or — split across machines — a remote `relayuid` agent (`-S <port>`
+     on the card's host, `-c tcp:HOST:PORT` on the emulator's). Verified end-to-end with an
+     ePassport (BAC/DG2) and an EMV card (cert chain), single-host and over a socket. NB a
+     PN533 target can wedge if the emulator is `kill`ed (SIGTERM) instead of Ctrl-C'd — then
+     it needs a replug.
 
 ### Support modules in `rfidiot/`
 - `pace.py` — PACE (ICAO 9303 Part 11) access protocol: ECDH with Generic Mapping,
