@@ -53,12 +53,22 @@ if chelp or len(sys.argv) == 1:
     print("        SLOT <n> UID <HEX> [TYPE <name>]                Emulate an arbitrary UID on slot <n> (1-8)")
     print("        SLOT <n> MFLOAD <FILE>                          Load a MIFARE dump onto slot <n> and emulate it")
     print("        REBOOT                                          Reboot the device (DFU bootloader)")
-    print("     DESFIRE <COMMAND> [<ARGS> ... ]                  NXP DESFire native commands (SELECT the tag first):")
+    print("     DESFIRE <COMMAND> [<ARGS> ... ]                  NXP DESFire native commands (SELECT the tag first;")
+    print("                                                      args are required - chain more DESFIRE commands after):")
     print("        VERSION                                         GetVersion (HW/SW/UID, decoded)")
-    print("        AIDS                                            GetApplicationIDs (list application AIDs)")
+    print("        AIDS                                            GetApplicationIDs")
+    print("        DFNAMES                                         GetDFNames (ISO DF names)")
+    print("        FREEMEM                                         GetFreeMemory")
     print("        SELECT <AID>                                    SelectApplication (AID MSB-first, 000000 = PICC master)")
-    print("        AUTH [<KEYNO>] [<AES-KEY>]                      AuthenticateAES with key <KEYNO> (default 0) and")
-    print("                                                        a 16-byte AES key (default all-zero); reports OK/FAIL")
+    print("        AUTH <KEYNO> <AES-KEY>                          AuthenticateAES, key <KEYNO>; AES-KEY = 32 hex or 0 (all-zero)")
+    print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
+    print("        KEYVERSION <KEYNO>                              GetKeyVersion")
+    print("        FILEIDS                                         GetFileIDs")
+    print("        FILESETTINGS <FILENO>                           GetFileSettings (type, comm, access rights, size)")
+    print("        READ <FILENO> <OFFSET> <LENGTH>                 ReadData (hex; LENGTH 0 = whole file)")
+    print("        GETVALUE <FILENO>                               GetValue (value file)")
+    print("        RECORDS <FILENO> <OFFSET> <NUM>                 ReadRecords (hex; NUM 0 = all)")
+    print("        CMD <INS> <DATA>                                raw native command (INS hex; DATA hex or 0 for none)")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -254,12 +264,10 @@ while args:
             continue
         if dfcommand == "AUTH":
             # AES authenticate (90 AA); default key is all-zero (DESFire factory default)
-            keyno = "00"
-            keyhex = "00" * 16
-            if args:
-                keyno = args.pop().upper()
-            if args:
-                keyhex = args.pop().upper()              # 32 hex chars = 16-byte AES key
+            keyno = args.pop().upper()                   # key number, e.g. 00
+            keyhex = args.pop().upper()                   # 32 hex (16-byte AES key), or 0 for all-zero
+            if keyhex in ("0", "ZERO"):
+                keyhex = "00" * 16
             try:
                 from Crypto.Cipher import AES
                 import os as _os
@@ -285,8 +293,121 @@ while args:
             else:
                 print("    auth failed (as expected unless %s is the real key)" % which)
             continue
+
+        def le3(x):
+            "3-byte little-endian hex from a hex/int string (offsets, lengths, values)"
+            n = int(x, 16)
+            return "%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF)
+
+        def ar_name(n):
+            return {0xE: "free", 0xF: "never"}.get(n, "key %X" % n)
+
+        if dfcommand == "FREEMEM":                 # GetFreeMemory (0x6E)
+            d, sw = df_apdu("6E")
+            if sw == "9100" and len(d) >= 6:
+                print("  Free memory: %d bytes" % int(d[4:6] + d[2:4] + d[0:2], 16))
+            else:
+                print("  GetFreeMemory: " + df_status(sw))
+            continue
+        if dfcommand == "KEYSETTINGS":             # GetKeySettings (0x45)
+            d, sw = df_apdu("45")
+            if sw == "9100" and len(d) >= 4:
+                settings = int(d[0:2], 16); maxk = int(d[2:4], 16)
+                ktype = {0x00: "DES/3DES", 0x40: "3K3DES", 0x80: "AES"}.get(maxk & 0xC0, "?")
+                print("  KeySettings: 0x%02X, %d keys, type %s" % (settings, maxk & 0x0F, ktype))
+                print("    change-key access: %s; config %s; create/delete w/o master-auth %s; dir-list w/o master-auth %s; master changeable %s" % (
+                    ar_name((settings >> 4) & 0x0F),
+                    "frozen" if not settings & 0x08 else "allowed",
+                    "yes" if settings & 0x04 else "no",
+                    "yes" if settings & 0x02 else "no",
+                    "yes" if settings & 0x01 else "no"))
+            else:
+                print("  GetKeySettings: " + df_status(sw))
+            continue
+        if dfcommand == "KEYVERSION":              # GetKeyVersion (0x64) <keyno>
+            keyno = args.pop().upper()
+            d, sw = df_apdu("64", keyno)
+            print("  Key %s version: %s (%s)" % (keyno, d if sw == "9100" else "-", df_status(sw)))
+            continue
+        if dfcommand == "FILEIDS":                 # GetFileIDs (0x6F)
+            d, sw = df_full("6F")
+            if sw != "9100":
+                print("  GetFileIDs: " + df_status(sw)); continue
+            fids = [d[i:i + 2] for i in range(0, len(d), 2)]
+            print("  Files (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
+            continue
+        if dfcommand == "FILESETTINGS":            # GetFileSettings (0xF5) <fileno>
+            fileno = args.pop().upper()
+            d, sw = df_apdu("F5", fileno)
+            if sw != "9100" or len(d) < 8:
+                print("  GetFileSettings file %s: %s" % (fileno, df_status(sw))); continue
+            ftype = {"00": "Standard data", "01": "Backup data", "02": "Value",
+                     "03": "Linear record", "04": "Cyclic record"}.get(d[0:2], "type " + d[0:2])
+            comm = {"00": "plain", "01": "MACed", "03": "enciphered"}.get(d[2:4], d[2:4])
+            ar = int(d[6:8] + d[4:6], 16)          # 2 bytes LSB
+            print("  File %s: %s, comm %s" % (fileno, ftype, comm))
+            print("    access: read=%s write=%s read&write=%s changeAR=%s" % (
+                ar_name((ar >> 12) & 0xF), ar_name((ar >> 8) & 0xF),
+                ar_name((ar >> 4) & 0xF), ar_name(ar & 0xF)))
+            rest = d[8:]
+            if d[0:2] in ("00", "01") and len(rest) >= 6:
+                print("    size: %d bytes" % int(rest[4:6] + rest[2:4] + rest[0:2], 16))
+            continue
+        if dfcommand == "GETVALUE":                # GetValue (0x6C) <fileno>
+            fileno = args.pop().upper()
+            d, sw = df_full("6C", fileno)
+            if sw == "9100" and len(d) >= 8:
+                print("  Value file %s = %d" % (fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16)))
+            else:
+                print("  GetValue file %s: %s" % (fileno, df_status(sw)))
+            continue
+        if dfcommand == "READ":                    # ReadData (0xBD) <fileno> [<offset> <length>]
+            fileno = args.pop().upper()
+            off = args.pop()
+            length = args.pop()        # 0 = whole file
+            d, sw = df_full("BD", fileno + le3(off) + le3(length))
+            print("  ReadData file %s off %s len %s: %s" % (fileno, off, length, df_status(sw)))
+            if d:
+                print("    %s" % d)
+            continue
+        if dfcommand == "RECORDS":                 # ReadRecords (0xBB) <fileno> [<offset> <num>]
+            fileno = args.pop().upper()
+            off = args.pop()
+            num = args.pop()           # 0 = all records
+            d, sw = df_full("BB", fileno + le3(off) + le3(num))
+            print("  ReadRecords file %s off %s num %s: %s" % (fileno, off, num, df_status(sw)))
+            if d:
+                print("    %s" % d)
+            continue
+        if dfcommand == "DFNAMES":                 # GetDFNames (0x6D): one DF per frame
+            entries = []
+            d, sw = df_apdu("6D")
+            while True:
+                if d:
+                    entries.append(d)              # AID(3 LSB) + ISO FID(2) + DF name
+                if sw != "91AF":
+                    break
+                d, sw = df_apdu("AF")
+            print("  GetDFNames: " + df_status(sw))
+            for e in entries:
+                aid = df_rev_aid(e[0:6]) if len(e) >= 6 else "?"
+                fid = e[6:10] if len(e) >= 10 else ""
+                name = e[10:] if len(e) > 10 else ""
+                print("    AID %s  ISO-FID %s  DFname %s" % (aid, fid, name))
+            if not entries:
+                print("    (none)")
+            continue
+        if dfcommand == "CMD":                     # raw native command: CMD <ins> [<data-hex>]
+            ins = args.pop().upper()
+            data = args.pop().upper()                 # hex, or 0/- for none
+            if data in ("0", "-", "NONE"):
+                data = ""
+            d, sw = df_full(ins, data)
+            print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
+            continue
         print("  Unknown DESFIRE command:", dfcommand)
-        print("  Try: VERSION | AIDS | SELECT <aid> | AUTH [<keyno>] [<aes-key-hex>]")
+        print("  commands: VERSION AIDS SELECT AUTH FREEMEM KEYSETTINGS KEYVERSION")
+        print("            FILEIDS FILESETTINGS GETVALUE READ RECORDS DFNAMES CMD")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
