@@ -53,6 +53,12 @@ if chelp or len(sys.argv) == 1:
     print("        SLOT <n> UID <HEX> [TYPE <name>]                Emulate an arbitrary UID on slot <n> (1-8)")
     print("        SLOT <n> MFLOAD <FILE>                          Load a MIFARE dump onto slot <n> and emulate it")
     print("        REBOOT                                          Reboot the device (DFU bootloader)")
+    print("     DESFIRE <COMMAND> [<ARGS> ... ]                  NXP DESFire native commands (SELECT the tag first):")
+    print("        VERSION                                         GetVersion (HW/SW/UID, decoded)")
+    print("        AIDS                                            GetApplicationIDs (list application AIDs)")
+    print("        SELECT <AID>                                    SelectApplication (AID MSB-first, 000000 = PICC master)")
+    print("        AUTH [<KEYNO>] [<AES-KEY>]                      AuthenticateAES with key <KEYNO> (default 0) and")
+    print("                                                        a 16-byte AES key (default all-zero); reports OK/FAIL")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -103,7 +109,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1f")
+card.info("rfidiot-cli v3.1g")
 
 # globals
 Mifare_Key = None
@@ -171,6 +177,116 @@ while args:
         while card.uid == current or card.uid == '':
             card.waitfortag("")
         print()
+        continue
+    if command == "DESFIRE":
+        # NXP MIFARE DESFire native commands, sent over the ISO 7816 wrapping
+        # (CLA 90, native INS, Le 00; chained commands continue with 90 AF). The
+        # DESFire status comes back as SW2 after 0x91 (9100 = OK, 91AF = another
+        # frame follows). Works over any reader that passes APDUs (libnfc, -f ccid,
+        # -r ccid/PC-SC, TWN4, Chameleon). SELECT the tag first.
+        DF_STATUS = {
+            "9100": "OK", "91AF": "ADDITIONAL FRAME", "910C": "NO CHANGES",
+            "910E": "OUT OF MEMORY", "911C": "ILLEGAL COMMAND", "911E": "INTEGRITY ERROR",
+            "9140": "NO SUCH KEY", "917E": "LENGTH ERROR", "919D": "PERMISSION DENIED",
+            "919E": "PARAMETER ERROR", "91A0": "APPLICATION NOT FOUND", "91A1": "APPL INTEGRITY ERROR",
+            "91AE": "AUTHENTICATION ERROR", "91AF": "ADDITIONAL FRAME", "91BE": "BOUNDARY ERROR",
+            "91C1": "CARD INTEGRITY ERROR", "91CA": "COMMAND ABORTED", "91CD": "CARD DISABLED",
+            "91CE": "COUNT ERROR", "91DE": "DUPLICATE", "91EE": "EEPROM ERROR",
+            "91F0": "FILE NOT FOUND", "91F1": "FILE INTEGRITY ERROR",
+        }
+
+        def df_apdu(ins, data=""):
+            "send one DESFire native command; return (data_hex, sw_hex)"
+            if data:
+                card.send_apdu("", "", "", "", "90", ins, "00", "00", "%02X" % (len(data) // 2), data, "00")
+            else:
+                card.send_apdu("", "", "", "", "90", ins, "00", "00", "", "", "00")
+            return card.data.upper(), card.errorcode.upper()
+
+        def df_full(ins, data=""):
+            "send a command and gather all chained (91AF) frames: (all_data, final_sw)"
+            d, sw = df_apdu(ins, data)
+            while sw == "91AF":
+                more, sw = df_apdu("AF")
+                d += more
+            return d, sw
+
+        def df_status(sw):
+            return "%s (%s)" % (sw, DF_STATUS.get(sw, "unknown"))
+
+        def df_rev_aid(aid):
+            "AID is 3 bytes LSB-first on the wire; show/accept it MSB-first (F53630)"
+            return aid[4:6] + aid[2:4] + aid[0:2]
+
+        dfcommand = args.pop().upper()
+        print()
+        if dfcommand == "VERSION":
+            d, sw = df_full("60")       # GetVersion: HW frame, SW frame, UID/production frame
+            if sw != "9100" or len(d) < 42:
+                print("  GetVersion: " + df_status(sw))
+                continue
+            hw, soft, prod = d[0:14], d[14:28], d[28:]
+            print("  GetVersion:")
+            print("    Hardware: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
+                  (hw[0:2], hw[2:4], hw[4:6], hw[6:8], hw[8:10], hw[10:12], hw[12:14]))
+            print("    Software: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
+                  (soft[0:2], soft[2:4], soft[4:6], soft[6:8], soft[8:10], soft[10:12], soft[12:14]))
+            print("    UID %s  batch %s  week/year %s%s" % (prod[0:14], prod[14:24], prod[24:26], prod[26:28]))
+            gen = {"01": "EV1 / D40", "12": "EV2", "33": "EV3"}.get(hw[6:8], "?")
+            print("    -> DESFire %s (HW major 0x%s)" % (gen, hw[6:8]))
+            continue
+        if dfcommand == "AIDS":
+            d, sw = df_full("6A")       # GetApplicationIDs
+            if sw != "9100":
+                print("  GetApplicationIDs: " + df_status(sw))
+                continue
+            aids = [d[i:i + 6] for i in range(0, len(d), 6)]
+            print("  Applications (%d):" % len(aids))
+            for a in aids:
+                print("    AID %s" % df_rev_aid(a))
+            if not aids:
+                print("    (none - PICC level only)")
+            continue
+        if dfcommand == "SELECT":
+            aid = args.pop().upper()                    # MSB-first, e.g. F53630 (000000 = PICC master)
+            d, sw = df_apdu("5A", df_rev_aid(aid))       # send LSB-first
+            print("  SelectApplication %s: %s" % (aid, df_status(sw)))
+            continue
+        if dfcommand == "AUTH":
+            # AES authenticate (90 AA); default key is all-zero (DESFire factory default)
+            keyno = "00"
+            keyhex = "00" * 16
+            if args:
+                keyno = args.pop().upper()
+            if args:
+                keyhex = args.pop().upper()              # 32 hex chars = 16-byte AES key
+            try:
+                from Crypto.Cipher import AES
+                import os as _os
+                key = bytes.fromhex(keyhex)
+                assert len(key) == 16
+            except (ValueError, AssertionError):
+                print("  AUTH: key must be 32 hex chars (16-byte AES key)")
+                continue
+            d, sw = df_apdu("AA", keyno)                  # AuthenticateAES, key <keyno>
+            if sw != "91AF" or len(d) != 32:
+                print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
+                continue
+            ek = bytes.fromhex(d)
+            rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
+            rndb_rot = rndb[1:] + rndb[:1]
+            rnda = _os.urandom(16)
+            token = AES.new(key, AES.MODE_CBC, ek).encrypt(rnda + rndb_rot)
+            d, sw = df_apdu("AF", token.hex().upper())
+            which = "all-zero key" if keyhex == "00" * 16 else "key " + keyhex
+            print("  AuthenticateAES key %s with %s: %s" % (keyno, which, df_status(sw)))
+            if sw == "9100":
+                print("    *** AUTH OK - the key is %s ***" % keyhex)
+            else:
+                print("    auth failed (as expected unless %s is the real key)" % which)
+            continue
+        print("  Unknown DESFIRE command:", dfcommand)
+        print("  Try: VERSION | AIDS | SELECT <aid> | AUTH [<keyno>] [<aes-key-hex>]")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
