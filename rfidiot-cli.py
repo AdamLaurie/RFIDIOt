@@ -60,7 +60,8 @@ if chelp or len(sys.argv) == 1:
     print("        DFNAMES                                         GetDFNames (ISO DF names)")
     print("        FREEMEM                                         GetFreeMemory")
     print("        SELECT <AID>                                    SelectApplication (AID MSB-first, 000000 = PICC master)")
-    print("        AUTH <KEYNO> <AES-KEY>                          AuthenticateAES, key <KEYNO>; AES-KEY = 32 hex or 0 (all-zero)")
+    print("        AUTH <KEYNO> <AES-KEY> [<IV>]                   AuthenticateAES, key <KEYNO>; AES-KEY = 32 hex or 0 (all-zero);")
+    print("                                                        optional IV = AUTO (default, ek(RndB)) | ZERO | 32 hex")
     print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
     print("        KEYVERSION <KEYNO>                              GetKeyVersion")
     print("        FILEIDS                                         GetFileIDs")
@@ -268,13 +269,24 @@ while args:
             keyhex = args.pop().upper()                   # 32 hex (16-byte AES key), or 0 for all-zero
             if keyhex in ("0", "ZERO"):
                 keyhex = "00" * 16
+            # optional response-encryption IV. Chain-safe peek: only consume a token
+            # that looks like an IV (AUTO/ZERO or 32 hex), so a following DESFIRE
+            # command isn't eaten. The challenge is always decrypted with IV 0; this
+            # sets the IV for encrypting RndA||RndB'. AUTO (default) = the standard
+            # DESFire chain (IV = the card's ek(RndB)); ZERO = all-zero IV; else a
+            # 32-hex IV to override - for testing non-standard behaviour.
+            def _ishex(t):
+                return all(c in "0123456789abcdefABCDEF" for c in t)
+            ivmode = "AUTO"
+            if args and (args[-1].upper() in ("AUTO", "ZERO") or (len(args[-1]) == 32 and _ishex(args[-1]))):
+                ivmode = args.pop().upper()
             try:
                 from Crypto.Cipher import AES
                 import os as _os
                 key = bytes.fromhex(keyhex)
                 assert len(key) == 16
             except (ValueError, AssertionError):
-                print("  AUTH: key must be 32 hex chars (16-byte AES key)")
+                print("  AUTH: key must be 32 hex chars (16-byte AES key) or 0")
                 continue
             d, sw = df_apdu("AA", keyno)                  # AuthenticateAES, key <keyno>
             if sw != "91AF" or len(d) != 32:
@@ -284,10 +296,12 @@ while args:
             rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
             rndb_rot = rndb[1:] + rndb[:1]
             rnda = _os.urandom(16)
-            token = AES.new(key, AES.MODE_CBC, ek).encrypt(rnda + rndb_rot)
+            enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
+            token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
             d, sw = df_apdu("AF", token.hex().upper())
             which = "all-zero key" if keyhex == "00" * 16 else "key " + keyhex
-            print("  AuthenticateAES key %s with %s: %s" % (keyno, which, df_status(sw)))
+            ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
+            print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
             if sw == "9100":
                 print("    *** AUTH OK - the key is %s ***" % keyhex)
             else:

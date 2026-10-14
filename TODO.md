@@ -3,13 +3,33 @@
 Carried over from the 2026-09-14 session (also recorded in Claude memory).
 Everything else from that session is done and pushed to `origin/python3`.
 
-## 1. Import personal DESFire script
-- RFIDIOt has **no** DESFire tool of its own (only a SAK `20` -> "MIFARE DESFIRE"
-  label at `rfidiot/RFIDIOt.py:849`). `libfreefare`'s `mifare-desfire-info` is the
-  interim stand-in.
-- Import Adam's personal DESFire script into the repo/toolset.
-- Known-good test card: genuine **MIFARE DESFire EV1 4K**, UID `044E32AA571290`
-  (free directory listing without auth; app `003806` has a free-read file).
+## 1. DESFire support in rfidiot-cli (branch `desfire`)
+`rfidiot-cli` now has a **DESFIRE** command group (native commands over the ISO 7816
+wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
+- **[DONE, hw-verified on the test card]** VERSION, AIDS, DFNAMES, FREEMEM, SELECT,
+  KEYSETTINGS, KEYVERSION, FILEIDS, FILESETTINGS (decoded), GETVALUE, READ, RECORDS,
+  and a generic CMD `<ins> <data>` escape.
+- **AUTH (AES, 0xAA)** done with an optional response-encryption IV (AUTO = ek(RndB),
+  ZERO, or a 32-hex override). **The AES auth crypto/IV is UNVERIFIED**: tested only
+  with the wrong (all-zero) key, which returns 91AE regardless of IV correctness - a
+  *successful* auth (9100) on a known-key or factory-blank card is the only real check.
+Remaining (needs cards we can't test now - get factory **blanks** + known keys):
+- **Legacy auth (0x0A, DES/2K3DES)** - the "encrypt-by-decrypting" inverted CBC; and
+  **ISO auth (0x1A, 2K3DES/3K3DES)** - standard DES3 CBC. NB pycryptodome's DES/DES3
+  reject weak/all-zero keys, so a factory-default (all-zero DES) key needs a DES impl
+  that permits weak keys.
+- **Authenticated session**: after a successful auth, derive the session key and do
+  CMAC / enciphered (CRC + pad) communication. Needed to read auth-protected files and
+  for **every modifying command**.
+- **Modifying commands** (then usable): CreateApplication/DeleteApplication, the
+  Create*File / DeleteFile set, WriteData/WriteRecord, GetValue/Credit/Debit/
+  LimitedCredit, Commit/AbortTransaction, ChangeKey/ChangeKeySettings/ChangeFileSettings,
+  SetConfiguration, FormatPICC. (CMD can send the raw APDU for any of these today, but
+  they need the session crypto above to succeed.)
+- Test card on hand: UID `044E32AA571290`, HW GetVersion major `0x12`, 4K, **AES** master
+  key (v `2F`), one app `F53630` that requires auth for file/key ops (free directory
+  listing only). (Adam's earlier note mentioned a free-read file in app `003806` - not
+  present on this card now; re-check whether it was reconfigured.)
 
 ## 2. Finish the Py3 typing sweep (untested tools)
 True-division `/` -> `//` (float used as index / length / APDU-Lc):
