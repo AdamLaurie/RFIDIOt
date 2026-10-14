@@ -10,17 +10,29 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   KEYSETTINGS, KEYVERSION, FILEIDS, FILESETTINGS (decoded), GETVALUE, READ, RECORDS,
   and a generic CMD `<ins> <data>` escape.
 - **AUTH (AES, 0xAA)** done with an optional response-encryption IV (AUTO = ek(RndB),
-  ZERO, or a 32-hex override). **The AES auth crypto/IV is UNVERIFIED**: tested only
-  with the wrong (all-zero) key, which returns 91AE regardless of IV correctness - a
-  *successful* auth (9100) on a known-key or factory-blank card is the only real check.
+  ZERO, or a 32-hex override). On a successful auth (9100) it now **verifies the card's
+  returned RndA'**, derives the **AES session key** (RndA[0:4]+RndB[0:4]+RndA[12:16]+
+  RndB[12:16]) and stores a run-level session (see below). **Still UNVERIFIED end-to-end
+  on hardware**: our test card's master key is not all-zero (91AE), so the 9100 path
+  has never actually run - needs a known-key or factory-blank card. The crypto *pieces*
+  are unit-tested though (AES-CMAC vs RFC 4493 vectors; session-key derivation shape).
+- **[DONE] run-level session carry**: `DESFire_Session` at module scope (next to
+  `Mifare_Key`) holds the session key, type, auth'd key number, selected AID, running
+  IV and command counter. SELECT (app change) and a new/failed AUTH reset it;
+  `DESFIRE SESSION` prints it. Verified on hardware that state set by SELECT/AUTH is
+  read back by a later command in the same run.
+- **[DONE] AES-CMAC primitive** (`aes_cmac`, RFC 4493 / SP 800-38B) - unit-tested
+  against all four RFC 4493 vectors. Not yet wired into command comms (next item).
 Remaining (needs cards we can't test now - get factory **blanks** + known keys):
+- **Wire the session into comms**: use the session key + CMAC (and enciphered CRC+pad
+  mode) to MAC/decrypt command+response, advancing the stored IV/command counter per
+  command. Needed to read auth-protected files and for **every modifying command**.
+  The state container and the CMAC primitive are in place; this is the per-command
+  wrapping (EV1-style for 0xAA; EV2 AuthenticateEV2First/0x71 is a separate later step).
 - **Legacy auth (0x0A, DES/2K3DES)** - the "encrypt-by-decrypting" inverted CBC; and
   **ISO auth (0x1A, 2K3DES/3K3DES)** - standard DES3 CBC. NB pycryptodome's DES/DES3
   reject weak/all-zero keys, so a factory-default (all-zero DES) key needs a DES impl
   that permits weak keys.
-- **Authenticated session**: after a successful auth, derive the session key and do
-  CMAC / enciphered (CRC + pad) communication. Needed to read auth-protected files and
-  for **every modifying command**.
 - **Modifying commands** (then usable): CreateApplication/DeleteApplication, the
   Create*File / DeleteFile set, WriteData/WriteRecord, GetValue/Credit/Debit/
   LimitedCredit, Commit/AbortTransaction, ChangeKey/ChangeKeySettings/ChangeFileSettings,

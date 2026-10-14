@@ -38,6 +38,48 @@ import rfidiot
 args = rfidiot.args
 chelp = rfidiot.help
 
+
+def _xor(a, b):
+    "byte-wise XOR of two equal-length byte strings"
+    return bytes(x ^ y for x, y in zip(a, b))
+
+
+def rotate_left(b, n=1):
+    "rotate a byte string left by n bytes (DESFire token rotation)"
+    return b[n:] + b[:n]
+
+
+def aes_cmac(key, msg):
+    "AES-CMAC (RFC 4493 / NIST SP 800-38B); returns the full 16-byte tag"
+    from Crypto.Cipher import AES
+    bs = 16
+    ecb = AES.new(key, AES.MODE_ECB)
+
+    def dbl(b):                       # GF(2^128) doubling (left shift, reduce by 0x87)
+        n = (int.from_bytes(b, "big") << 1) & ((1 << (bs * 8)) - 1)
+        if b[0] & 0x80:
+            n ^= 0x87
+        return n.to_bytes(bs, "big")
+
+    k1 = dbl(ecb.encrypt(bytes(bs)))
+    k2 = dbl(k1)
+    if len(msg) and len(msg) % bs == 0:            # complete final block
+        last = _xor(msg[-bs:], k1)
+        head = msg[:-bs]
+    else:                                          # pad 0x80 00.. and use K2
+        padded = msg + b"\x80" + bytes(bs - 1 - (len(msg) % bs))
+        last = _xor(padded[-bs:], k2)
+        head = padded[:-bs]
+    x = bytes(bs)
+    for i in range(0, len(head), bs):
+        x = ecb.encrypt(_xor(x, head[i:i + bs]))
+    return ecb.encrypt(_xor(x, last))
+
+
+def desfire_aes_session_key(rnda, rndb):
+    "DESFire AES session key from the two 16-byte nonces (halves of each)"
+    return rnda[0:4] + rndb[0:4] + rnda[12:16] + rndb[12:16]
+
 if chelp or len(sys.argv) == 1:
     print()
     print("Usage: %s [OPTIONS] <COMMAND> [ARG(s)] ... [<COMMAND> [ARG(s)] ... ]" % sys.argv[0])
@@ -70,6 +112,7 @@ if chelp or len(sys.argv) == 1:
     print("        GETVALUE <FILENO>                               GetValue (value file)")
     print("        RECORDS <FILENO> <OFFSET> <NUM>                 ReadRecords (hex; NUM 0 = all)")
     print("        CMD <INS> <DATA>                                raw native command (INS hex; DATA hex or 0 for none)")
+    print("        SESSION                                         show the authenticated-session state carried over this run")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -127,6 +170,34 @@ Mifare_Key = None
 Mifare_KeyType = None
 Mifare_KeyA = None
 Mifare_KeyB = None
+
+# DESFire authenticated-session state. The card stays authenticated for the rest
+# of the run (one open connection / RF session - the same reason chained 91AF
+# commands work), so OUR derived session key, IV and command counter must persist
+# across main-loop iterations too. They live here at module scope, not in the
+# per-command DESFIRE block (which re-runs every iteration). SELECT (changing
+# application) and a failed/first AUTH reset them.
+DESFire_Session = {
+    "key": None,        # session key (bytes) - None until a successful AUTH
+    "type": None,       # "AES" (legacy/ISO DES still TODO)
+    "keyno": None,      # authenticated key number (hex str)
+    "aid": "000000",    # currently selected AID (MSB-first); 000000 = PICC master
+    "iv": None,         # running CBC IV for enciphered comms (bytes)
+    "cmdctr": 0,        # command counter (EV2 secure messaging)
+    "authed": False,
+}
+
+
+def desfire_reset_session(aid=None):
+    "drop any authenticated session (new AUTH, failed AUTH, or app change)"
+    DESFire_Session["key"] = None
+    DESFire_Session["type"] = None
+    DESFire_Session["keyno"] = None
+    DESFire_Session["iv"] = None
+    DESFire_Session["cmdctr"] = 0
+    DESFire_Session["authed"] = False
+    if aid is not None:
+        DESFire_Session["aid"] = aid
 
 # main loop
 args.reverse()
@@ -262,10 +333,13 @@ while args:
             aid = args.pop().upper()                    # MSB-first, e.g. F53630 (000000 = PICC master)
             d, sw = df_apdu("5A", df_rev_aid(aid))       # send LSB-first
             print("  SelectApplication %s: %s" % (aid, df_status(sw)))
+            # selecting an application always drops any authenticated session
+            if sw == "9100":
+                desfire_reset_session(aid)
             continue
         if dfcommand == "AUTH":
             # AES authenticate (90 AA); default key is all-zero (DESFire factory default)
-            keyno = args.pop().upper()                   # key number, e.g. 00
+            keyno = args.pop().upper().zfill(2)          # key number, e.g. 00 (accept 0)
             keyhex = args.pop().upper()                   # 32 hex (16-byte AES key), or 0 for all-zero
             if keyhex in ("0", "ZERO"):
                 keyhex = "00" * 16
@@ -288,13 +362,15 @@ while args:
             except (ValueError, AssertionError):
                 print("  AUTH: key must be 32 hex chars (16-byte AES key) or 0")
                 continue
+            # a new authentication attempt invalidates any prior session
+            desfire_reset_session()
             d, sw = df_apdu("AA", keyno)                  # AuthenticateAES, key <keyno>
             if sw != "91AF" or len(d) != 32:
                 print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
                 continue
             ek = bytes.fromhex(d)
             rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
-            rndb_rot = rndb[1:] + rndb[:1]
+            rndb_rot = rotate_left(rndb)
             rnda = _os.urandom(16)
             enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
             token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
@@ -302,8 +378,21 @@ while args:
             which = "all-zero key" if keyhex == "00" * 16 else "key " + keyhex
             ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
             print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
-            if sw == "9100":
-                print("    *** AUTH OK - the key is %s ***" % keyhex)
+            if sw == "9100" and len(d) == 32:
+                # card returns ek(RndA'), rotated RndA, CBC-chained from our token
+                rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
+                if rnda_back == rotate_left(rnda):
+                    sesskey = desfire_aes_session_key(rnda, rndb)
+                    DESFire_Session.update(
+                        key=sesskey, type="AES", keyno=keyno,
+                        iv=bytes(16), cmdctr=0, authed=True,
+                    )
+                    print("    *** AUTH OK - the key is %s ***" % keyhex)
+                    print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
+                else:
+                    # card accepted us but its RndA' did not verify: key/IV maths off
+                    print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
+                    print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
             else:
                 print("    auth failed (as expected unless %s is the real key)" % which)
             continue
@@ -339,7 +428,7 @@ while args:
                 print("  GetKeySettings: " + df_status(sw))
             continue
         if dfcommand == "KEYVERSION":              # GetKeyVersion (0x64) <keyno>
-            keyno = args.pop().upper()
+            keyno = args.pop().upper().zfill(2)
             d, sw = df_apdu("64", keyno)
             print("  Key %s version: %s (%s)" % (keyno, d if sw == "9100" else "-", df_status(sw)))
             continue
@@ -419,9 +508,22 @@ while args:
             d, sw = df_full(ins, data)
             print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
             continue
+        if dfcommand == "SESSION":                 # show the carried-over session state
+            s = DESFire_Session
+            print("  DESFire session state (this run):")
+            print("    selected AID : %s" % s["aid"])
+            if s["authed"]:
+                print("    authenticated: yes (%s key %s)" % (s["type"], s["keyno"]))
+                print("    session key  : %s" % s["key"].hex().upper())
+                print("    cmd counter  : %d" % s["cmdctr"])
+                print("    IV           : %s" % s["iv"].hex().upper())
+            else:
+                print("    authenticated: no")
+            continue
         print("  Unknown DESFIRE command:", dfcommand)
-        print("  commands: VERSION AIDS SELECT AUTH FREEMEM KEYSETTINGS KEYVERSION")
-        print("            FILEIDS FILESETTINGS GETVALUE READ RECORDS DFNAMES CMD")
+        print("  commands: VERSION AIDS SELECT AUTH SESSION FREEMEM KEYSETTINGS")
+        print("            KEYVERSION FILEIDS FILESETTINGS GETVALUE READ RECORDS")
+        print("            DFNAMES CMD")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
