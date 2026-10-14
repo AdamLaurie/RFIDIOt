@@ -27,6 +27,7 @@ scripts = [
     "multiselect.py",
     "pn532emulate.py",
     "emulateuid.py",
+    "relayuid.py",
     "pn532mitm.py",
     "q5reset.py",
     "readlfx.py",
