@@ -204,7 +204,8 @@ if chelp or len(args) < 1:
     print("\t  direct CCID (-f ccid), can be the local EMULATOR, but ONLY over the socket")
     print("\t  (reader:HOST:PORT) - run the READER as a second process (or on another")
     print("\t  host). It emulates an ISO 14443-4 (Type 4 / APDU) target; the SCL3711")
-    print("\t  (PN533) cannot be a Type 4 target and is refused. An -f ccid emulator")
+    print("\t  (PN533) can't be a Type 4 target THIS way (the chip runs T=CL) and is")
+    print("\t  refused - use relayuid.py for a PN533, which runs T=CL on the host. An -f ccid emulator")
     print("\t  can't be interrupted while it waits: after Ctrl-C it waits for the victim")
     print("\t  reader to send one more command (a hard kill means replugging it).")
     print()
@@ -442,9 +443,9 @@ if not remote or remote_type == "READER":
                 connection.close()
             sys.exit(True)
         if first[:2] == "E0":
-            print("Reader handed up the RATS (%s): this chip can't do ISO "
-                  "14443-4 target mode (PN533/SCL3711). Use an ACR122U or "
-                  "PN532 as the emulator." % first)
+            print("Reader handed up the RATS (%s): this chip won't run T=CL in "
+                  "easy-framing target mode (PN533/SCL3711). Use an ACR122U/PN532 "
+                  "as the emulator here, or relayuid.py (host-side T=CL) for a PN533." % first)
             if remote:
                 connection.close()
             sys.exit(True)

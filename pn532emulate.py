@@ -110,8 +110,9 @@ if chelp or len(args) < 6:
     print("        we answer with the ATS (Historical Bytes) then reply 9000 to each APDU.")
     print("      SAK without bit 0x20 (e.g. 00) -> ISO 14443-3 (Type 2): we serve READ")
     print("        commands from a small memory image (Mifare Ultralight-style).")
-    print("      (PN533-based readers such as the SCL3711 can activate as a target but")
-    print("       cannot meet ISO 14443-4 activation timing; use an ACR122U or PN532.)")
+    print("      (A PN533 reader, e.g. the SCL3711, can't run T=CL in hardware for Type 4")
+    print("       here - use an ACR122U/PN532; or relayuid.py, which runs T=CL on the host")
+    print("       and so does full Type 4 emulation on a PN533 too.)")
     print()
     sys.exit(True)
 
@@ -165,15 +166,16 @@ def _emulate_tcl_libnfc(card, first):
 
     `first` is whatever nfc_target_init returned: normally empty (the chip has
     just answered the RATS) or already the first APDU. If it is a RATS ('E0 ..')
-    the chip did NOT handle T=CL itself - that is the PN533/SCL3711 case, which
-    cannot do ISO 14443-4 target mode (target receive returns NFC_ENOTIMPL);
-    report it rather than limp along.
+    the chip did NOT handle T=CL itself in this easy-framing mode - the PN533/
+    SCL3711 case (target receive returns NFC_ENOTIMPL). Report it rather than
+    limp along; relayuid.py does Type 4 on a PN533 by running T=CL on the host.
     """
     if first[:2] == "E0":
         print("Reader handed up the RATS (%s) instead of answering it in "
-              "hardware: this chip does not implement ISO 14443-4 target mode. "
-              "Seen on PN533-based readers (e.g. the SCL3711); use an ACR122U "
-              "or a PN532 for Type 4 (APDU) emulation." % first)
+              "hardware: this chip won't run T=CL itself in easy-framing target "
+              "mode (the PN533/SCL3711 case). Use an ACR122U/PN532 here, or "
+              "relayuid.py, which runs T=CL on the host and emulates Type 4 on a "
+              "PN533 too." % first)
         sys.exit(True)
     status, data = (True, first) if first else card.nfc.targetReceive(0)
 
@@ -194,7 +196,8 @@ def _emulate_tcl_libnfc(card, first):
     # receive returned an error (initiator left the field, or ENOTIMPL)
     if data == -8:
         print("Target receive not supported (libnfc NFC_ENOTIMPL): this reader "
-              "cannot do ISO 14443-4 target mode. Use an ACR122U or a PN532.")
+              "won't run T=CL in easy-framing target mode. Use an ACR122U/PN532, "
+              "or relayuid.py (host-side T=CL, works on a PN533).")
     else:
         print("Target receive ended (libnfc rc %s)" % data)
     sys.exit(False)

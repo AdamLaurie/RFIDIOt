@@ -590,9 +590,13 @@ Proven matrix (hardware-verified):
 - Type 2 emulation works on **both** the SCL3711 (PN533) and the tikitag (read back as
   a MIFARE Ultralight).
 - Type 4 emulation works on the **tikitag/ACR122U** (`<< 00A4000C023F0000  >> 9000`).
-- Type 4 does **not** work on the SCL3711: the PN533 hands RATS up to software, which
-  can't meet the RATS->ATS timing, so a Type 4 target is refused on it with a clear
-  message. (The ACR122U/PN532 answers RATS in hardware.)
+- Type 4 does **not** work on the SCL3711 *via pn532emulate/pn532mitm*: in libnfc
+  easy-framing target mode the chip is expected to run T=CL itself, and the PN533 can't,
+  so it hands the RATS up (NFC_ENOTIMPL) and a Type 4 target is refused with a clear
+  message. (The ACR122U/PN532 runs T=CL in hardware.) This is NOT a chip limit on Type 4
+  emulation as such: `relayuid.py` (section 17a) runs T=CL on the host in *raw* target
+  mode and does full ISO 14443-4 emulation on the SCL3711/PN533 - the earlier "can't
+  meet RATS timing" wording was wrong; it's only the chip-does-T=CL path that fails.
 - `pn532mitm` relay end-to-end: tikitag as the libnfc EMULATOR + the existing PC/SC
   reader side, a full ePassport read (`mrpkey.py`) relayed cleanly.
 

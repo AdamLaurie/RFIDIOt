@@ -57,7 +57,7 @@ on hardware in these sessions.
 
 | Reader | Launch | Back-end | Verified / notes |
 | --- | --- | --- | --- |
-| **SCL3711** (`04e6:5591`) | `-f 0` / `-f pn53x_usb[:bus:dev]` | libnfc | primary dev reader; raw frames, MIFARE, UID emulation (`emulateuid`) |
+| **SCL3711** (`04e6:5591`) | `-f 0` / `-f pn53x_usb[:bus:dev]` | libnfc | primary dev reader; raw frames, MIFARE, UID emulation (`emulateuid`) and full ISO 14443-4 emulation/relay with a chosen UID (`relayuid`, host-side T=CL - so Type 4 works on a PN533) |
 | | `-r <n>` | PC/SC, subtype SCM | needs SCM/Identiv's driver (libccid doesn't list `04e6:5591`); not verified |
 | **ACR122U / Touchatag (tikitag)** | `-f 0` / `-f acr122_usb[:bus:dev]` | libnfc | EMV + ePassport + MIFARE verified |
 | | `-r <n>` | PC/SC, subtype ACS | libccid "ACR122U PICC Interface" (`072f:2200`); used by `pn532emulate` / `pn532mitm` |
@@ -245,7 +245,7 @@ hardware-verified.
 | MIFARE Ultralight read | yes | yes | yes | yes | no | ACG yes | no |
 | 125 kHz LF (EM4x02, Hitag 2, Q5, FDX-B) | no | no | no | no | no (not implemented yet) | yes | no |
 | HID Prox / iCLASS | no | no | OMNIKEY only | no | no (not implemented yet) | no | no |
-| Card emulation | PN53x target mode | PN532 target mode | ACS (ACR122U) only | its own slots | no | no | no |
+| Card emulation | PN53x target mode (incl. full Type 4 via `relayuid` host-side T=CL) | PN532 target mode | ACS (ACR122U) only | its own slots | no | no | no |
 
 ### Tools by what they need
 
@@ -260,8 +260,10 @@ hardware-verified.
 | | `froschtest.py` | Frosch only |
 | | `eeprom.py` | ACG only |
 | HID Prox | `hidprox.py` | OMNIKEY (PC/SC) only |
-| card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`). Type 4 (ISO 14443-4) emulation needs a PN532 (ACR122U): a PN533 such as the SCL3711 can't meet the activation timing. Also works over `-f ccid` (ACR122U-WB-R), which can't be interrupted while it waits: a tool that stops early waits for any reader to be presented to it, and a hard kill leaves it needing a replug |
-| | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc / `-f ccid` ACR122U when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC, unless the emulator is remote (`emulator:HOST:PORT`) - then any reader that sends APDUs, Type A or B card. Verified: TWN4 reading a Type B ePassport, ACR122U-WB-R (`-f ccid`) emulating, SCL3711 as the victim |
+| card emulation | `pn532emulate.py` | libnfc PN53x, or an ACR122U over PC/SC (`-r`) or `-f ccid`. Its **Type 4** path lets the chip run T=CL, so it needs a **PN532** (ACR122U): a **PN533** (SCL3711) hands the RATS up and is refused here — use `relayuid.py` for Type 4 on a PN533. Type 2 works on either. Over `-f ccid` it can't be interrupted mid-wait (a tool that stops early waits for any reader to be presented; a hard kill needs a replug) |
+| | `emulateuid.py` | **libnfc PN53x only** (SCL3711): emulate any 4/7/10-byte UID at the ISO 14443-3 layer (beats the chip's hard-wired `08`), via AutoColl priming. UID layer only — no APDUs |
+| | `relayuid.py` | **libnfc PN53x** emulator (SCL3711) presenting a chosen/cloned UID **and** full ISO 14443-4, with the host running T=CL in raw target mode (so Type 4 works on a PN533). Relays APDUs to a real card on a local reader (`-c ccid`/`eccid`/libnfc) or a remote agent (`-c tcp:HOST:PORT` + `relayuid -S`). Verified: passport (BAC/DG2) and EMV (cert chain), single-host and over a socket |
+| | `pn532mitm.py` | the emulator side must be an ACR122U over PC/SC, or a libnfc / `-f ccid` ACR122U when it talks to the reader side over a socket (`reader:HOST:PORT`); the reader side must be ACS PC/SC, unless the emulator is remote (`emulator:HOST:PORT`) - then any reader that sends APDUs, Type A or B card. Emulator presents the fixed `08` UID (chip runs T=CL); for a chosen/cloned UID over a socket use `relayuid`. Verified: TWN4 reading a Type B ePassport, ACR122U-WB-R (`-f ccid`) emulating, SCL3711 as the victim |
 | | `chameleon.py`, `rfidiot-cli.py` (CHAMELEON) | Chameleon Ultra only (`-R READER_CHAMELEON`) |
 | other | `demotag.py` (IAIK DemoTag, vestigial), `nfcid.py` (Android only) | as named |
 | no reader | `passiveauth.py`, `sod.py`, `mifarekeys.py`, `AID_lookup.py`, `AID-get-data.py`, the generate/decode side of `unique.py`, `fdxbnum.py`, `transit.py` | none |
