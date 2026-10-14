@@ -19,6 +19,7 @@ the commands below work with `rfidiot-cli.py`, `ChAP.py`, `mrpkey.py`,
 | `-l <port>` | serial port for the serial readers, e.g. `/dev/ttyUSB0` |
 | `-N` | list libnfc devices and exit (does not open one) |
 | `-L` | list PC/SC readers and exit |
+| `-C` | list CCID-class readers (the `-f ccid` / `-r ccid` back-ends, which `-N`/`-L` don't show) and exit |
 
 Reader-type constants (`rfidiot/RFIDIOt.py`): `READER_ACG` 0x01, `READER_FROSCH`
 0x02, `READER_DEMOTAG` 0x03, `READER_PCSC` 0x04, `READER_OMNIKEY` 0x05,

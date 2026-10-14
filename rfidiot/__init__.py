@@ -93,6 +93,8 @@ nfcreader = None
 
 def printoptions():
     print("\nRFIDIOt Options:\n")
+    print("\t-C\t\tList available CCID readers (the -f ccid / -r ccid back-ends,")
+    print("\t\t\tnot shown by -N or -L; stop pcscd first)")
     print("\t-d\t\tDebug on")
     print("\t-f <num|conn>\tUse LibNFC device number <num>, or a libnfc connstring such")
     print("\t\t\tas 'pn53x_usb' or 'pn53x_usb:003:087' to open that device")
@@ -102,15 +104,18 @@ def printoptions():
     print("\t\t\t(implies -R READER_LIBNFC)")
     print("\t-g\t\tNo GUI")
     print("\t-h\t\tPrint detailed help message")
+    print("\t-l <line>\tLine to use for reader/writer")
+    print("\t-L\t\tList available PCSC devices")
     print("\t-n\t\tNo Init - do not initialise hardware")
     print("\t-N\t\tList available LibNFC devices")
     print("\t-r <num>\tUse PCSC device number <num> (implies -R READER_PCSC)")
+    print("\t\t\tUse 'ccid[:<bus>:<dev>]' for a standard CCID reader over raw")
+    print("\t\t\tusbdevfs, no pcscd (e.g. an ELATEC TWN4 in PC/SC firmware)")
     print("\t-R <type>\tReader/writer type:")
     print("\t\t\t\tREADER_ACG:\tACG Serial")
     print("\t\t\t\tREADER_ACS:\tPC/SC Subtype ACS")
     print("\t\t\t\tREADER_ANDROID:\tAndroid")
     print("\t\t\t\tREADER_CHAMELEON:\tChameleon Ultra (serial, ISO 14443-A reader)")
-    print("\t\t\t\tREADER_TWN4:\tELATEC TWN4 (Simple Protocol, ISO 14443-A/B reader)")
     print("\t\t\t\tREADER_DEMOTAG:\tDemoTag")
     print("\t\t\t\tREADER_FROSCH:\tFrosch Hitag")
     print("\t\t\t\tREADER_LIBNFC:\tlibnfc")
@@ -118,8 +123,7 @@ def printoptions():
     print("\t\t\t\tREADER_OMNIKEY:\tPC/SC Subtype OmniKey")
     print("\t\t\t\tREADER_PCSC:\tPC/SC")
     print("\t\t\t\tREADER_SCM:\tPC/SC Subtype SCM")
-    print("\t-l <line>\tLine to use for reader/writer")
-    print("\t-L\t\tList available PCSC devices")
+    print("\t\t\t\tREADER_TWN4:\tELATEC TWN4 (Simple Protocol, ISO 14443-A/B reader)")
     print("\t-s <baud>\tSpeed of reader/writer")
     print("\t-t <seconds>\tTimeout for inactivity of reader/writer")
     print()
@@ -167,7 +171,7 @@ if len(extraopts) > 0:
 # than abort on them we parse only the options below and hand everything else
 # (unknown options and positional arguments) back to the script in 'args'. This
 # lets a tool do a plain 'import rfidiot' and then getopt rfidiot.args itself.
-_GLOBAL_OPTS = "df:ghjnNr:R:l:Ls:t:"
+_GLOBAL_OPTS = "Cdf:ghjl:LnNr:R:s:t:"
 
 
 def _partition_opts(tokens, optstring):
@@ -253,6 +257,14 @@ try:
             readertype = RFIDIOt.rfidiot.READER_NONE
         if o == "-n":
             noinit = True
+        if o == "-C":
+            # list CCID-class USB readers (the -f ccid / -r ccid back-ends, which
+            # libnfc's -N and pcscd's -L don't surface); read straight from sysfs
+            from .pynfc import list_ccid_readers
+
+            list_ccid_readers()
+            sys.stdout.flush()
+            os._exit(True)
         if o == "-N":
             # list libnfc devices without opening one (opening would make
             # nfc_list_devices' intrusive probe fail with EBUSY)

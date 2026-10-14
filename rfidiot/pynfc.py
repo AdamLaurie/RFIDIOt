@@ -1667,6 +1667,39 @@ class CCIDDev():
         self.deconfigure()
 
 
+def list_ccid_readers():
+    """Enumerate USB CCID-class readers from sysfs and print the connstring for
+    each - the direct-CCID (-f ccid, ACS/PN532) and raw-CCID (-r ccid, generic)
+    back-ends don't appear in libnfc's -N or pcscd's -L. ACS readers (072f:*) take
+    -f ccid (PN532, needed for the WB-R and emulation); any other CCID reader takes
+    -r ccid. Stop pcscd first either way (it competes for the interface)."""
+    found = 0
+    for d in sorted(_glob.glob("/sys/bus/usb/devices/*")):
+        if CCIDDev._ccid_endpoints(d) is None:   # not a CCID reader with bulk eps
+            continue
+        try:
+            vid = open(d + "/idVendor").read().strip()
+            pid = open(d + "/idProduct").read().strip()
+            bus = int(open(d + "/busnum").read().strip())
+            dev = int(open(d + "/devnum").read().strip())
+        except (OSError, ValueError):
+            continue
+        try:
+            name = open(d + "/product").read().strip()
+        except OSError:
+            name = ""
+        if vid.lower() == "072f":                # ACS -> direct-CCID PN532 backend
+            route = "-f ccid:%d:%d   (ACS/PN532; or -r ccid:%d:%d)" % (bus, dev, bus, dev)
+        else:
+            route = "-r ccid:%d:%d" % (bus, dev)
+        if found == 0:
+            print("CCID readers (not shown by -N/-L; stop pcscd first):")
+        print("  %s:%s  bus %d dev %d  %-30s %s" % (vid, pid, bus, dev, name, route))
+        found += 1
+    if found == 0:
+        print("No CCID-class USB readers found.")
+
+
 class _SimpleTargetA():
     "ISO14443A-compatible view of a PN532 InListPassiveTarget result"
     def __init__(self, uid, ats, sens, sel):
