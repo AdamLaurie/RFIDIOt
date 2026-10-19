@@ -886,3 +886,25 @@ back - so a reader sees our UID and talks to the real card. This is the thing a 
   easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
   UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
   of scope (Crypto1 not available in target mode).
+
+## 18. DESFire random-UID 0x80/0x08 quirk in emulation/relay tools
+A DESFire card with random UID enabled (SetConfiguration, see section 1) returns a
+changing 4-byte anticollision UID whose **first byte is `0x80`**, not the ISO/IEC
+14443-3 random-ID marker `0x08`. This is a **bug in the DESFire silicon** (Adam
+confirmed - NXP got 0x08/0x80 the wrong way round); RFIDIOt reports it faithfully.
+
+Make every emulation/relay tool cater for it so a cloned/relayed random-UID DESFire
+behaves like the real card and nothing silently "corrects" the byte:
+- `emulateuid.py` / `relayuid.py` - when cloning (`auto`) a card UID, pass the 4-byte
+  `0x80..` UID through unchanged; `random` mode already fabricates `0x08`+random (the
+  ISO-correct marker, honouring the "80 byte on the front" note) - document that an
+  emulated DESFire would really use `0x80`, and consider a flag to emit `0x80`+random
+  to match DESFire exactly.
+- `relayuid.py` relay path - a random-UID DESFire changes UID every select; the
+  emulator presents ONE fixed UID for the session, so the relayed UID won't match a
+  fresh read of the real card. Note this (it's inherent to random UID), and when
+  cloning, clone the UID seen at relay-start.
+- `pn532emulate.py` / `pn532mitm.py` - same: pass a `0x80`-prefixed UID through
+  untouched; don't assume `0x08` is the only random marker.
+- Add a short note wherever UID validity is checked so `0x80` isn't rejected/normalised.
+See Claude memory `desfire-random-uid-08-80-bug`.
