@@ -205,6 +205,9 @@ if chelp or len(sys.argv) == 1:
     print("        COMMIT  /  ABORT                                Commit/AbortTransaction")
     print("        CLEARREC <FNO>                                  ClearRecordFile (then COMMIT)")
     print("        FORMAT                                          FormatPICC - wipes ALL applications")
+    print("        SETCONFIG <OPTION> <DATA>                       SetConfiguration (enciphered). OPTION 00 = PICC config:")
+    print("                                                        DATA 00 none, 01 disable-format, 02 ENABLE RANDOM UID")
+    print("                                                        (bit1 is PERMANENT - cannot be undone)")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -904,6 +907,21 @@ while args:
             d, sw = df_apdu("FC")
             print("  FormatPICC (wipes all apps): " + df_status(sw))
             continue
+        if dfcommand == "SETCONFIG":               # SetConfiguration (0x5C) <option> <data-hex>
+            # data is enciphered (+CRC16) under the PICC-master session. Option 00 =
+            # PICC config byte: bit0 disable-format, bit1 ENABLE RANDOM UID (PERMANENT!).
+            opt = args.pop().upper().zfill(2)
+            cfg = bytes.fromhex(args.pop())
+            s = DESFire_Session
+            if not s["authed"] or s["sm"] != "legacy":
+                print("  SETCONFIG: needs a legacy (0x0A) session (AUTH DES/LEGACY first)")
+                continue
+            if opt == "00" and cfg and (cfg[0] & 0x02):
+                print("  SETCONFIG: option 00 bit1 ENABLES RANDOM UID and is IRREVERSIBLE.")
+            body = df_legacy_encipher(cfg).hex().upper()
+            d, sw = df_apdu("5C", opt + body)
+            print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
+            continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
             print("  DESFire session state (this run):")
@@ -923,7 +941,7 @@ while args:
         print("            GETVALUE READ RECORDS DFNAMES CMD")
         print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEVALUE")
         print("            CREATERECORD DELETEFILE WRITE WRITEREC CREDIT DEBIT")
-        print("            COMMIT ABORT CLEARREC FORMAT")
+        print("            COMMIT ABORT CLEARREC FORMAT SETCONFIG")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
