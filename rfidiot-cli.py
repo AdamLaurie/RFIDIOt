@@ -536,14 +536,23 @@ while args:
             return df_raw(ins, data)
 
         def df_cmac_check(d, sw):
-            "strip+verify the 8-byte response CMAC the card appends on 9100/91AF"
-            if df_newsm() and sw in ("9100", "91AF") and len(d) >= 16:
-                raw = bytes.fromhex(d)
-                payload, mac = raw[:-8], raw[-8:]
-                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]  # over payload||status
-                if mac != expect:
-                    print("    [new-SM response CMAC verify FAILED]")
-                return payload.hex().upper(), sw
+            "strip+verify the 8-byte response CMAC the card appends on a 9100/91AF reply, "
+            "advancing the session IV in step. A command that returns an ERROR status "
+            "desynchronises the EV1 channel (the card's IV handling on error differs and "
+            "isn't yet mirrored here), so we drop the session and tell the user to re-AUTH "
+            "rather than emit a confusing 91AE cascade. (Error-path IV handling: TODO.)"
+            if df_newsm() and sw in ("9100", "91AF"):
+                if len(d) >= 16:
+                    raw = bytes.fromhex(d)
+                    payload, mac = raw[:-8], raw[-8:]
+                    expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
+                    if mac != expect:
+                        print("    [new-SM response CMAC verify FAILED]")
+                    return payload.hex().upper(), sw
+                return d, sw
+            if df_newsm() and sw.startswith("91") and sw not in ("9100", "91AF"):
+                print("    (EV1 secure channel desynchronised by this error - re-AUTH to continue)")
+                desfire_reset_session(DESFire_Session["aid"])
             return d, sw
 
         def df_full(ins, data=""):
@@ -963,9 +972,6 @@ while args:
             if not s["authed"]:
                 print("  CHANGEKEY: authenticate first (DESFIRE AUTH ...)")
                 continue
-            if s["type"] not in ("DES", "2K3DES", "3K3DES"):
-                print("  CHANGEKEY: only legacy (3)DES sessions supported so far (AES/EV1 TODO)")
-                continue
             try:
                 newkey = bytes.fromhex(ck_new)
                 oldkey = bytes.fromhex(ck_old) if ck_old else None
@@ -973,28 +979,48 @@ while args:
                 print("  CHANGEKEY: key must be hex or 0")
                 continue
             samekey = int(ck_keyno, 16) == int(s["keyno"], 16)
-            if samekey:
-                payload = newkey
-                plain = payload + bytes(crc16a(payload).to_bytes(2, "little"))
+            if not samekey and (oldkey is None or len(oldkey) != len(newkey)):
+                print("  CHANGEKEY: changing a different key needs <oldkey> of the same length")
+                continue
+            hdr = bytes([0xC4, int(ck_keyno, 16)])
+            if df_newsm():
+                # EV1: CRC32 over C4||keyno||newkey[||version]; AES carries a version byte;
+                # enciphered under the session, IV chaining. Different-key adds CRC32(newkey).
+                bs = 16 if s["sm"] == "aes" else 8
+                ver = b"\x00" if s["sm"] == "aes" else b""
+                if samekey:
+                    body = newkey + ver
+                    crypto_plain = body + crc32_jam(hdr + body).to_bytes(4, "little")
+                else:
+                    body = _xor(newkey, oldkey) + ver
+                    crypto_plain = (body + crc32_jam(hdr + body).to_bytes(4, "little")
+                                    + crc32_jam(newkey).to_bytes(4, "little"))
+                if len(crypto_plain) % bs:
+                    crypto_plain += bytes(bs - len(crypto_plain) % bs)
+                enc, s["iv"] = _df_cbc_enc(crypto_plain, s["iv"])
+                d, sw = df_raw("C4", ck_keyno + enc.hex().upper())
+                if not samekey:
+                    d, sw = df_cmac_check(d, sw)      # session survives -> check response CMAC
+                label = s["sm"]
             else:
-                if oldkey is None or len(oldkey) != len(newkey):
-                    print("  CHANGEKEY: changing a different key than the session's needs <oldkey> of the same length")
-                    continue
-                payload = _xor(newkey, oldkey)
-                plain = (payload + bytes(crc16a(payload).to_bytes(2, "little"))
-                         + bytes(crc16a(newkey).to_bytes(2, "little")))
-            if len(plain) % 8:
-                plain += bytes(8 - len(plain) % 8)
-            crypto, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
-            d, sw = df_apdu("C4", ck_keyno + crypto.hex().upper())
-            print("  ChangeKey(legacy) key %s -> %s (%s): %s" % (
-                ck_keyno, ck_new, "same key" if samekey else "diff key", df_status(sw)))
+                # legacy (D40): CRC16 over newkey; enciphered inverted-CBC, IV=0
+                if samekey:
+                    plain = newkey + crc16a(newkey).to_bytes(2, "little")
+                else:
+                    xored = _xor(newkey, oldkey)
+                    plain = (xored + crc16a(xored).to_bytes(2, "little")
+                             + crc16a(newkey).to_bytes(2, "little"))
+                if len(plain) % 8:
+                    plain += bytes(8 - len(plain) % 8)
+                enc, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
+                d, sw = df_apdu("C4", ck_keyno + enc.hex().upper())
+                label = "legacy"
+            print("  ChangeKey(%s) key %s -> %s (%s): %s" % (
+                label, ck_keyno, ck_new, "same key" if samekey else "diff key", df_status(sw)))
             if sw == "9100":
                 print("    *** key changed ***")
-                # changing the key we authenticated with drops the session; changing a
-                # different key leaves our session intact
                 if samekey:
-                    desfire_reset_session()
+                    desfire_reset_session()      # changing our own key drops the session
             continue
         if dfcommand == "CREATEAPP":               # CreateApplication (0xCA)
             aid = args.pop().upper()                # MSB-first
@@ -1118,56 +1144,46 @@ while args:
             print("  FormatPICC (wipes all apps): " + df_status(sw))
             continue
         if dfcommand == "SETCONFIG":               # SetConfiguration (0x5C) <option> <data-hex>
-            # data is enciphered (+CRC16) under the PICC-master session. Option 00 =
-            # PICC config byte: bit0 disable-format, bit1 ENABLE RANDOM UID (PERMANENT!).
+            # the data is enciphered (legacy CRC16 / EV1 CRC32) under the PICC-master
+            # session. Option 00 = PICC config byte: bit0 disable-format, bit1 ENABLE
+            # RANDOM UID (PERMANENT!).
             opt = args.pop().upper().zfill(2)
             cfg = bytes.fromhex(args.pop())
-            s = DESFire_Session
-            if not s["authed"] or s["sm"] != "legacy":
-                print("  SETCONFIG: needs a legacy (0x0A) session (AUTH DES/LEGACY first)")
+            if not DESFire_Session["authed"]:
+                print("  SETCONFIG: authenticate (PICC master) first")
                 continue
             if opt == "00" and cfg and (cfg[0] & 0x02):
                 print("  SETCONFIG: option 00 bit1 ENABLES RANDOM UID and is IRREVERSIBLE.")
-            body = df_legacy_encipher(cfg).hex().upper()
-            d, sw = df_apdu("5C", opt + body)
+            d, sw = df_send("5C", opt, cfg, 3)
             print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
             continue
         if dfcommand == "CHANGEKEYSETTINGS":       # ChangeKeySettings (0x54) <settings>
-            # new settings byte, enciphered (+CRC16) under the session (key 0)
             newset = args.pop().upper().zfill(2)
-            s = DESFire_Session
-            if not s["authed"] or s["sm"] != "legacy":
-                print("  CHANGEKEYSETTINGS: needs a legacy (0x0A) session (AUTH first)")
+            if not DESFire_Session["authed"]:
+                print("  CHANGEKEYSETTINGS: authenticate first")
                 continue
-            body = df_legacy_encipher(bytes.fromhex(newset)).hex().upper()
-            d, sw = df_apdu("54", body)
+            d, sw = df_send("54", "", bytes.fromhex(newset), 3)
             print("  ChangeKeySettings -> %s: %s" % (newset, df_status(sw)))
             continue
         if dfcommand == "CHANGEFILESETTINGS":      # ChangeFileSettings (0x5F) <fno> <comm> <ar>
-            # fileno stays plain; new comm+access-rights enciphered (+CRC16) under the
-            # session (unless change-access is free, but we always encipher here)
-            fileno = args.pop().upper().zfill(2)
+            fileno = args.pop().upper().zfill(2)    # fileno stays plain; comm+AR enciphered
             comm = args.pop().upper().zfill(2)
             ar = args.pop().upper()
-            s = DESFire_Session
-            if not s["authed"] or s["sm"] != "legacy":
-                print("  CHANGEFILESETTINGS: needs a legacy (0x0A) session (AUTH first)")
+            if not DESFire_Session["authed"]:
+                print("  CHANGEFILESETTINGS: authenticate first")
                 continue
-            body = df_legacy_encipher(bytes.fromhex(comm + ar_le(ar))).hex().upper()
-            d, sw = df_apdu("5F", fileno + body)
+            d, sw = df_send("5F", fileno, bytes.fromhex(comm + ar_le(ar)), 3)
             print("  ChangeFileSettings %s -> comm %s AR %s: %s" % (fileno, comm, ar.zfill(4), df_status(sw)))
             continue
         if dfcommand == "GETCARDUID":              # GetCardUID (0x51) - real UID, enciphered
-            s = DESFire_Session
-            if not s["authed"] or s["sm"] != "legacy":
-                print("  GETCARDUID: needs a legacy (0x0A) session (AUTH DES/LEGACY first)")
+            if not DESFire_Session["authed"]:
+                print("  GETCARDUID: authenticate first")
                 continue
-            d, sw = df_apdu("51")
-            if sw != "9100":
+            uid, sw, note = df_read("51", "", 3)
+            if sw == "9100":
+                print("  GetCardUID (real UID): %s%s" % (uid, note))
+            else:
                 print("  GetCardUID: " + df_status(sw))
-                continue
-            uid, ok = df_legacy_decipher(bytes.fromhex(d))
-            print("  GetCardUID (real UID): %s%s" % (uid.hex().upper(), "" if ok else "  [CRC FAIL]"))
             continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
