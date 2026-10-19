@@ -21,10 +21,26 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
     only as a correct *refusal* (91AE - no AES key); the 9100 AES path still needs an
     AES-keyed card (the EV1, or an AES app) to exercise.
   - (3)DES built from single-DES ECB blocks (NIST SP800-67 EDE) so **weak/all-zero keys
-    work** - pycryptodome's DES3 rejects degenerate keys, single DES allows them. All
-    schemes store the run-level session on success. NB with the all-zero factory key,
-    DES and 2K3DES are cryptographically identical (K1=K2=0); a genuine K1!=K2 2K3DES /
-    3K3DES key can only be set via ChangeKey, which needs the session-comms layer below.
+    work** - pycryptodome's DES3 rejects degenerate keys, single DES allows them. The CBC
+    ops follow libfreefare: RECEIVE always block-DECRYPT; SEND block-DECRYPT for legacy,
+    block-ENCRYPT for standard/ISO. (The all-zero key hid a receive-op bug - E0=D0 - until
+    a non-zero key was tested; now fixed.) Session-key composition matches libfreefare
+    (DES RndA[0:4]+RndB[0:4]; 2K3DES +RndA[4:8]+RndB[4:8]; 3K3DES strided; AES halves).
+  - **[DONE] genuine non-zero + true 2K3DES (K1!=K2) auth hw-verified** via ChangeKey
+    (below): set master to `00112233445566778899AABBCCDDEEFF`, then `AUTH LEGACY 0 <nk>`
+    and `AUTH ISO 0 <nk>` -> 9100 with RndA' verified; `AUTH DES` on the wrong 8 bytes
+    correctly 91AE. Card restored to all-zero afterwards.
+- **[DONE] CHANGEKEY (0xC4), legacy (3)DES** `CHANGEKEY <keyno> <newkey>` (same key as
+  the active session): plaintext = NewKey || CRC16(NewKey) (ISO-14443-A CRC), zero-padded,
+  enciphered under the **session key** (legacy inverted CBC, IV=0). hw-verified both ways
+  (all-zero <-> non-zero) on the D40.
+  **Key finding**: the secure-messaging session length must match the card's *actual*
+  master key type - this card treats the all-zero factory key as **single DES** (8-byte
+  session, so `AUTH DES`), while a K1!=K2 16-byte key is **2K3DES** (16-byte session,
+  `AUTH LEGACY`/`ISO`). Authenticating all-zero with the wrong scheme still returns 9100
+  (handshake is key-length-agnostic for all-zero) but yields a session the card won't
+  accept for ChangeKey (911E). Only same-key change is implemented; different-key change
+  (XOR with old key + second CRC) and AES/EV1 ChangeKey are TODO.
 - **[DONE] run-level session carry**: `DESFire_Session` at module scope (next to
   `Mifare_Key`) holds the session key, type, auth'd key number, selected AID, running
   IV and command counter. SELECT (app change) and a new/failed AUTH reset it;
@@ -42,10 +58,10 @@ Remaining (needs cards we can't test now - get factory **blanks** + known keys):
   CMAC - so that path needs its own wrapping too.
 - **Modifying commands** (then usable): CreateApplication/DeleteApplication, the
   Create*File / DeleteFile set, WriteData/WriteRecord, GetValue/Credit/Debit/
-  LimitedCredit, Commit/AbortTransaction, ChangeKey/ChangeKeySettings/ChangeFileSettings,
+  LimitedCredit, Commit/AbortTransaction, ChangeKeySettings/ChangeFileSettings,
   SetConfiguration, FormatPICC. (CMD can send the raw APDU for any of these today, but
-  they need the session crypto above to succeed.) ChangeKey is also what's needed to put
-  a non-trivial 2K3DES/3K3DES key on a card to fully exercise the 3DES maths.
+  they need the session crypto above to succeed.) ChangeKey (same-key, legacy) is done -
+  see above; different-key ChangeKey and the AES/EV1 variants remain.
 - Test cards on hand:
   - **Legacy D40** UID `047E30F9B61E80`, HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
     key (v 00, all-zero factory default), one app `543249`. DES + 3DES (native 0x0A and

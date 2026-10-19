@@ -110,18 +110,29 @@ def tdes_cbc(key, data, iv, decrypt, legacy):
     "(3)DES CBC over 8-byte blocks. legacy=True is the DESFire D40 'inverted' mode "
     "(encipher = block-decrypt, decipher = block-encrypt); legacy=False is standard "
     "CBC (ISO / AuthenticateISO). Returns (output, last_cipher_block)."
+    # per libfreefare: RECEIVE always uses the block-DECRYPT op (MCO_DECYPHER);
+    # SEND uses block-DECRYPT for legacy (D40) and block-ENCRYPT for standard (ISO/AES)
     out, prev = b"", iv
     for i in range(0, len(data), 8):
         blk = data[i:i + 8]
         if decrypt:                                  # recover plaintext from ciphertext
-            inner = tdes_block(key, blk, decrypt=not legacy)
-            out += _xor(inner, prev)
+            out += _xor(tdes_block(key, blk, decrypt=True), prev)
             prev = blk
         else:                                        # encipher plaintext to ciphertext
             c = tdes_block(key, _xor(blk, prev), decrypt=legacy)
             out += c
             prev = c
     return out, prev
+
+
+def crc16a(data):
+    "ISO 14443-A CRC16 (poly 0x8408, init 0x6363) - DESFire D40 legacy comms CRC"
+    crc = 0x6363
+    for b in data:
+        b ^= crc & 0xFF
+        b = (b ^ (b << 4)) & 0xFF
+        crc = ((crc >> 8) ^ (b << 8) ^ (b << 3) ^ (b >> 4)) & 0xFFFF
+    return crc
 
 
 def desfire_des_session_key(rnda, rndb, keylen):
@@ -160,6 +171,8 @@ if chelp or len(sys.argv) == 1:
     print("                                                        (0x0A native) | ISO (0x1A). KEY = hex (8/16/24 bytes; 16 for")
     print("                                                        AES) or 0 (all-zero factory default). AES only: optional")
     print("                                                        IV = AUTO (default, ek(RndB)) | ZERO | 32 hex")
+    print("        CHANGEKEY <KEYNO> <NEWKEY>                      ChangeKey of the authenticated key (needs a legacy (3)DES")
+    print("                                                        session first); NEWKEY = hex or 0 (all-zero)")
     print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
     print("        KEYVERSION <KEYNO>                              GetKeyVersion")
     print("        FILEIDS                                         GetFileIDs")
@@ -620,6 +633,39 @@ while args:
             d, sw = df_full(ins, data)
             print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
             continue
+        if dfcommand == "CHANGEKEY":               # ChangeKey (0xC4) - needs a session
+            # change the key you are authenticated with (same key number). Legacy
+            # (3)DES session only for now (AES/EV1 secure messaging is a later item).
+            ck_keyno = args.pop().upper().zfill(2)
+            ck_new = args.pop().upper()
+            s = DESFire_Session
+            if ck_new in ("0", "ZERO"):
+                ck_new = "00" * (24 if s["type"] == "3K3DES" else 16)
+            if not s["authed"]:
+                print("  CHANGEKEY: authenticate first (DESFIRE AUTH ...)")
+                continue
+            try:
+                newkey = bytes.fromhex(ck_new)
+            except ValueError:
+                print("  CHANGEKEY: key must be hex or 0")
+                continue
+            if s["type"] not in ("DES", "2K3DES", "3K3DES"):
+                print("  CHANGEKEY: only legacy (3)DES sessions supported so far (AES/EV1 TODO)")
+                continue
+            # same-key change: plaintext = NewKey || CRC16(NewKey), zero-padded to a
+            # block multiple, then enciphered under the SESSION key (legacy inverted
+            # CBC, IV=0). CRC is the D40 ISO-14443-A CRC16 over the new key bytes.
+            crc = crc16a(newkey)           # D40: CRC16 over the new key bytes only
+            plain = newkey + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+            if len(plain) % 8:
+                plain += bytes(8 - len(plain) % 8)
+            crypto, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
+            d, sw = df_apdu("C4", ck_keyno + crypto.hex().upper())
+            print("  ChangeKey(legacy) key %s -> %s: %s" % (ck_keyno, ck_new, df_status(sw)))
+            if sw == "9100":
+                print("    *** key changed - session dropped, re-AUTH with the new key ***")
+                desfire_reset_session()      # changing a key invalidates the session
+            continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
             print("  DESFire session state (this run):")
@@ -633,9 +679,9 @@ while args:
                 print("    authenticated: no")
             continue
         print("  Unknown DESFIRE command:", dfcommand)
-        print("  commands: VERSION AIDS SELECT AUTH SESSION FREEMEM KEYSETTINGS")
-        print("            KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS GETVALUE READ")
-        print("            RECORDS DFNAMES CMD")
+        print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
+        print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
+        print("            GETVALUE READ RECORDS DFNAMES CMD")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
