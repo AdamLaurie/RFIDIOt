@@ -189,6 +189,7 @@ if chelp or len(sys.argv) == 1:
     print("        FILESETTINGS <FILENO>                           GetFileSettings (type, comm, access rights, size)")
     print("        READ <FILENO> <OFFSET> <LENGTH>                 ReadData (hex; LENGTH 0 = whole file)")
     print("        GETVALUE <FILENO>                               GetValue (value file)")
+    print("        GETCARDUID                                      GetCardUID - the real UID (needs a session)")
     print("        RECORDS <FILENO> <OFFSET> <NUM>                 ReadRecords (hex; NUM 0 = all)")
     print("        CMD <INS> <DATA>                                raw native command (INS hex; DATA hex or 0 for none)")
     print("        SESSION                                         show the authenticated-session state carried over this run")
@@ -922,6 +923,18 @@ while args:
             d, sw = df_apdu("5C", opt + body)
             print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
             continue
+        if dfcommand == "GETCARDUID":              # GetCardUID (0x51) - real UID, enciphered
+            s = DESFire_Session
+            if not s["authed"] or s["sm"] != "legacy":
+                print("  GETCARDUID: needs a legacy (0x0A) session (AUTH DES/LEGACY first)")
+                continue
+            d, sw = df_apdu("51")
+            if sw != "9100":
+                print("  GetCardUID: " + df_status(sw))
+                continue
+            uid, ok = df_legacy_decipher(bytes.fromhex(d))
+            print("  GetCardUID (real UID): %s%s" % (uid.hex().upper(), "" if ok else "  [CRC FAIL]"))
+            continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
             print("  DESFire session state (this run):")
@@ -938,7 +951,7 @@ while args:
         print("  Unknown DESFIRE command:", dfcommand)
         print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
         print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
-        print("            GETVALUE READ RECORDS DFNAMES CMD")
+        print("            GETVALUE GETCARDUID READ RECORDS DFNAMES CMD")
         print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEVALUE")
         print("            CREATERECORD DELETEFILE WRITE WRITEREC CREDIT DEBIT")
         print("            COMMIT ABORT CLEARREC FORMAT SETCONFIG")
