@@ -9,13 +9,22 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
 - **[DONE, hw-verified on the test card]** VERSION, AIDS, DFNAMES, FREEMEM, SELECT,
   KEYSETTINGS, KEYVERSION, FILEIDS, FILESETTINGS (decoded), GETVALUE, READ, RECORDS,
   and a generic CMD `<ins> <data>` escape.
-- **AUTH (AES, 0xAA)** done with an optional response-encryption IV (AUTO = ek(RndB),
-  ZERO, or a 32-hex override). On a successful auth (9100) it now **verifies the card's
-  returned RndA'**, derives the **AES session key** (RndA[0:4]+RndB[0:4]+RndA[12:16]+
-  RndB[12:16]) and stores a run-level session (see below). **Still UNVERIFIED end-to-end
-  on hardware**: our test card's master key is not all-zero (91AE), so the 9100 path
-  has never actually run - needs a known-key or factory-blank card. The crypto *pieces*
-  are unit-tested though (AES-CMAC vs RFC 4493 vectors; session-key derivation shape).
+- **AUTH - all three schemes, hw-verified on a legacy D40 card** (`AUTH [SCHEME] <keyno>
+  <key> [<iv>]`, SCHEME = AES (default) | LEGACY/DES/3DES | ISO):
+  - **LEGACY (0x0A)** DES / 2K3DES / 3K3DES - the D40 "inverted" CBC (encipher =
+    block-decrypt, decipher = block-encrypt), **IV reset to 0 per message**. Verified
+    `AUTH DES 0 0` and `AUTH LEGACY 0 0` -> 9100, RndA' verified, session key derived.
+  - **ISO (0x1A)** 2K3DES / 3K3DES - standard CBC (IV chains, like AES; resp IV = last
+    token block). Verified `AUTH ISO 0 0` -> 9100, RndA' verified.
+  - **AES (0xAA)** - standard CBC, response IV optional (AUTO=ek(RndB) | ZERO | 32 hex).
+    On 9100 verifies RndA' and derives the AES session key. Verified on the DES-keyed D40
+    only as a correct *refusal* (91AE - no AES key); the 9100 AES path still needs an
+    AES-keyed card (the EV1, or an AES app) to exercise.
+  - (3)DES built from single-DES ECB blocks (NIST SP800-67 EDE) so **weak/all-zero keys
+    work** - pycryptodome's DES3 rejects degenerate keys, single DES allows them. All
+    schemes store the run-level session on success. NB with the all-zero factory key,
+    DES and 2K3DES are cryptographically identical (K1=K2=0); a genuine K1!=K2 2K3DES /
+    3K3DES key can only be set via ChangeKey, which needs the session-comms layer below.
 - **[DONE] run-level session carry**: `DESFire_Session` at module scope (next to
   `Mifare_Key`) holds the session key, type, auth'd key number, selected AID, running
   IV and command counter. SELECT (app change) and a new/failed AUTH reset it;
@@ -29,19 +38,21 @@ Remaining (needs cards we can't test now - get factory **blanks** + known keys):
   command. Needed to read auth-protected files and for **every modifying command**.
   The state container and the CMAC primitive are in place; this is the per-command
   wrapping (EV1-style for 0xAA; EV2 AuthenticateEV2First/0x71 is a separate later step).
-- **Legacy auth (0x0A, DES/2K3DES)** - the "encrypt-by-decrypting" inverted CBC; and
-  **ISO auth (0x1A, 2K3DES/3K3DES)** - standard DES3 CBC. NB pycryptodome's DES/DES3
-  reject weak/all-zero keys, so a factory-default (all-zero DES) key needs a DES impl
-  that permits weak keys.
+  Legacy/ISO (DES/3DES) session-comms differ from AES - CRC16 + DES-CBC enciphering, no
+  CMAC - so that path needs its own wrapping too.
 - **Modifying commands** (then usable): CreateApplication/DeleteApplication, the
   Create*File / DeleteFile set, WriteData/WriteRecord, GetValue/Credit/Debit/
   LimitedCredit, Commit/AbortTransaction, ChangeKey/ChangeKeySettings/ChangeFileSettings,
   SetConfiguration, FormatPICC. (CMD can send the raw APDU for any of these today, but
-  they need the session crypto above to succeed.)
-- Test card on hand: UID `044E32AA571290`, HW GetVersion major `0x12`, 4K, **AES** master
-  key (v `2F`), one app `F53630` that requires auth for file/key ops (free directory
-  listing only). (Adam's earlier note mentioned a free-read file in app `003806` - not
-  present on this card now; re-check whether it was reconfigured.)
+  they need the session crypto above to succeed.) ChangeKey is also what's needed to put
+  a non-trivial 2K3DES/3K3DES key on a card to fully exercise the 3DES maths.
+- Test cards on hand:
+  - **Legacy D40** UID `047E30F9B61E80`, HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
+    key (v 00, all-zero factory default), one app `543249`. DES + 3DES (native 0x0A and
+    ISO 0x1A) auth all verified against it.
+  - EV2 UID `044E32AA571290`, HW major `0x12`, 4K, **AES** master key (v `2F`), app
+    `F53630` (auth required for file/key ops). (An **EV1** is coming next to exercise AES
+    + the EV1 secure-messaging session.)
 
 ## 2. Finish the Py3 typing sweep (untested tools)
 True-division `/` -> `//` (float used as index / length / APDU-Lc):

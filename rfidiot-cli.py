@@ -80,6 +80,60 @@ def desfire_aes_session_key(rnda, rndb):
     "DESFire AES session key from the two 16-byte nonces (halves of each)"
     return rnda[0:4] + rndb[0:4] + rnda[12:16] + rndb[12:16]
 
+
+def _des_e(k8, b):
+    from Crypto.Cipher import DES
+    return DES.new(k8, DES.MODE_ECB).encrypt(b)
+
+
+def _des_d(k8, b):
+    from Crypto.Cipher import DES
+    return DES.new(k8, DES.MODE_ECB).decrypt(b)
+
+
+def tdes_block(key, b, decrypt=False):
+    "one 8-byte block through DES(8)/2K3DES(16)/3K3DES(24), built from single-DES "
+    "primitives so weak/all-zero keys (which pycryptodome's DES3 rejects) work. "
+    "EDE per NIST SP800-67: encrypt = E_K1 then D_K2 then E_K3."
+    if len(key) == 8:
+        k1 = k2 = k3 = key
+    elif len(key) == 16:
+        k1, k2, k3 = key[0:8], key[8:16], key[0:8]
+    else:
+        k1, k2, k3 = key[0:8], key[8:16], key[16:24]
+    if decrypt:
+        return _des_d(k1, _des_e(k2, _des_d(k3, b)))
+    return _des_e(k3, _des_d(k2, _des_e(k1, b)))
+
+
+def tdes_cbc(key, data, iv, decrypt, legacy):
+    "(3)DES CBC over 8-byte blocks. legacy=True is the DESFire D40 'inverted' mode "
+    "(encipher = block-decrypt, decipher = block-encrypt); legacy=False is standard "
+    "CBC (ISO / AuthenticateISO). Returns (output, last_cipher_block)."
+    out, prev = b"", iv
+    for i in range(0, len(data), 8):
+        blk = data[i:i + 8]
+        if decrypt:                                  # recover plaintext from ciphertext
+            inner = tdes_block(key, blk, decrypt=not legacy)
+            out += _xor(inner, prev)
+            prev = blk
+        else:                                        # encipher plaintext to ciphertext
+            c = tdes_block(key, _xor(blk, prev), decrypt=legacy)
+            out += c
+            prev = c
+    return out, prev
+
+
+def desfire_des_session_key(rnda, rndb, keylen):
+    "DESFire (3)DES session key from the nonces, sized to the key type"
+    if keylen == 8:                                  # DES
+        return rnda[0:4] + rndb[0:4]
+    if keylen == 16:                                 # 2K3DES
+        return rnda[0:4] + rndb[0:4] + rnda[4:8] + rndb[4:8]
+    # 3K3DES (16-byte nonces)
+    return (rnda[0:4] + rndb[0:4] + rnda[6:10] + rndb[6:10]
+            + rnda[12:16] + rndb[12:16])
+
 if chelp or len(sys.argv) == 1:
     print()
     print("Usage: %s [OPTIONS] <COMMAND> [ARG(s)] ... [<COMMAND> [ARG(s)] ... ]" % sys.argv[0])
@@ -102,8 +156,10 @@ if chelp or len(sys.argv) == 1:
     print("        DFNAMES                                         GetDFNames (ISO DF names)")
     print("        FREEMEM                                         GetFreeMemory")
     print("        SELECT <AID>                                    SelectApplication (AID MSB-first, 000000 = PICC master)")
-    print("        AUTH <KEYNO> <AES-KEY> [<IV>]                   AuthenticateAES, key <KEYNO>; AES-KEY = 32 hex or 0 (all-zero);")
-    print("                                                        optional IV = AUTO (default, ek(RndB)) | ZERO | 32 hex")
+    print("        AUTH [<SCHEME>] <KEYNO> <KEY> [<IV>]            Authenticate. SCHEME = AES (default, 0xAA) | LEGACY/DES/3DES")
+    print("                                                        (0x0A native) | ISO (0x1A). KEY = hex (8/16/24 bytes; 16 for")
+    print("                                                        AES) or 0 (all-zero factory default). AES only: optional")
+    print("                                                        IV = AUTO (default, ek(RndB)) | ZERO | 32 hex")
     print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
     print("        KEYVERSION <KEYNO>                              GetKeyVersion")
     print("        FILEIDS                                         GetFileIDs")
@@ -164,7 +220,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1g")
+card.info("rfidiot-cli v3.1h")
 
 # globals
 Mifare_Key = None
@@ -339,59 +395,106 @@ while args:
                 desfire_reset_session(aid)
             continue
         if dfcommand == "AUTH":
-            # AES authenticate (90 AA); default key is all-zero (DESFire factory default)
+            # authenticate. Optional scheme keyword (default AES):
+            #   LEGACY / DES / 3DES -> 0x0A native DES/2K3DES/3K3DES (D40 "inverted" CBC)
+            #   ISO                 -> 0x1A ISO 2K3DES/3K3DES (standard CBC)
+            #   AES                 -> 0xAA AuthenticateAES
+            # key length (8/16/24, or 16 for AES) picks DES/2K3DES/3K3DES; key "0"
+            # = the all-zero factory default (DES for the DES keyword, else 16-byte).
+            import os as _os
+            SCHEMES = {"AES": "AES", "LEGACY": "LEGACY", "DES": "LEGACY",
+                       "3DES": "LEGACY", "ISO": "ISO"}
+            rawscheme = ""
+            if args and args[-1].upper() in SCHEMES:
+                rawscheme = args.pop().upper()
+            scheme = SCHEMES.get(rawscheme, "AES")
             keyno = args.pop().upper().zfill(2)          # key number, e.g. 00 (accept 0)
-            keyhex = args.pop().upper()                   # 32 hex (16-byte AES key), or 0 for all-zero
+            keyhex = args.pop().upper()                   # hex key, or 0 for all-zero
             if keyhex in ("0", "ZERO"):
-                keyhex = "00" * 16
-            # optional response-encryption IV. Chain-safe peek: only consume a token
-            # that looks like an IV (AUTO/ZERO or 32 hex), so a following DESFIRE
-            # command isn't eaten. The challenge is always decrypted with IV 0; this
-            # sets the IV for encrypting RndA||RndB'. AUTO (default) = the standard
-            # DESFire chain (IV = the card's ek(RndB)); ZERO = all-zero IV; else a
-            # 32-hex IV to override - for testing non-standard behaviour.
+                keyhex = "00" * (8 if rawscheme == "DES" else 16)
+
             def _ishex(t):
-                return all(c in "0123456789abcdefABCDEF" for c in t)
+                return len(t) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in t)
+            # optional response-IV override (AES only, chain-safe peek) for testing
             ivmode = "AUTO"
-            if args and (args[-1].upper() in ("AUTO", "ZERO") or (len(args[-1]) == 32 and _ishex(args[-1]))):
+            if scheme == "AES" and args and (args[-1].upper() in ("AUTO", "ZERO")
+                                             or (len(args[-1]) == 32 and _ishex(args[-1]))):
                 ivmode = args.pop().upper()
             try:
-                from Crypto.Cipher import AES
-                import os as _os
                 key = bytes.fromhex(keyhex)
-                assert len(key) == 16
-            except (ValueError, AssertionError):
-                print("  AUTH: key must be 32 hex chars (16-byte AES key) or 0")
+            except ValueError:
+                print("  AUTH: key must be hex or 0")
                 continue
             # a new authentication attempt invalidates any prior session
             desfire_reset_session()
-            d, sw = df_apdu("AA", keyno)                  # AuthenticateAES, key <keyno>
-            if sw != "91AF" or len(d) != 32:
-                print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
+
+            if scheme == "AES":
+                from Crypto.Cipher import AES
+                if len(key) != 16:
+                    print("  AUTH AES: key must be 16 bytes (32 hex) or 0")
+                    continue
+                d, sw = df_apdu("AA", keyno)              # AuthenticateAES, key <keyno>
+                if sw != "91AF" or len(d) != 32:
+                    print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
+                    continue
+                ek = bytes.fromhex(d)
+                rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
+                rndb_rot = rotate_left(rndb)
+                rnda = _os.urandom(16)
+                enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
+                token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
+                d, sw = df_apdu("AF", token.hex().upper())
+                which = "all-zero key" if key == bytes(16) else "key " + keyhex
+                ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
+                print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
+                if sw == "9100" and len(d) == 32:
+                    rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
+                    if rnda_back == rotate_left(rnda):
+                        sesskey = desfire_aes_session_key(rnda, rndb)
+                        DESFire_Session.update(key=sesskey, type="AES", keyno=keyno,
+                                               iv=bytes(16), cmdctr=0, authed=True)
+                        print("    *** AUTH OK - the key is %s ***" % keyhex)
+                        print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
+                    else:
+                        print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
+                        print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
+                else:
+                    print("    auth failed (as expected unless %s is the real key)" % which)
+                continue
+
+            # (3)DES: LEGACY (0x0A, D40 inverted CBC) or ISO (0x1A, standard CBC)
+            if len(key) not in (8, 16, 24):
+                print("  AUTH %s: key must be 8/16/24 bytes (DES/2K3DES/3K3DES) or 0" % scheme)
+                continue
+            legacy = scheme == "LEGACY"
+            ins = "0A" if legacy else "1A"
+            ktype = {8: "DES", 16: "2K3DES", 24: "3K3DES"}[len(key)]
+            label = "AuthenticateLegacy(0A)" if legacy else "AuthenticateISO(1A)"
+            d, sw = df_apdu(ins, keyno)
+            if sw != "91AF" or len(d) not in (16, 32):   # 8- or 16-byte challenge
+                print("  %s %s key %s: %s (no challenge - wrong key type?)" % (label, ktype, keyno, df_status(sw)))
                 continue
             ek = bytes.fromhex(d)
-            rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
+            rndb, _ = tdes_cbc(key, ek, bytes(8), decrypt=True, legacy=legacy)
             rndb_rot = rotate_left(rndb)
-            rnda = _os.urandom(16)
-            enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
-            token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
+            rnda = _os.urandom(len(rndb))
+            tok_iv = bytes(8) if legacy else ek    # D40 legacy resets IV=0 per msg; ISO chains
+            token, lastc = tdes_cbc(key, rnda + rndb_rot, tok_iv, decrypt=False, legacy=legacy)
             d, sw = df_apdu("AF", token.hex().upper())
-            which = "all-zero key" if keyhex == "00" * 16 else "key " + keyhex
-            ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
-            print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
-            if sw == "9100" and len(d) == 32:
-                # card returns ek(RndA'), rotated RndA, CBC-chained from our token
-                rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
+            which = "all-zero key" if key == bytes(len(key)) else "key " + keyhex
+            print("  %s %s key %s with %s: %s" % (label, ktype, keyno, which, df_status(sw)))
+            if sw == "9100" and len(d) == len(ek) * 2:
+                # D40 legacy resets IV=0 for each message; ISO chains (resp IV = last
+                # token cipher block, like AES)
+                resp_iv = bytes(8) if legacy else lastc
+                rnda_back, _ = tdes_cbc(key, bytes.fromhex(d), resp_iv, decrypt=True, legacy=legacy)
                 if rnda_back == rotate_left(rnda):
-                    sesskey = desfire_aes_session_key(rnda, rndb)
-                    DESFire_Session.update(
-                        key=sesskey, type="AES", keyno=keyno,
-                        iv=bytes(16), cmdctr=0, authed=True,
-                    )
+                    sesskey = desfire_des_session_key(rnda, rndb, len(key))
+                    DESFire_Session.update(key=sesskey, type=ktype, keyno=keyno,
+                                           iv=bytes(8), cmdctr=0, authed=True)
                     print("    *** AUTH OK - the key is %s ***" % keyhex)
-                    print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
+                    print("    session established: RndA' verified, %s session key %s" % (ktype, sesskey.hex().upper()))
                 else:
-                    # card accepted us but its RndA' did not verify: key/IV maths off
                     print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
                     print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
             else:
