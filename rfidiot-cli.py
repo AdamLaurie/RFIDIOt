@@ -593,7 +593,7 @@ while args:
             print("    Software: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
                   (soft[0:2], soft[2:4], soft[4:6], soft[6:8], soft[8:10], soft[10:12], soft[12:14]))
             print("    UID %s  batch %s  week/year %s%s" % (prod[0:14], prod[14:24], prod[24:26], prod[26:28]))
-            gen = {"01": "EV1 / D40", "12": "EV2", "33": "EV3"}.get(hw[6:8], "?")
+            gen = {"00": "D40", "01": "EV1", "12": "EV2", "33": "EV3"}.get(hw[6:8], "?")
             print("    -> DESFire %s (HW major 0x%s)" % (gen, hw[6:8]))
             continue
         if dfcommand == "AIDS":

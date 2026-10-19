@@ -9,9 +9,9 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
 - **[DONE, hw-verified on the test card]** VERSION, AIDS, DFNAMES, FREEMEM, SELECT,
   KEYSETTINGS, KEYVERSION, FILEIDS, FILESETTINGS (decoded), GETVALUE, READ, RECORDS,
   and a generic CMD `<ins> <data>` escape.
-- **AUTH - all three schemes, hw-verified on a legacy D40 card** (`AUTH [SCHEME] <keyno>
+- **AUTH - all three schemes, hw-verified on a legacy-keyed EV1 card** (`AUTH [SCHEME] <keyno>
   <key> [<iv>]`, SCHEME = AES (default) | LEGACY/DES/3DES | ISO):
-  - **LEGACY (0x0A)** DES / 2K3DES / 3K3DES - the D40 "inverted" CBC (encipher =
+  - **LEGACY (0x0A)** DES / 2K3DES / 3K3DES - the legacy "inverted" CBC (encipher =
     block-decrypt, decipher = block-encrypt), **IV reset to 0 per message**. Verified
     `AUTH DES 0 0` and `AUTH LEGACY 0 0` -> 9100, RndA' verified, session key derived.
   - **ISO (0x1A)** 2K3DES / 3K3DES - standard CBC (IV chains, like AES; **token IV = the
@@ -36,7 +36,7 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
 - **[DONE] CHANGEKEY (0xC4), legacy (3)DES** `CHANGEKEY <keyno> <newkey>` (same key as
   the active session): plaintext = NewKey || CRC16(NewKey) (ISO-14443-A CRC), zero-padded,
   enciphered under the **session key** (legacy inverted CBC, IV=0). hw-verified both ways
-  (all-zero <-> non-zero) on the D40.
+  (all-zero <-> non-zero) on the EV1.
   **Key finding**: the secure-messaging session length must match the card's *actual*
   master key type - this card treats the all-zero factory key as **single DES** (8-byte
   session, so `AUTH DES`), while a K1!=K2 16-byte key is **2K3DES** (16-byte session,
@@ -51,7 +51,7 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   read back by a later command in the same run.
 - **[DONE] AES-CMAC primitive** (`aes_cmac`, RFC 4493 / SP 800-38B) - unit-tested
   against all four RFC 4493 vectors. Not yet wired into command comms (next item).
-- **[DONE] legacy (D40) session comms - all three modes**, auto-selected from each file's
+- **[DONE] legacy session comms - all three modes**, auto-selected from each file's
   GetFileSettings comm byte and wrapped under the session key:
   - **plain** (00): as-is.
   - **MACed** (01): 4-byte legacy CBC-MAC (standard-CBC-encrypt, session key, IV=0; MAC =
@@ -61,7 +61,7 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
     rules out early false matches). Only the data payload is wrapped; the fileno/offset/
     length header stays plain.
   `df_legacy_encipher` / `df_legacy_decipher` / `df_legacy_mac` + `df_send`/`df_recv`.
-- **[DONE] modifying commands, hw-verified on the D40** (full lifecycle, all comm modes):
+- **[DONE] modifying commands, hw-verified on the EV1** (full lifecycle, all comm modes):
   CREATEAPP/DELETEAPP, CREATEFILE (std data), CREATEBACKUP, CREATEVALUE, CREATERECORD
   (linear/cyclic), DELETEFILE, WRITE/READ, WRITEREC/RECORDS, CREDIT/DEBIT, LIMITEDCREDIT,
   COMMIT/ABORT, CLEARREC, CHANGEKEY (same- AND different-key), CHANGEKEYSETTINGS,
@@ -70,7 +70,7 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   transactional rollback** (WRITE+COMMIT persists, WRITE+ABORT reverts); value file
   credit/debit/limited-credit/commit/getvalue; linear record file; different-key ChangeKey
   (change key 1 authed as key 0, then AUTH key 1 verified); ChangeKeySettings (0F->0D);
-  ChangeFileSettings (comm plain->MACed). NB on D40, DeleteApplication does NOT reclaim
+  ChangeFileSettings (comm plain->MACed). NB on EV1, DeleteApplication does NOT reclaim
   memory - only FormatPICC does.
   **Re-verified with a genuine non-zero K1!=K2 2K3DES session** (not just the degenerate
   all-zero key): changed an app master to 00112233445566778899AABBCCDDEEFF and under that
@@ -96,7 +96,8 @@ Remaining:
   DFNAMES/ISOFILEIDS return entries and ISO 7816 file access works; `set_default_key`,
   `set_ats`. Lower priority.
 - Test cards on hand:
-  - **Legacy D40** UID `047E30F9B61E80`, HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
+  - **EV1 (legacy DES keys)** UID `047E30F9B61E80` (plus a sibling `047D48F9B61E80` from the
+    same batch), HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
     key (all-zero factory). All four auth schemes (DES/2K3DES via 0x0A, 2K3DES/3K3DES via
     0x1A, AES via an AES app), ChangeKey (same + different key), the full file/app
     lifecycle in all three comm modes, transactional rollback, and SetConfiguration all
