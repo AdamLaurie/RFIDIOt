@@ -426,7 +426,13 @@ while args:
             return d, sw
 
         def df_status(sw):
-            return "%s (%s)" % (sw, DF_STATUS.get(sw, "unknown"))
+            # a real DESFire response is always 91xx; anything else is a transport
+            # failure (e.g. PN00 = libnfc transceive failed - no tag activated)
+            if sw in DF_STATUS:
+                return "%s (%s)" % (sw, DF_STATUS[sw])
+            if not sw.startswith("91"):
+                return "%s (no DESFire response - SELECT a tag first; is one present?)" % sw
+            return "%s (unknown)" % sw
 
         def df_rev_aid(aid):
             "AID is 3 bytes LSB-first on the wire; show/accept it MSB-first (F53630)"
