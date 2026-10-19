@@ -180,8 +180,6 @@ if chelp or len(sys.argv) == 1:
     print("                                                        (0x0A native) | ISO (0x1A). KEY = hex (8/16/24 bytes; 16 for")
     print("                                                        AES) or 0 (all-zero factory default). AES only: optional")
     print("                                                        IV = AUTO (default, ek(RndB)) | ZERO | 32 hex")
-    print("        CHANGEKEY <KEYNO> <NEWKEY>                      ChangeKey of the authenticated key (needs a legacy (3)DES")
-    print("                                                        session first); NEWKEY = hex or 0 (all-zero)")
     print("        KEYSETTINGS                                     GetKeySettings (settings, key count, key type)")
     print("        KEYVERSION <KEYNO>                              GetKeyVersion")
     print("        FILEIDS                                         GetFileIDs")
@@ -197,12 +195,17 @@ if chelp or len(sys.argv) == 1:
     print("        CREATEAPP <AID> <KEYSETTINGS> <NKEYS>           CreateApplication (AID MSB-first)")
     print("        DELETEAPP <AID>                                 DeleteApplication")
     print("        CREATEFILE <FNO> <COMM> <AR> <SIZE>             CreateStdDataFile (COMM 00/01/03; AR 4 hex rd/wr/rw/chg)")
+    print("        CREATEBACKUP <FNO> <COMM> <AR> <SIZE>           CreateBackupDataFile (transactional; COMMIT after WRITE)")
     print("        CREATEVALUE <FNO> <COMM> <AR> <LO> <HI> <VAL> <LCR>  CreateValueFile (amounts hex)")
     print("        CREATERECORD <FNO> <COMM> <AR> <RECSIZE> <MAX> <LINEAR|CYCLIC>  CreateRecordFile")
     print("        DELETEFILE <FNO>                                DeleteFile")
     print("        WRITE <FNO> <OFFSET> <DATA>                     WriteData (DATA hex)")
     print("        WRITEREC <FNO> <OFFSET> <DATA>                  WriteRecord (DATA hex)")
     print("        CREDIT <FNO> <AMOUNT>  /  DEBIT <FNO> <AMOUNT>  value-file credit/debit (then COMMIT)")
+    print("        LIMITEDCREDIT <FNO> <AMOUNT>                    value-file limited credit (needs lcr enabled; then COMMIT)")
+    print("        CHANGEKEY <KEYNO> <NEWKEY> [<OLDKEY>]           ChangeKey (OLDKEY needed to change a key != the session's)")
+    print("        CHANGEKEYSETTINGS <SETTINGS>                    ChangeKeySettings (enciphered)")
+    print("        CHANGEFILESETTINGS <FNO> <COMM> <AR>            ChangeFileSettings (enciphered)")
     print("        COMMIT  /  ABORT                                Commit/AbortTransaction")
     print("        CLEARREC <FNO>                                  ClearRecordFile (then COMMIT)")
     print("        FORMAT                                          FormatPICC - wipes ALL applications")
@@ -442,6 +445,9 @@ while args:
             "AID is 3 bytes LSB-first on the wire; show/accept it MSB-first (F53630)"
             return aid[4:6] + aid[2:4] + aid[0:2]
 
+        def _ishex(t):
+            return len(t) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in t)
+
         dfcommand = args.pop().upper()
         print()
         if dfcommand == "VERSION":
@@ -498,8 +504,6 @@ while args:
             if keyhex in ("0", "ZERO"):
                 keyhex = "00" * (8 if rawscheme == "DES" else 16)
 
-            def _ishex(t):
-                return len(t) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in t)
             # optional response-IV override (AES only, chain-safe peek) for testing
             ivmode = "AUTO"
             if scheme == "AES" and args and (args[-1].upper() in ("AUTO", "ZERO")
@@ -563,7 +567,10 @@ while args:
             rndb, _ = tdes_cbc(key, ek, bytes(8), decrypt=True, legacy=legacy)
             rndb_rot = rotate_left(rndb)
             rnda = _os.urandom(len(rndb))
-            tok_iv = bytes(8) if legacy else ek    # D40 legacy resets IV=0 per msg; ISO chains
+            # D40 legacy resets IV=0 per message; ISO chains from the last challenge
+            # block (ek[-8:], which == ek for a 1-block 2K3DES challenge but is the
+            # 2nd block for a 16-byte 3K3DES challenge)
+            tok_iv = bytes(8) if legacy else ek[-8:]
             token, lastc = tdes_cbc(key, rnda + rndb_rot, tok_iv, decrypt=False, legacy=legacy)
             d, sw = df_apdu("AF", token.hex().upper())
             which = "all-zero key" if key == bytes(len(key)) else "key " + keyhex
@@ -772,37 +779,55 @@ while args:
             print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
             continue
         if dfcommand == "CHANGEKEY":               # ChangeKey (0xC4) - needs a session
-            # change the key you are authenticated with (same key number). Legacy
-            # (3)DES session only for now (AES/EV1 secure messaging is a later item).
+            # CHANGEKEY <keyno> <newkey> [<oldkey>]. Same-key change (keyno == the
+            # authenticated key): plaintext = NewKey || CRC16(NewKey). Different-key
+            # change (needs <oldkey>): plaintext = (NewKey XOR OldKey) ||
+            # CRC16(NewKey XOR OldKey) || CRC16(NewKey). Zero-padded, enciphered under
+            # the SESSION key (legacy inverted CBC, IV=0). Legacy (3)DES session only.
             ck_keyno = args.pop().upper().zfill(2)
             ck_new = args.pop().upper()
             s = DESFire_Session
             if ck_new in ("0", "ZERO"):
                 ck_new = "00" * (24 if s["type"] == "3K3DES" else 16)
+            # chain-safe peek for an optional old key (hex of 8/16/24 bytes)
+            ck_old = None
+            if args and len(args[-1]) in (16, 32, 48) and _ishex(args[-1]):
+                ck_old = args.pop().upper()
             if not s["authed"]:
                 print("  CHANGEKEY: authenticate first (DESFIRE AUTH ...)")
-                continue
-            try:
-                newkey = bytes.fromhex(ck_new)
-            except ValueError:
-                print("  CHANGEKEY: key must be hex or 0")
                 continue
             if s["type"] not in ("DES", "2K3DES", "3K3DES"):
                 print("  CHANGEKEY: only legacy (3)DES sessions supported so far (AES/EV1 TODO)")
                 continue
-            # same-key change: plaintext = NewKey || CRC16(NewKey), zero-padded to a
-            # block multiple, then enciphered under the SESSION key (legacy inverted
-            # CBC, IV=0). CRC is the D40 ISO-14443-A CRC16 over the new key bytes.
-            crc = crc16a(newkey)           # D40: CRC16 over the new key bytes only
-            plain = newkey + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+            try:
+                newkey = bytes.fromhex(ck_new)
+                oldkey = bytes.fromhex(ck_old) if ck_old else None
+            except ValueError:
+                print("  CHANGEKEY: key must be hex or 0")
+                continue
+            samekey = int(ck_keyno, 16) == int(s["keyno"], 16)
+            if samekey:
+                payload = newkey
+                plain = payload + bytes(crc16a(payload).to_bytes(2, "little"))
+            else:
+                if oldkey is None or len(oldkey) != len(newkey):
+                    print("  CHANGEKEY: changing a different key than the session's needs <oldkey> of the same length")
+                    continue
+                payload = _xor(newkey, oldkey)
+                plain = (payload + bytes(crc16a(payload).to_bytes(2, "little"))
+                         + bytes(crc16a(newkey).to_bytes(2, "little")))
             if len(plain) % 8:
                 plain += bytes(8 - len(plain) % 8)
             crypto, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
             d, sw = df_apdu("C4", ck_keyno + crypto.hex().upper())
-            print("  ChangeKey(legacy) key %s -> %s: %s" % (ck_keyno, ck_new, df_status(sw)))
+            print("  ChangeKey(legacy) key %s -> %s (%s): %s" % (
+                ck_keyno, ck_new, "same key" if samekey else "diff key", df_status(sw)))
             if sw == "9100":
-                print("    *** key changed - session dropped, re-AUTH with the new key ***")
-                desfire_reset_session()      # changing a key invalidates the session
+                print("    *** key changed ***")
+                # changing the key we authenticated with drops the session; changing a
+                # different key leaves our session intact
+                if samekey:
+                    desfire_reset_session()
             continue
         if dfcommand == "CREATEAPP":               # CreateApplication (0xCA)
             aid = args.pop().upper()                # MSB-first
@@ -823,6 +848,14 @@ while args:
             size = args.pop()
             d, sw = df_apdu("CD", fileno + comm + ar_le(ar) + le3(size))
             print("  CreateStdDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
+            continue
+        if dfcommand == "CREATEBACKUP":            # CreateBackupDataFile (0xCB) <fno> <comm> <ar> <size>
+            fileno = args.pop().upper().zfill(2)
+            comm = args.pop().upper().zfill(2)
+            ar = args.pop().upper()
+            size = args.pop()
+            d, sw = df_apdu("CB", fileno + comm + ar_le(ar) + le3(size))
+            print("  CreateBackupDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
             continue
         if dfcommand == "CREATEVALUE":             # CreateValueFile (0xCC) <fno> <comm> <ar> <lo> <hi> <val> <lcr>
             fileno = args.pop().upper().zfill(2)
@@ -891,6 +924,15 @@ while args:
             d, sw = df_send("DC", fileno, bytes.fromhex(le4(amt)), comm)
             print("  Debit file %s -= %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
             continue
+        if dfcommand == "LIMITEDCREDIT":           # LimitedCredit (0x1C) <fno> <amount>
+            fileno = args.pop().upper().zfill(2)
+            amt = args.pop()
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
+            d, sw = df_send("1C", fileno, bytes.fromhex(le4(amt)), comm)
+            print("  LimitedCredit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+            continue
         if dfcommand == "COMMIT":                  # CommitTransaction (0xC7)
             d, sw = df_apdu("C7")
             print("  CommitTransaction: " + df_status(sw))
@@ -923,6 +965,31 @@ while args:
             d, sw = df_apdu("5C", opt + body)
             print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
             continue
+        if dfcommand == "CHANGEKEYSETTINGS":       # ChangeKeySettings (0x54) <settings>
+            # new settings byte, enciphered (+CRC16) under the session (key 0)
+            newset = args.pop().upper().zfill(2)
+            s = DESFire_Session
+            if not s["authed"] or s["sm"] != "legacy":
+                print("  CHANGEKEYSETTINGS: needs a legacy (0x0A) session (AUTH first)")
+                continue
+            body = df_legacy_encipher(bytes.fromhex(newset)).hex().upper()
+            d, sw = df_apdu("54", body)
+            print("  ChangeKeySettings -> %s: %s" % (newset, df_status(sw)))
+            continue
+        if dfcommand == "CHANGEFILESETTINGS":      # ChangeFileSettings (0x5F) <fno> <comm> <ar>
+            # fileno stays plain; new comm+access-rights enciphered (+CRC16) under the
+            # session (unless change-access is free, but we always encipher here)
+            fileno = args.pop().upper().zfill(2)
+            comm = args.pop().upper().zfill(2)
+            ar = args.pop().upper()
+            s = DESFire_Session
+            if not s["authed"] or s["sm"] != "legacy":
+                print("  CHANGEFILESETTINGS: needs a legacy (0x0A) session (AUTH first)")
+                continue
+            body = df_legacy_encipher(bytes.fromhex(comm + ar_le(ar))).hex().upper()
+            d, sw = df_apdu("5F", fileno + body)
+            print("  ChangeFileSettings %s -> comm %s AR %s: %s" % (fileno, comm, ar.zfill(4), df_status(sw)))
+            continue
         if dfcommand == "GETCARDUID":              # GetCardUID (0x51) - real UID, enciphered
             s = DESFire_Session
             if not s["authed"] or s["sm"] != "legacy":
@@ -952,9 +1019,10 @@ while args:
         print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
         print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
         print("            GETVALUE GETCARDUID READ RECORDS DFNAMES CMD")
-        print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEVALUE")
-        print("            CREATERECORD DELETEFILE WRITE WRITEREC CREDIT DEBIT")
-        print("            COMMIT ABORT CLEARREC FORMAT SETCONFIG")
+        print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEBACKUP")
+        print("            CREATEVALUE CREATERECORD DELETEFILE WRITE WRITEREC")
+        print("            CREDIT DEBIT LIMITEDCREDIT COMMIT ABORT CLEARREC")
+        print("            CHANGEKEYSETTINGS CHANGEFILESETTINGS FORMAT SETCONFIG")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)

@@ -14,12 +14,15 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   - **LEGACY (0x0A)** DES / 2K3DES / 3K3DES - the D40 "inverted" CBC (encipher =
     block-decrypt, decipher = block-encrypt), **IV reset to 0 per message**. Verified
     `AUTH DES 0 0` and `AUTH LEGACY 0 0` -> 9100, RndA' verified, session key derived.
-  - **ISO (0x1A)** 2K3DES / 3K3DES - standard CBC (IV chains, like AES; resp IV = last
-    token block). Verified `AUTH ISO 0 0` -> 9100, RndA' verified.
+  - **ISO (0x1A)** 2K3DES / 3K3DES - standard CBC (IV chains, like AES; **token IV = the
+    LAST block of the challenge** - ek[-8:], which == ek for a 1-block 2K3DES challenge
+    but is block 2 of a 16-byte 3K3DES challenge; getting this wrong gave 9100 with a
+    RndA' mismatch on 3K3DES only). Verified `AUTH ISO 0 0` (2K3DES) and a 3K3DES app
+    (24-byte key) -> 9100, RndA' verified.
   - **AES (0xAA)** - standard CBC, response IV optional (AUTO=ek(RndB) | ZERO | 32 hex).
-    On 9100 verifies RndA' and derives the AES session key. Verified on the DES-keyed D40
-    only as a correct *refusal* (91AE - no AES key); the 9100 AES path still needs an
-    AES-keyed card (the EV1, or an AES app) to exercise.
+    **Now hw-verified**: created an AES application (`CREATEAPP <aid> 0F 81`) and
+    `AUTH AES 0 0` -> 9100, RndA' verified, AES session key derived. (On the DES-keyed
+    PICC master, AES correctly returns 91AE.)
   - (3)DES built from single-DES ECB blocks (NIST SP800-67 EDE) so **weak/all-zero keys
     work** - pycryptodome's DES3 rejects degenerate keys, single DES allows them. The CBC
     ops follow libfreefare: RECEIVE always block-DECRYPT; SEND block-DECRYPT for legacy,
@@ -59,24 +62,34 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
     length header stays plain.
   `df_legacy_encipher` / `df_legacy_decipher` / `df_legacy_mac` + `df_send`/`df_recv`.
 - **[DONE] modifying commands, hw-verified on the D40** (full lifecycle, all comm modes):
-  CREATEAPP/DELETEAPP, CREATEFILE (std data), CREATEVALUE, CREATERECORD (linear/cyclic),
-  DELETEFILE, WRITE/READ, WRITEREC/RECORDS, CREDIT/DEBIT, COMMIT/ABORT, CLEARREC, FORMAT.
-  Verified: app with plain/MACed/enciphered std-data files (write+read round-trip, MAC &
-  CRC checked), value file (credit/debit/commit/getvalue), linear record file
-  (writerecord/commit/readrecords). NB on D40, DeleteApplication does NOT reclaim memory -
-  only FormatPICC does.
+  CREATEAPP/DELETEAPP, CREATEFILE (std data), CREATEBACKUP, CREATEVALUE, CREATERECORD
+  (linear/cyclic), DELETEFILE, WRITE/READ, WRITEREC/RECORDS, CREDIT/DEBIT, LIMITEDCREDIT,
+  COMMIT/ABORT, CLEARREC, CHANGEKEY (same- AND different-key), CHANGEKEYSETTINGS,
+  CHANGEFILESETTINGS, SETCONFIG, GETCARDUID, FORMAT. Verified: app with plain/MACed/
+  enciphered std-data files (write+read round-trip, MAC & CRC checked); **backup file
+  transactional rollback** (WRITE+COMMIT persists, WRITE+ABORT reverts); value file
+  credit/debit/limited-credit/commit/getvalue; linear record file; different-key ChangeKey
+  (change key 1 authed as key 0, then AUTH key 1 verified); ChangeKeySettings (0F->0D);
+  ChangeFileSettings (comm plain->MACed). NB on D40, DeleteApplication does NOT reclaim
+  memory - only FormatPICC does.
 Remaining (needs cards we can't test now - get factory **blanks** + known keys):
 - **EV1/EV2 "new" secure messaging** (for AES 0xAA and ISO 0x1A sessions): AES-CMAC chain
-  (primitive ready), CRC32, command counter, enciphered CRC+pad. Needed for AES/EV1 file
-  comms and ChangeKey. The legacy path above is complete; this is its EV1 counterpart.
-- **Remaining modifying bits**: different-key ChangeKey (XOR with old key + second CRC),
-  ChangeKeySettings/ChangeFileSettings, SetConfiguration, LimitedCredit. (CMD sends the
-  raw APDU for any of these today; they need the matching session wrapping to succeed.)
+  (primitive ready), CRC32, command counter, enciphered CRC+pad. All the modifying/file
+  commands above work over a **legacy (0x0A) DES/3DES session**; to drive files or
+  ChangeKey inside an **AES or 3K3DES** app (whose comms use the new SM) this is needed.
+  AES/3K3DES *auth* already works; only their secured command comms wait on this.
+- **ISO-FID / DF-name create variants** (`create_application_iso`, `create_*_file_iso`) so
+  DFNAMES/ISOFILEIDS return entries and ISO 7816 file access works; `set_default_key`,
+  `set_ats`. Lower priority.
 - Test cards on hand:
   - **Legacy D40** UID `047E30F9B61E80`, HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
-    key (all-zero factory). DES + 3DES auth (0x0A and 0x1A), ChangeKey, and the full
-    file/app lifecycle in all three comm modes verified against it. (Its original app
-    `543249` was FormatPICC'd away during testing - card left clean/empty, PICC key all-zero.)
+    key (all-zero factory). All four auth schemes (DES/2K3DES via 0x0A, 2K3DES/3K3DES via
+    0x1A, AES via an AES app), ChangeKey (same + different key), the full file/app
+    lifecycle in all three comm modes, transactional rollback, and SetConfiguration all
+    verified against it. **Now permanently in random-UID mode** (SETCONFIG 00 02 demo) -
+    anticollision returns changing `80..` UIDs (DESFire bug: emits 0x80 not ISO's 0x08;
+    see section 18), real UID via GETCARDUID. Its original app `543249` was FormatPICC'd (card was
+    full); left clean/empty, PICC key all-zero.
   - EV2 UID `044E32AA571290`, HW major `0x12`, 4K, **AES** master key (v `2F`), app
     `F53630` (auth required for file/key ops). (An **EV1** is coming next to exercise AES
     + the EV1 secure-messaging session.)
