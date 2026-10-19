@@ -77,14 +77,21 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   session ran enciphered + MACed file R/W, enciphered backup rollback, enciphered value
   file credit/debit/limited-credit, ChangeFileSettings, ChangeKeySettings and different-key
   ChangeKey - all 9100 with correct data/MAC/CRC, so the legacy comms are exercised with
-  real (non-degenerate) 3DES. AES + 3K3DES command coverage needs the new SM (below);
-  their *auth* is verified but their secured command comms are not yet implemented.
-Remaining (needs cards we can't test now - get factory **blanks** + known keys):
-- **EV1/EV2 "new" secure messaging** (for AES 0xAA and ISO 0x1A sessions): AES-CMAC chain
-  (primitive ready), CRC32, command counter, enciphered CRC+pad. All the modifying/file
-  commands above work over a **legacy (0x0A) DES/3DES session**; to drive files or
-  ChangeKey inside an **AES or 3K3DES** app (whose comms use the new SM) this is needed.
-  AES/3K3DES *auth* already works; only their secured command comms wait on this.
+  real (non-degenerate) 3DES.
+- **[DONE] EV1 "new" secure messaging** (AES 0xAA and ISO 0x1A sessions): AES-CMAC / 3DES-
+  CMAC chained from and updating the session IV; plain/MACed via CMAC, enciphered via CRC32
+  + CBC; ChangeKey (CRC32, AES key-version byte, different-key XOR + 2nd CRC32). df_apdu is
+  CMAC-aware; df_send/df_read/df_recv dispatch legacy vs new SM. **hw-verified**: non-zero
+  AES (ChangeKey -> re-auth -> enciphered/MACed/plain file R/W, value credit/debit/limited-
+  credit, backup rollback, ChangeFileSettings, ChangeKeySettings, different-key ChangeKey)
+  and non-zero 3K3DES (ISO ChangeKey -> re-auth -> enciphered file). So DES, 2K3DES, 3K3DES
+  and AES are all exercised non-zero across the command set.
+Remaining:
+- **EV1 error-path IV handling**: a command that returns an *error* status mid-session
+  desynchronises the CMAC chain (the card's IV handling on error isn't mirrored yet). For
+  now we drop the session with a "re-AUTH to continue" note; proper handling (match the
+  card's error IV) would let the session survive a benign error. Also **EV2
+  AuthenticateEV2First (0x71)** + command counter is a separate later step.
 - **ISO-FID / DF-name create variants** (`create_application_iso`, `create_*_file_iso`) so
   DFNAMES/ISOFILEIDS return entries and ISO 7816 file access works; `set_default_key`,
   `set_ats`. Lower priority.
