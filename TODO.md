@@ -86,15 +86,21 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   credit, backup rollback, ChangeFileSettings, ChangeKeySettings, different-key ChangeKey)
   and non-zero 3K3DES (ISO ChangeKey -> re-auth -> enciphered file). So DES, 2K3DES, 3K3DES
   and AES are all exercised non-zero across the command set.
-Remaining:
-- **EV1 error-path IV handling**: a command that returns an *error* status mid-session
-  desynchronises the CMAC chain (the card's IV handling on error isn't mirrored yet). For
-  now we drop the session with a "re-AUTH to continue" note; proper handling (match the
-  card's error IV) would let the session survive a benign error. Also **EV2
-  AuthenticateEV2First (0x71)** + command counter is a separate later step.
-- **ISO-FID / DF-name create variants** (`create_application_iso`, `create_*_file_iso`) so
-  DFNAMES/ISOFILEIDS return entries and ISO 7816 file access works; `set_default_key`,
-  `set_ats`. Lower priority.
+  - **[DONE/CORRECT] error handling**: per the DESFire EV1 spec, any error status (!= 00,
+    != AF) **invalidates the authentication** - "the session key is no longer valid and so
+    a CMAC must not be calculated" (hack.cert.pl DESFire EV1 doc; NXP say the same for
+    DESFire Light). So we drop the session on error and require re-AUTH - this is the
+    card's own behaviour, not a workaround. (Earlier thought a lost CMAC IV; it's by design.)
+- **[DONE] EV1 ISO 7816-4 file access + misc**, hw-verified on the EV1:
+  - CREATEAPPISO / CREATEFILEISO (2-byte ISO FIDs + DF name; sets KeySettings2 bit 0x20 so
+    files can carry ISO FIDs). DFNAMES / ISOFILEIDS now return real entries.
+  - ISO commands (CLA 00): ISOSELECT (by EF FID), ISOSELECTDF (by DF name), ISOREAD (B0),
+    ISOUPDATE (D6) - round-trip verified ("HelloISO" written/read via ISO 7816).
+  - SETCONFIG also covers set_default_key (opt 01, verified 9100 with 24-byte key + non-zero
+    version) and set_ats (opt 02, same mechanism; not fired - it rewrites the ATS).
+  - READSIG (0x3C) implemented; this early EV1 firmware (SW 1.03) returns 911C (unsupported).
+  - GetVersion generation decode fixed: 0x00 D40, 0x01 EV1, 0x12 EV2, 0x33 EV3.
+  **So the EV1 feature set is complete.** Remaining DESFire work is EV2/EV3 - see section 19.
 - Test cards on hand:
   - **EV1 (legacy DES keys)** UID `047E30F9B61E80` (plus a sibling `047D48F9B61E80` from the
     same batch), HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
@@ -936,3 +942,31 @@ behaves like the real card and nothing silently "corrects" the byte:
   untouched; don't assume `0x08` is the only random marker.
 - Add a short note wherever UID validity is checked so `0x80` isn't rejected/normalised.
 See Claude memory `desfire-random-uid-08-80-bug`.
+
+## 19. DESFire EV2 / EV3 (needs an EV2 / EV3 card)
+The EV1 feature set in section 1 is complete and hw-verified. The next generations
+add their own secure messaging and commands - needs the matching silicon to implement
+and test (our card is an EV1, HW major 0x01; EV2 = 0x12, EV3 = 0x33).
+
+**EV2** (on top of EV1):
+- **EV2 secure messaging**: `AuthenticateEV2First` (0x71) / `AuthenticateEV2NonFirst`
+  (0x77). Introduces a **Transaction Identifier (TI)** and a **command counter (CmdCtr)**
+  that both feed the AES-CMAC (MAC over CmdCtr||TI||cmd||...) and the enciphered-mode IV
+  (IV = E(session key, 0xA5 0x5A||TI||CmdCtr||...)). Distinct from EV1's chained-IV CMAC -
+  a separate SM path alongside the legacy/EV1 ones already built.
+- **Key sets**: `InitializeKeySet` (0x56), `FinalizeKeySet` (0x57), `RollKeySet` (0x55),
+  `ChangeKeyEV2` (0xC6).
+- **Transaction MAC files**: `CreateTransactionMACFile` (0xCE), `CommitReaderID` (0xC8),
+  `GetFileCounters` (0xF6).
+- **Proximity check** (relay-attack mitigation): PreparePC / ProximityCheck / VerifyPC.
+- **Virtual Card Architecture** (VCA): virtual-card select + proximity check.
+- EV2-only `SetConfiguration` options (failed-auth counter / PICC capabilities).
+
+**EV3** (on top of EV2):
+- **Secure Dynamic Messaging (SDM)** with mirroring (UID / read-counter / CMAC mirrored
+  into a file, read over plain NDEF) - `ChangeFileSettings` SDM options.
+- Enhanced/again-reworked proximity check, transaction timer, more SetConfiguration options.
+
+When an EV2/EV3 lands: add the 0x71/0x77 auth + TI/CmdCtr SM as a new `sm` scheme in
+`DESFire_Session` (the dispatch in df_apdu/df_send/df_read already branches on `sm`), then
+the key-set / transaction-MAC / proximity / SDM commands on top.
