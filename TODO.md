@@ -48,24 +48,35 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   read back by a later command in the same run.
 - **[DONE] AES-CMAC primitive** (`aes_cmac`, RFC 4493 / SP 800-38B) - unit-tested
   against all four RFC 4493 vectors. Not yet wired into command comms (next item).
+- **[DONE] legacy (D40) session comms - all three modes**, auto-selected from each file's
+  GetFileSettings comm byte and wrapped under the session key:
+  - **plain** (00): as-is.
+  - **MACed** (01): 4-byte legacy CBC-MAC (standard-CBC-encrypt, session key, IV=0; MAC =
+    first 4 bytes of the final block) appended on send, verified+stripped on receive.
+  - **enciphered** (03): send = E(data || CRC16(data) || zero-pad) via the inverted CBC;
+    receive = decipher then locate+verify CRC16 by low->high search (the all-zero tail
+    rules out early false matches). Only the data payload is wrapped; the fileno/offset/
+    length header stays plain.
+  `df_legacy_encipher` / `df_legacy_decipher` / `df_legacy_mac` + `df_send`/`df_recv`.
+- **[DONE] modifying commands, hw-verified on the D40** (full lifecycle, all comm modes):
+  CREATEAPP/DELETEAPP, CREATEFILE (std data), CREATEVALUE, CREATERECORD (linear/cyclic),
+  DELETEFILE, WRITE/READ, WRITEREC/RECORDS, CREDIT/DEBIT, COMMIT/ABORT, CLEARREC, FORMAT.
+  Verified: app with plain/MACed/enciphered std-data files (write+read round-trip, MAC &
+  CRC checked), value file (credit/debit/commit/getvalue), linear record file
+  (writerecord/commit/readrecords). NB on D40, DeleteApplication does NOT reclaim memory -
+  only FormatPICC does.
 Remaining (needs cards we can't test now - get factory **blanks** + known keys):
-- **Wire the session into comms**: use the session key + CMAC (and enciphered CRC+pad
-  mode) to MAC/decrypt command+response, advancing the stored IV/command counter per
-  command. Needed to read auth-protected files and for **every modifying command**.
-  The state container and the CMAC primitive are in place; this is the per-command
-  wrapping (EV1-style for 0xAA; EV2 AuthenticateEV2First/0x71 is a separate later step).
-  Legacy/ISO (DES/3DES) session-comms differ from AES - CRC16 + DES-CBC enciphering, no
-  CMAC - so that path needs its own wrapping too.
-- **Modifying commands** (then usable): CreateApplication/DeleteApplication, the
-  Create*File / DeleteFile set, WriteData/WriteRecord, GetValue/Credit/Debit/
-  LimitedCredit, Commit/AbortTransaction, ChangeKeySettings/ChangeFileSettings,
-  SetConfiguration, FormatPICC. (CMD can send the raw APDU for any of these today, but
-  they need the session crypto above to succeed.) ChangeKey (same-key, legacy) is done -
-  see above; different-key ChangeKey and the AES/EV1 variants remain.
+- **EV1/EV2 "new" secure messaging** (for AES 0xAA and ISO 0x1A sessions): AES-CMAC chain
+  (primitive ready), CRC32, command counter, enciphered CRC+pad. Needed for AES/EV1 file
+  comms and ChangeKey. The legacy path above is complete; this is its EV1 counterpart.
+- **Remaining modifying bits**: different-key ChangeKey (XOR with old key + second CRC),
+  ChangeKeySettings/ChangeFileSettings, SetConfiguration, LimitedCredit. (CMD sends the
+  raw APDU for any of these today; they need the matching session wrapping to succeed.)
 - Test cards on hand:
   - **Legacy D40** UID `047E30F9B61E80`, HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
-    key (v 00, all-zero factory default), one app `543249`. DES + 3DES (native 0x0A and
-    ISO 0x1A) auth all verified against it.
+    key (all-zero factory). DES + 3DES auth (0x0A and 0x1A), ChangeKey, and the full
+    file/app lifecycle in all three comm modes verified against it. (Its original app
+    `543249` was FormatPICC'd away during testing - card left clean/empty, PICC key all-zero.)
   - EV2 UID `044E32AA571290`, HW major `0x12`, 4K, **AES** master key (v `2F`), app
     `F53630` (auth required for file/key ops). (An **EV1** is coming next to exercise AES
     + the EV1 secure-messaging session.)

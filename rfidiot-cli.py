@@ -44,6 +44,15 @@ def _xor(a, b):
     return bytes(x ^ y for x, y in zip(a, b))
 
 
+def ReadablePrintHex(hexstr):
+    "printable-ASCII rendering of a hex string (non-printable as '.')"
+    try:
+        return '"%s"' % "".join(
+            chr(b) if 0x20 <= b < 0x7F else "." for b in bytes.fromhex(hexstr))
+    except ValueError:
+        return ""
+
+
 def rotate_left(b, n=1):
     "rotate a byte string left by n bytes (DESFire token rotation)"
     return b[n:] + b[:n]
@@ -183,6 +192,19 @@ if chelp or len(sys.argv) == 1:
     print("        RECORDS <FILENO> <OFFSET> <NUM>                 ReadRecords (hex; NUM 0 = all)")
     print("        CMD <INS> <DATA>                                raw native command (INS hex; DATA hex or 0 for none)")
     print("        SESSION                                         show the authenticated-session state carried over this run")
+    print("       -- create / modify (need a session; data wrapped per the file's comm mode: plain/MACed/enciphered) --")
+    print("        CREATEAPP <AID> <KEYSETTINGS> <NKEYS>           CreateApplication (AID MSB-first)")
+    print("        DELETEAPP <AID>                                 DeleteApplication")
+    print("        CREATEFILE <FNO> <COMM> <AR> <SIZE>             CreateStdDataFile (COMM 00/01/03; AR 4 hex rd/wr/rw/chg)")
+    print("        CREATEVALUE <FNO> <COMM> <AR> <LO> <HI> <VAL> <LCR>  CreateValueFile (amounts hex)")
+    print("        CREATERECORD <FNO> <COMM> <AR> <RECSIZE> <MAX> <LINEAR|CYCLIC>  CreateRecordFile")
+    print("        DELETEFILE <FNO>                                DeleteFile")
+    print("        WRITE <FNO> <OFFSET> <DATA>                     WriteData (DATA hex)")
+    print("        WRITEREC <FNO> <OFFSET> <DATA>                  WriteRecord (DATA hex)")
+    print("        CREDIT <FNO> <AMOUNT>  /  DEBIT <FNO> <AMOUNT>  value-file credit/debit (then COMMIT)")
+    print("        COMMIT  /  ABORT                                Commit/AbortTransaction")
+    print("        CLEARREC <FNO>                                  ClearRecordFile (then COMMIT)")
+    print("        FORMAT                                          FormatPICC - wipes ALL applications")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -254,6 +276,7 @@ DESFire_Session = {
     "aid": "000000",    # currently selected AID (MSB-first); 000000 = PICC master
     "iv": None,         # running CBC IV for enciphered comms (bytes)
     "cmdctr": 0,        # command counter (EV2 secure messaging)
+    "sm": None,         # secure-messaging scheme: "legacy" (0x0A) | "iso"/"aes" (TODO)
     "authed": False,
 }
 
@@ -265,9 +288,47 @@ def desfire_reset_session(aid=None):
     DESFire_Session["keyno"] = None
     DESFire_Session["iv"] = None
     DESFire_Session["cmdctr"] = 0
+    DESFire_Session["sm"] = None
     DESFire_Session["authed"] = False
     if aid is not None:
         DESFire_Session["aid"] = aid
+
+
+def df_legacy_encipher(payload):
+    "legacy enciphered SEND: E(payload || CRC16(payload) || zero-pad) under session key"
+    crc = crc16a(payload)
+    p = payload + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+    if len(p) % 8:
+        p += bytes(8 - len(p) % 8)
+    out, _ = tdes_cbc(DESFire_Session["key"], p, bytes(8), decrypt=False, legacy=True)
+    return out
+
+
+def df_legacy_decipher(enc):
+    "legacy enciphered RECEIVE: decipher, then locate+verify the CRC16 (search, as the "
+    "CRC can fall anywhere before the zero padding). Returns (data, ok)."
+    if not enc or len(enc) % 8:
+        return b"", False
+    plain, _ = tdes_cbc(DESFire_Session["key"], enc, bytes(8), decrypt=True, legacy=True)
+    # data = plain[:n], CRC16 = plain[n:n+2], then zero padding. Search LOW->HIGH: a
+    # split before the true data end is impossible because real (non-zero) data would
+    # remain in the "must be zero padding" tail, so the first match is the real one.
+    for n in range(0, len(plain) - 1):
+        crc = crc16a(plain[:n])
+        if plain[n:n + 2] == bytes([crc & 0xFF, (crc >> 8) & 0xFF]) and \
+           all(b == 0 for b in plain[n + 2:]):
+            return plain[:n], True
+    return plain, False
+
+
+def df_legacy_mac(payload):
+    "legacy 4-byte CBC-MAC: standard-CBC-encrypt (session key, IV=0) the zero-padded "
+    "payload; MAC = first 4 bytes of the final cipher block"
+    p = payload + (bytes(8 - len(payload) % 8) if len(payload) % 8 else b"")
+    if not p:
+        p = bytes(8)
+    out, _ = tdes_cbc(DESFire_Session["key"], p, bytes(8), decrypt=False, legacy=False)
+    return out[-8:-4]
 
 # main loop
 args.reverse()
@@ -336,6 +397,7 @@ while args:
         # DESFire status comes back as SW2 after 0x91 (9100 = OK, 91AF = another
         # frame follows). Works over any reader that passes APDUs (libnfc, -f ccid,
         # -r ccid/PC-SC, TWN4, Chameleon). SELECT the tag first.
+        COMM_NAME = {0: "plain", 1: "MACed", 3: "enciphered"}
         DF_STATUS = {
             "9100": "OK", "91AF": "ADDITIONAL FRAME", "910C": "NO CHANGES",
             "910E": "OUT OF MEMORY", "911C": "ILLEGAL COMMAND", "911E": "INTEGRITY ERROR",
@@ -465,7 +527,7 @@ while args:
                     if rnda_back == rotate_left(rnda):
                         sesskey = desfire_aes_session_key(rnda, rndb)
                         DESFire_Session.update(key=sesskey, type="AES", keyno=keyno,
-                                               iv=bytes(16), cmdctr=0, authed=True)
+                                               iv=bytes(16), cmdctr=0, sm="aes", authed=True)
                         print("    *** AUTH OK - the key is %s ***" % keyhex)
                         print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
                     else:
@@ -504,7 +566,8 @@ while args:
                 if rnda_back == rotate_left(rnda):
                     sesskey = desfire_des_session_key(rnda, rndb, len(key))
                     DESFire_Session.update(key=sesskey, type=ktype, keyno=keyno,
-                                           iv=bytes(8), cmdctr=0, authed=True)
+                                           iv=bytes(8), cmdctr=0,
+                                           sm=("legacy" if legacy else "iso"), authed=True)
                     print("    *** AUTH OK - the key is %s ***" % keyhex)
                     print("    session established: RndA' verified, %s session key %s" % (ktype, sesskey.hex().upper()))
                 else:
@@ -519,8 +582,58 @@ while args:
             n = int(x, 16)
             return "%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF)
 
+        def le4(x):
+            "4-byte little-endian hex (value-file amounts)"
+            n = int(x, 16)
+            return "%02X%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF)
+
+        def ar_le(ar):
+            "access-rights 4-hex (read/write/rw/change, MSB-first) -> 2 bytes LSB-first on wire"
+            ar = ar.upper().zfill(4)
+            return ar[2:4] + ar[0:2]
+
         def ar_name(n):
             return {0xE: "free", 0xF: "never"}.get(n, "key %X" % n)
+
+        def df_comm(fileno):
+            "file comm mode (0 plain / 1 MACed / 3 enciphered) from GetFileSettings"
+            d, sw = df_apdu("F5", fileno)
+            return int(d[2:4], 16) if (sw == "9100" and len(d) >= 4) else 0
+
+        def df_sm_ok(comm):
+            "True if we can wrap for this comm mode (plain always; MAC/enc need a legacy session)"
+            if comm == 0:
+                return True
+            if not DESFire_Session["authed"] or DESFire_Session["sm"] != "legacy":
+                print("    need a legacy (0x0A) session for MACed/enciphered files (AUTH LEGACY/DES first)")
+                return False
+            return True
+
+        def df_send(ins, header, payload, comm):
+            "send a data command, wrapping <payload> per comm mode (header stays plain)"
+            if comm == 3:                              # enciphered
+                body = df_legacy_encipher(payload).hex().upper()
+            elif comm == 1:                            # MACed: append 4-byte MAC over payload
+                body = payload.hex().upper() + df_legacy_mac(payload).hex().upper()
+            else:                                      # plain
+                body = payload.hex().upper()
+            return df_full(ins, header + body)
+
+        def df_recv(data, sw, comm):
+            "unwrap a response <data> per comm mode; returns (payload_hex, ok, note)"
+            if sw != "9100" or not data:
+                return data, True, ""
+            raw = bytes.fromhex(data)
+            if comm == 3:
+                pl, ok = df_legacy_decipher(raw)
+                return pl.hex().upper(), ok, ("" if ok else "  [CRC FAIL]")
+            if comm == 1:
+                if len(raw) < 4:
+                    return data, False, "  [MAC: short]"
+                body, mac = raw[:-4], raw[-4:]
+                ok = df_legacy_mac(body) == mac
+                return body.hex().upper(), ok, ("" if ok else "  [MAC FAIL]")
+            return data, True, ""
 
         if dfcommand == "FREEMEM":                 # GetFreeMemory (0x6E)
             d, sw = df_apdu("6E")
@@ -582,28 +695,43 @@ while args:
                 print("    size: %d bytes" % int(rest[4:6] + rest[2:4] + rest[0:2], 16))
             continue
         if dfcommand == "GETVALUE":                # GetValue (0x6C) <fileno>
-            fileno = args.pop().upper()
+            fileno = args.pop().upper().zfill(2)
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
             d, sw = df_full("6C", fileno)
+            d, ok, note = df_recv(d, sw, comm)
             if sw == "9100" and len(d) >= 8:
-                print("  Value file %s = %d" % (fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16)))
+                print("  Value file %s = %d (%s comm)%s" % (
+                    fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16), COMM_NAME[comm], note))
             else:
                 print("  GetValue file %s: %s" % (fileno, df_status(sw)))
             continue
-        if dfcommand == "READ":                    # ReadData (0xBD) <fileno> [<offset> <length>]
-            fileno = args.pop().upper()
+        if dfcommand == "READ":                    # ReadData (0xBD) <fileno> <offset> <length>
+            fileno = args.pop().upper().zfill(2)
             off = args.pop()
             length = args.pop()        # 0 = whole file
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
             d, sw = df_full("BD", fileno + le3(off) + le3(length))
-            print("  ReadData file %s off %s len %s: %s" % (fileno, off, length, df_status(sw)))
+            d, ok, note = df_recv(d, sw, comm)
+            print("  ReadData file %s off %s len %s (%s comm): %s%s" % (
+                fileno, off, length, COMM_NAME[comm], df_status(sw), note))
             if d:
-                print("    %s" % d)
+                print("    %s  %s" % (d, ReadablePrintHex(d)))
             continue
-        if dfcommand == "RECORDS":                 # ReadRecords (0xBB) <fileno> [<offset> <num>]
-            fileno = args.pop().upper()
+        if dfcommand == "RECORDS":                 # ReadRecords (0xBB) <fileno> <offset> <num>
+            fileno = args.pop().upper().zfill(2)
             off = args.pop()
             num = args.pop()           # 0 = all records
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
             d, sw = df_full("BB", fileno + le3(off) + le3(num))
-            print("  ReadRecords file %s off %s num %s: %s" % (fileno, off, num, df_status(sw)))
+            d, ok, note = df_recv(d, sw, comm)
+            print("  ReadRecords file %s off %s num %s (%s comm): %s%s" % (
+                fileno, off, num, COMM_NAME[comm], df_status(sw), note))
             if d:
                 print("    %s" % d)
             continue
@@ -666,12 +794,117 @@ while args:
                 print("    *** key changed - session dropped, re-AUTH with the new key ***")
                 desfire_reset_session()      # changing a key invalidates the session
             continue
+        if dfcommand == "CREATEAPP":               # CreateApplication (0xCA)
+            aid = args.pop().upper()                # MSB-first
+            ksett = args.pop().upper().zfill(2)     # key settings byte (e.g. 0F)
+            nkeys = args.pop().upper().zfill(2)     # number of keys (+ 0x40=3K3DES / 0x80=AES)
+            d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + nkeys)
+            print("  CreateApplication %s (keysettings %s, %s keys): %s" % (aid, ksett, nkeys, df_status(sw)))
+            continue
+        if dfcommand == "DELETEAPP":               # DeleteApplication (0xDA)
+            aid = args.pop().upper()
+            d, sw = df_apdu("DA", df_rev_aid(aid))
+            print("  DeleteApplication %s: %s" % (aid, df_status(sw)))
+            continue
+        if dfcommand == "CREATEFILE":              # CreateStdDataFile (0xCD) <fno> <comm> <ar> <size>
+            fileno = args.pop().upper().zfill(2)
+            comm = args.pop().upper().zfill(2)      # 00 plain / 01 MACed / 03 enciphered
+            ar = args.pop().upper()                 # 4 hex: read/write/rw/change (E=free F=never)
+            size = args.pop()
+            d, sw = df_apdu("CD", fileno + comm + ar_le(ar) + le3(size))
+            print("  CreateStdDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
+            continue
+        if dfcommand == "CREATEVALUE":             # CreateValueFile (0xCC) <fno> <comm> <ar> <lo> <hi> <val> <lcr>
+            fileno = args.pop().upper().zfill(2)
+            comm = args.pop().upper().zfill(2)
+            ar = args.pop().upper()
+            lo = args.pop(); hi = args.pop(); val = args.pop(); lcr = args.pop().upper().zfill(2)
+            d, sw = df_apdu("CC", fileno + comm + ar_le(ar) + le4(lo) + le4(hi) + le4(val) + lcr)
+            print("  CreateValueFile %s comm %s AR %s [%s..%s]=%s lcr %s: %s" % (
+                fileno, comm, ar.zfill(4), lo, hi, val, lcr, df_status(sw)))
+            continue
+        if dfcommand == "CREATERECORD":            # Create{Linear,Cyclic}RecordFile (0xC1/0xC0)
+            fileno = args.pop().upper().zfill(2)
+            comm = args.pop().upper().zfill(2)
+            ar = args.pop().upper()
+            recsize = args.pop(); maxrec = args.pop()
+            kind = args.pop().upper()               # LINEAR or CYCLIC (required, chain-safe)
+            ins = "C0" if kind == "CYCLIC" else "C1"
+            d, sw = df_apdu(ins, fileno + comm + ar_le(ar) + le3(recsize) + le3(maxrec))
+            print("  Create%sRecordFile %s comm %s AR %s recsize %s max %s: %s" % (
+                kind.capitalize(), fileno, comm, ar.zfill(4), recsize, maxrec, df_status(sw)))
+            continue
+        if dfcommand == "DELETEFILE":              # DeleteFile (0xDF)
+            fileno = args.pop().upper().zfill(2)
+            d, sw = df_apdu("DF", fileno)
+            print("  DeleteFile %s: %s" % (fileno, df_status(sw)))
+            continue
+        if dfcommand == "WRITE":                   # WriteData (0x3D) <fno> <off> <data-hex>
+            fileno = args.pop().upper().zfill(2)
+            off = args.pop()
+            wdata = bytes.fromhex(args.pop())
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
+            header = fileno + le3(off) + le3("%X" % len(wdata))
+            d, sw = df_send("3D", header, wdata, comm)
+            print("  WriteData file %s off %s len %d (%s comm): %s" % (
+                fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
+            continue
+        if dfcommand == "WRITEREC":                # WriteRecord (0x3B) <fno> <off> <data-hex>
+            fileno = args.pop().upper().zfill(2)
+            off = args.pop()
+            wdata = bytes.fromhex(args.pop())
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
+            header = fileno + le3(off) + le3("%X" % len(wdata))
+            d, sw = df_send("3B", header, wdata, comm)
+            print("  WriteRecord file %s off %s len %d (%s comm): %s" % (
+                fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
+            continue
+        if dfcommand == "CREDIT":                  # Credit (0x0C) <fno> <amount>
+            fileno = args.pop().upper().zfill(2)
+            amt = args.pop()
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
+            d, sw = df_send("0C", fileno, bytes.fromhex(le4(amt)), comm)
+            print("  Credit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+            continue
+        if dfcommand == "DEBIT":                   # Debit (0xDC) <fno> <amount>
+            fileno = args.pop().upper().zfill(2)
+            amt = args.pop()
+            comm = df_comm(fileno)
+            if not df_sm_ok(comm):
+                continue
+            d, sw = df_send("DC", fileno, bytes.fromhex(le4(amt)), comm)
+            print("  Debit file %s -= %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+            continue
+        if dfcommand == "COMMIT":                  # CommitTransaction (0xC7)
+            d, sw = df_apdu("C7")
+            print("  CommitTransaction: " + df_status(sw))
+            continue
+        if dfcommand == "ABORT":                   # AbortTransaction (0xA7)
+            d, sw = df_apdu("A7")
+            print("  AbortTransaction: " + df_status(sw))
+            continue
+        if dfcommand == "CLEARREC":                # ClearRecordFile (0xEB) <fno>
+            fileno = args.pop().upper().zfill(2)
+            d, sw = df_apdu("EB", fileno)
+            print("  ClearRecordFile %s: %s" % (fileno, df_status(sw)))
+            continue
+        if dfcommand == "FORMAT":                  # FormatPICC (0xFC) - wipes ALL applications
+            d, sw = df_apdu("FC")
+            print("  FormatPICC (wipes all apps): " + df_status(sw))
+            continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
             print("  DESFire session state (this run):")
             print("    selected AID : %s" % s["aid"])
             if s["authed"]:
-                print("    authenticated: yes (%s key %s)" % (s["type"], s["keyno"]))
+                print("    authenticated: yes (%s key %s, %s secure messaging)" % (
+                    s["type"], s["keyno"], s["sm"]))
                 print("    session key  : %s" % s["key"].hex().upper())
                 print("    cmd counter  : %d" % s["cmdctr"])
                 print("    IV           : %s" % s["iv"].hex().upper())
@@ -682,6 +915,9 @@ while args:
         print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
         print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
         print("            GETVALUE READ RECORDS DFNAMES CMD")
+        print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEVALUE")
+        print("            CREATERECORD DELETEFILE WRITE WRITEREC CREDIT DEBIT")
+        print("            COMMIT ABORT CLEARREC FORMAT")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
