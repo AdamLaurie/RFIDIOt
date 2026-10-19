@@ -282,13 +282,16 @@ if chelp or len(sys.argv) == 1:
     print("        READ <FILENO> <OFFSET> <LENGTH>                 ReadData (hex; LENGTH 0 = whole file)")
     print("        GETVALUE <FILENO>                               GetValue (value file)")
     print("        GETCARDUID                                      GetCardUID - the real UID (needs a session)")
+    print("        READSIG                                         Read_Sig - NXP originality signature")
     print("        RECORDS <FILENO> <OFFSET> <NUM>                 ReadRecords (hex; NUM 0 = all)")
     print("        CMD <INS> <DATA>                                raw native command (INS hex; DATA hex or 0 for none)")
     print("        SESSION                                         show the authenticated-session state carried over this run")
     print("       -- create / modify (need a session; data wrapped per the file's comm mode: plain/MACed/enciphered) --")
     print("        CREATEAPP <AID> <KEYSETTINGS> <NKEYS>           CreateApplication (AID MSB-first)")
+    print("        CREATEAPPISO <AID> <KEYSETTINGS> <NKEYS> <ISOFID> <DFNAME>  CreateApplication w/ ISO FID + DF name")
     print("        DELETEAPP <AID>                                 DeleteApplication")
     print("        CREATEFILE <FNO> <COMM> <AR> <SIZE>             CreateStdDataFile (COMM 00/01/03; AR 4 hex rd/wr/rw/chg)")
+    print("        CREATEFILEISO <FNO> <ISOFID> <COMM> <AR> <SIZE> CreateStdDataFile w/ ISO FID (for ISO 7816 access)")
     print("        CREATEBACKUP <FNO> <COMM> <AR> <SIZE>           CreateBackupDataFile (transactional; COMMIT after WRITE)")
     print("        CREATEVALUE <FNO> <COMM> <AR> <LO> <HI> <VAL> <LCR>  CreateValueFile (amounts hex)")
     print("        CREATERECORD <FNO> <COMM> <AR> <RECSIZE> <MAX> <LINEAR|CYCLIC>  CreateRecordFile")
@@ -303,9 +306,15 @@ if chelp or len(sys.argv) == 1:
     print("        COMMIT  /  ABORT                                Commit/AbortTransaction")
     print("        CLEARREC <FNO>                                  ClearRecordFile (then COMMIT)")
     print("        FORMAT                                          FormatPICC - wipes ALL applications")
-    print("        SETCONFIG <OPTION> <DATA>                       SetConfiguration (enciphered). OPTION 00 = PICC config:")
-    print("                                                        DATA 00 none, 01 disable-format, 02 ENABLE RANDOM UID")
-    print("                                                        (bit1 is PERMANENT - cannot be undone)")
+    print("        SETCONFIG <OPTION> <DATA>                       SetConfiguration (enciphered). OPTION 00 = PICC config")
+    print("                                                        (DATA 00 none, 01 disable-format, 02 ENABLE RANDOM UID")
+    print("                                                        - bit1 is PERMANENT); 01 = default key (24-byte key+ver);")
+    print("                                                        02 = ATS")
+    print("       -- ISO 7816-4 access to files created with an ISO FID / DF name --")
+    print("        ISOSELECT <ISOFID>                              ISOSelectFile - select EF by 2-byte ISO FID")
+    print("        ISOSELECTDF <DFNAME>                            ISOSelectFile - select application by DF name")
+    print("        ISOREAD <OFFSET> <LEN>                          ISOReadBinary (hex)")
+    print("        ISOUPDATE <OFFSET> <DATA>                       ISOUpdateBinary (DATA hex)")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
@@ -536,22 +545,20 @@ while args:
             return df_raw(ins, data)
 
         def df_cmac_check(d, sw):
-            "strip+verify the 8-byte response CMAC the card appends on a 9100/91AF reply, "
-            "advancing the session IV in step. A command that returns an ERROR status "
-            "desynchronises the EV1 channel (the card's IV handling on error differs and "
-            "isn't yet mirrored here), so we drop the session and tell the user to re-AUTH "
-            "rather than emit a confusing 91AE cascade. (Error-path IV handling: TODO.)"
-            if df_newsm() and sw in ("9100", "91AF"):
-                if len(d) >= 16:
-                    raw = bytes.fromhex(d)
-                    payload, mac = raw[:-8], raw[-8:]
-                    expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
-                    if mac != expect:
-                        print("    [new-SM response CMAC verify FAILED]")
-                    return payload.hex().upper(), sw
-                return d, sw
+            "On a 9100/91AF reply the card appends an 8-byte CMAC over (payload||status); "
+            "strip+verify it and advance the session IV in step. Per the DESFire EV1 spec, "
+            "any error status (!= 00 and != AF) INVALIDATES the authentication - the session "
+            "key is no longer valid - so we drop the session (re-AUTH required), exactly as "
+            "the card does."
+            if df_newsm() and sw in ("9100", "91AF") and len(d) >= 16:
+                raw = bytes.fromhex(d)
+                payload, mac = raw[:-8], raw[-8:]
+                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
+                if mac != expect:
+                    print("    [new-SM response CMAC verify FAILED]")
+                return payload.hex().upper(), sw
             if df_newsm() and sw.startswith("91") and sw not in ("9100", "91AF"):
-                print("    (EV1 secure channel desynchronised by this error - re-AUTH to continue)")
+                print("    (error invalidates the EV1 session - re-AUTH to continue)")
                 desfire_reset_session(DESFire_Session["aid"])
             return d, sw
 
@@ -763,6 +770,7 @@ while args:
             "send a data command, wrapping <payload> per comm mode (header stays plain)"
             if df_newsm():                             # EV1 new secure messaging
                 buf = bytes([int(ins, 16)]) + bytes.fromhex(header) + payload
+                saved = DESFire_Session["iv"]
                 if comm == 3:                          # enciphered: E(payload||CRC32||pad)
                     s = DESFire_Session
                     bs = 16 if s["sm"] == "aes" else 8
@@ -795,6 +803,9 @@ while args:
                 while sw == "91AF":                    # gather chained frames (small files: 1)
                     more, sw = df_raw("AF")
                     d += more
+                if sw.startswith("91") and sw != "9100":   # error invalidates the EV1 session (spec)
+                    print("    (error invalidates the EV1 session - re-AUTH to continue)")
+                    desfire_reset_session(DESFire_Session["aid"])
                 return df_recv(d, sw, comm)
             d, sw = df_full(ins, header)
             return df_recv(d, sw, comm)
@@ -940,7 +951,7 @@ while args:
             print("  GetDFNames: " + df_status(sw))
             for e in entries:
                 aid = df_rev_aid(e[0:6]) if len(e) >= 6 else "?"
-                fid = e[6:10] if len(e) >= 10 else ""
+                fid = (e[8:10] + e[6:8]) if len(e) >= 10 else ""   # ISO FID is LSB-first; show MSB-first
                 name = e[10:] if len(e) > 10 else ""
                 print("    AID %s  ISO-FID %s  DFname %s" % (aid, fid, name))
             if not entries:
@@ -1029,6 +1040,21 @@ while args:
             d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + nkeys)
             print("  CreateApplication %s (keysettings %s, %s keys): %s" % (aid, ksett, nkeys, df_status(sw)))
             continue
+        if dfcommand == "CREATEAPPISO":            # CreateApplication w/ ISO FID + DF name
+            aid = args.pop().upper()               # <aid> <ksett> <nkeys> <iso-fid> <dfname-hex>
+            ksett = args.pop().upper().zfill(2)
+            nkeys = args.pop().upper().zfill(2)
+            isofid = args.pop().upper().zfill(4)   # MSB-first, e.g. 1234 -> sent LSB-first
+            dfname = args.pop().upper()            # ISO DF name (1-16 bytes hex); "-"/0 = none
+            if dfname in ("-", "0", "NONE"):
+                dfname = ""
+            # set KeySettings2 bit 0x20 ("files use 2-byte ISO 7816-4 File IDs") so files
+            # in this app can carry ISO FIDs (required for CREATEFILEISO / ISO access)
+            ks2 = "%02X" % (int(nkeys, 16) | 0x20)
+            d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + ks2 + isofid[2:4] + isofid[0:2] + dfname)
+            print("  CreateApplication %s ISO-FID %s DFname %s (ksett %s, %s keys): %s" % (
+                aid, isofid, dfname or "(none)", ksett, nkeys, df_status(sw)))
+            continue
         if dfcommand == "DELETEAPP":               # DeleteApplication (0xDA)
             aid = args.pop().upper()
             d, sw = df_apdu("DA", df_rev_aid(aid))
@@ -1041,6 +1067,16 @@ while args:
             size = args.pop()
             d, sw = df_apdu("CD", fileno + comm + ar_le(ar) + le3(size))
             print("  CreateStdDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
+            continue
+        if dfcommand == "CREATEFILEISO":           # CreateStdDataFile w/ ISO FID <fno> <iso-fid> <comm> <ar> <size>
+            fileno = args.pop().upper().zfill(2)
+            isofid = args.pop().upper().zfill(4)   # MSB-first -> sent LSB-first
+            comm = args.pop().upper().zfill(2)
+            ar = args.pop().upper()
+            size = args.pop()
+            d, sw = df_apdu("CD", fileno + isofid[2:4] + isofid[0:2] + comm + ar_le(ar) + le3(size))
+            print("  CreateStdDataFile %s ISO-FID %s comm %s AR %s size %s: %s" % (
+                fileno, isofid, comm, ar.zfill(4), size, df_status(sw)))
             continue
         if dfcommand == "CREATEBACKUP":            # CreateBackupDataFile (0xCB) <fno> <comm> <ar> <size>
             fileno = args.pop().upper().zfill(2)
@@ -1185,6 +1221,48 @@ while args:
             else:
                 print("  GetCardUID: " + df_status(sw))
             continue
+        if dfcommand == "READSIG":                 # Read_Sig (0x3C) - NXP originality signature
+            if DESFire_Session["authed"]:
+                d, sw, note = df_read("3C", "00", 3)   # enciphered under the session
+            else:
+                d, sw = df_full("3C", "00")            # unauthenticated: plain (may be refused)
+                note = ""
+            if sw == "9100":
+                print("  Read_Sig (originality signature, %d bytes)%s:" % (len(d) // 2, note))
+                print("    %s" % d)
+            else:
+                print("  Read_Sig: " + df_status(sw))
+            continue
+        # ---- ISO 7816-4 access to files that were given an ISO FID / DF name ----
+        def iso_apdu(ins, p1, p2, data="", le=""):
+            "send a plain ISO 7816-4 APDU (CLA 00); return (data_hex, sw_hex)"
+            lc = "%02X" % (len(data) // 2) if data else ""
+            card.send_apdu("", "", "", "", "00", ins, p1, p2, lc, data, le)
+            return card.data.upper(), card.errorcode.upper()
+        if dfcommand == "ISOSELECT":               # ISOSelectFile by EF ISO-FID (00 A4 00 0C)
+            isofid = args.pop().upper().zfill(4)   # 2-byte FID, big-endian in the APDU
+            d, sw = iso_apdu("A4", "00", "0C", isofid)
+            print("  ISOSelectFile EF %s: %s" % (isofid, sw))
+            continue
+        if dfcommand == "ISOSELECTDF":             # ISOSelectFile by DF name / AID (00 A4 04 0C)
+            dfname = args.pop().upper()
+            d, sw = iso_apdu("A4", "04", "0C", dfname)
+            print("  ISOSelectFile DF %s: %s" % (dfname, sw))
+            continue
+        if dfcommand == "ISOREAD":                 # ISOReadBinary (00 B0) <offset> <len>
+            off = int(args.pop(), 16)
+            length = int(args.pop(), 16)
+            d, sw = iso_apdu("B0", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), "", "%02X" % (length & 0xFF))
+            print("  ISOReadBinary off %d len %d: %s" % (off, length, sw))
+            if d:
+                print("    %s  %s" % (d, ReadablePrintHex(d)))
+            continue
+        if dfcommand == "ISOUPDATE":               # ISOUpdateBinary (00 D6) <offset> <data-hex>
+            off = int(args.pop(), 16)
+            wdata = args.pop().upper()
+            d, sw = iso_apdu("D6", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), wdata)
+            print("  ISOUpdateBinary off %d len %d: %s" % (off, len(wdata) // 2, sw))
+            continue
         if dfcommand == "SESSION":                 # show the carried-over session state
             s = DESFire_Session
             print("  DESFire session state (this run):")
@@ -1201,11 +1279,13 @@ while args:
         print("  Unknown DESFIRE command:", dfcommand)
         print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
         print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
-        print("            GETVALUE GETCARDUID READ RECORDS DFNAMES CMD")
-        print("    create/modify: CREATEAPP DELETEAPP CREATEFILE CREATEBACKUP")
-        print("            CREATEVALUE CREATERECORD DELETEFILE WRITE WRITEREC")
-        print("            CREDIT DEBIT LIMITEDCREDIT COMMIT ABORT CLEARREC")
-        print("            CHANGEKEYSETTINGS CHANGEFILESETTINGS FORMAT SETCONFIG")
+        print("            GETVALUE GETCARDUID READSIG READ RECORDS DFNAMES CMD")
+        print("    create/modify: CREATEAPP CREATEAPPISO DELETEAPP CREATEFILE")
+        print("            CREATEFILEISO CREATEBACKUP CREATEVALUE CREATERECORD")
+        print("            DELETEFILE WRITE WRITEREC CREDIT DEBIT LIMITEDCREDIT")
+        print("            COMMIT ABORT CLEARREC CHANGEKEYSETTINGS CHANGEFILESETTINGS")
+        print("            FORMAT SETCONFIG")
+        print("    ISO 7816: ISOSELECT ISOSELECTDF ISOREAD ISOUPDATE")
         continue
     if command == "DUMP":
         start = int(args.pop(), 16)
