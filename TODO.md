@@ -72,6 +72,13 @@ wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
   (change key 1 authed as key 0, then AUTH key 1 verified); ChangeKeySettings (0F->0D);
   ChangeFileSettings (comm plain->MACed). NB on D40, DeleteApplication does NOT reclaim
   memory - only FormatPICC does.
+  **Re-verified with a genuine non-zero K1!=K2 2K3DES session** (not just the degenerate
+  all-zero key): changed an app master to 00112233445566778899AABBCCDDEEFF and under that
+  session ran enciphered + MACed file R/W, enciphered backup rollback, enciphered value
+  file credit/debit/limited-credit, ChangeFileSettings, ChangeKeySettings and different-key
+  ChangeKey - all 9100 with correct data/MAC/CRC, so the legacy comms are exercised with
+  real (non-degenerate) 3DES. AES + 3K3DES command coverage needs the new SM (below);
+  their *auth* is verified but their secured command comms are not yet implemented.
 Remaining (needs cards we can't test now - get factory **blanks** + known keys):
 - **EV1/EV2 "new" secure messaging** (for AES 0xAA and ISO 0x1A sessions): AES-CMAC chain
   (primitive ready), CRC32, command counter, enciphered CRC+pad. All the modifying/file
