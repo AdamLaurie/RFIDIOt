@@ -53,6 +53,20 @@ def ReadablePrintHex(hexstr):
         return ""
 
 
+# ---------------------------------------------------------------------------
+# DESFire crypto / secure messaging.
+#
+# The DESFire authentication (legacy 0x0A, ISO 0x1A, AES 0xAA), session-key
+# derivation, the D40 "inverted" CBC, the legacy CRC16/MAC/enciphered comms and
+# the EV1 "new" secure messaging (CMAC chaining, CRC32, enciphered mode) below
+# are RE-IMPLEMENTED in Python from the algorithms in **libfreefare**
+# (https://github.com/nfc-tools/libfreefare, mifare_desfire.c /
+# mifare_desfire_crypto.c / mifare_desfire_key.c, LGPL-3.0) - used as the
+# authoritative reference and cross-checked against it. Credit and thanks to the
+# libfreefare authors (Romuald Conty, Romain Tartiere, et al.).
+# ---------------------------------------------------------------------------
+
+
 def rotate_left(b, n=1):
     "rotate a byte string left by n bytes (DESFire token rotation)"
     return b[n:] + b[:n]
@@ -131,6 +145,86 @@ def tdes_cbc(key, data, iv, decrypt, legacy):
             c = tdes_block(key, _xor(blk, prev), decrypt=legacy)
             out += c
             prev = c
+    return out, prev
+
+
+def crc32_jam(data):
+    "DESFire CRC32 (reflected poly 0xEDB88320, init 0xFFFFFFFF, no final xor)"
+    crc = 0xFFFFFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xEDB88320 if crc & 1 else crc >> 1
+    return crc & 0xFFFFFFFF
+
+
+def _df_block_encrypt(key, b, sm):
+    if sm == "aes":
+        from Crypto.Cipher import AES
+        return AES.new(key, AES.MODE_ECB).encrypt(b)
+    return tdes_block(key, b, decrypt=False)
+
+
+def _df_block_decrypt(key, b, sm):
+    if sm == "aes":
+        from Crypto.Cipher import AES
+        return AES.new(key, AES.MODE_ECB).decrypt(b)
+    return tdes_block(key, b, decrypt=True)
+
+
+def df_cmac_subkeys(key, sm):
+    "CMAC subkeys K1/K2 from the session key (AES: 16-byte block, Rb 0x87; (3)DES: 8, 0x1B)"
+    bs = 16 if sm == "aes" else 8
+    rb = 0x87 if sm == "aes" else 0x1B
+    L = _df_block_encrypt(key, bytes(bs), sm)
+
+    def dbl(bb):
+        n = (int.from_bytes(bb, "big") << 1) & ((1 << (bs * 8)) - 1)
+        if bb[0] & 0x80:
+            n ^= rb
+        return n.to_bytes(bs, "big")
+
+    k1 = dbl(L)
+    return k1, dbl(k1)
+
+
+def df_cmac(buffer):
+    "EV1 CMAC over buffer, CBC-chained from and updating the session IV; returns the "
+    "full final block (first 8 bytes are the transmitted CMAC)"
+    s = DESFire_Session
+    bs = 16 if s["sm"] == "aes" else 8
+    if len(buffer) and len(buffer) % bs == 0:
+        msg = buffer[:-bs] + _xor(buffer[-bs:], s["sk1"])
+    else:
+        padded = buffer + b"\x80" + bytes(bs - 1 - (len(buffer) % bs))
+        msg = padded[:-bs] + _xor(padded[-bs:], s["sk2"])
+    prev = s["iv"]
+    for i in range(0, len(msg), bs):
+        prev = _df_block_encrypt(s["key"], _xor(msg[i:i + bs], prev), s["sm"])
+    s["iv"] = prev
+    return prev
+
+
+def _df_cbc_enc(data, iv):
+    "EV1 CBC-encrypt (session cipher), returns (ciphertext, last block)"
+    s = DESFire_Session
+    bs = len(iv)
+    out, prev = b"", iv
+    for i in range(0, len(data), bs):
+        prev = _df_block_encrypt(s["key"], _xor(data[i:i + bs], prev), s["sm"])
+        out += prev
+    return out, prev
+
+
+def _df_cbc_dec(data, iv):
+    "EV1 CBC-decrypt (session cipher), returns (plaintext, last cipher block)"
+    s = DESFire_Session
+    bs = len(iv)
+    out, prev = b"", iv
+    for i in range(0, len(data), bs):
+        blk = data[i:i + bs]
+        out += _xor(_df_block_decrypt(s["key"], blk, s["sm"]), prev)
+        prev = blk
     return out, prev
 
 
@@ -283,7 +377,9 @@ DESFire_Session = {
     "aid": "000000",    # currently selected AID (MSB-first); 000000 = PICC master
     "iv": None,         # running CBC IV for enciphered comms (bytes)
     "cmdctr": 0,        # command counter (EV2 secure messaging)
-    "sm": None,         # secure-messaging scheme: "legacy" (0x0A) | "iso"/"aes" (TODO)
+    "sm": None,         # secure-messaging scheme: "legacy" (0x0A) | "iso" (0x1A) | "aes" (0xAA)
+    "sk1": None,        # EV1 CMAC subkeys (new SM)
+    "sk2": None,
     "authed": False,
 }
 
@@ -296,6 +392,8 @@ def desfire_reset_session(aid=None):
     DESFire_Session["iv"] = None
     DESFire_Session["cmdctr"] = 0
     DESFire_Session["sm"] = None
+    DESFire_Session["sk1"] = None
+    DESFire_Session["sk2"] = None
     DESFire_Session["authed"] = False
     if aid is not None:
         DESFire_Session["aid"] = aid
@@ -416,13 +514,37 @@ while args:
             "91F0": "FILE NOT FOUND", "91F1": "FILE INTEGRITY ERROR",
         }
 
-        def df_apdu(ins, data=""):
-            "send one DESFire native command; return (data_hex, sw_hex)"
+        def df_raw(ins, data=""):
+            "send one native command over the 7816 wrapping; return (data_hex, sw_hex)"
             if data:
                 card.send_apdu("", "", "", "", "90", ins, "00", "00", "%02X" % (len(data) // 2), data, "00")
             else:
                 card.send_apdu("", "", "", "", "90", ins, "00", "00", "", "", "00")
             return card.data.upper(), card.errorcode.upper()
+
+        def df_newsm():
+            "True when an EV1 'new' secure-messaging (CMAC) session is active"
+            return DESFire_Session["authed"] and DESFire_Session["sm"] in ("aes", "iso")
+
+        def df_apdu(ins, data=""):
+            "send a command; in an EV1 session apply the CMAC chain (plain command -"
+            "CMAC advances the IV but is not appended - and verify the response CMAC)."
+            if ins != "AF" and df_newsm():
+                df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(data))   # advance IV
+                d, sw = df_raw(ins, data)
+                return df_cmac_check(d, sw)
+            return df_raw(ins, data)
+
+        def df_cmac_check(d, sw):
+            "strip+verify the 8-byte response CMAC the card appends on 9100/91AF"
+            if df_newsm() and sw in ("9100", "91AF") and len(d) >= 16:
+                raw = bytes.fromhex(d)
+                payload, mac = raw[:-8], raw[-8:]
+                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]  # over payload||status
+                if mac != expect:
+                    print("    [new-SM response CMAC verify FAILED]")
+                return payload.hex().upper(), sw
+            return d, sw
 
         def df_full(ins, data=""):
             "send a command and gather all chained (91AF) frames: (all_data, final_sw)"
@@ -540,8 +662,10 @@ while args:
                     rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
                     if rnda_back == rotate_left(rnda):
                         sesskey = desfire_aes_session_key(rnda, rndb)
+                        sk1, sk2 = df_cmac_subkeys(sesskey, "aes")
                         DESFire_Session.update(key=sesskey, type="AES", keyno=keyno,
-                                               iv=bytes(16), cmdctr=0, sm="aes", authed=True)
+                                               iv=bytes(16), cmdctr=0, sm="aes",
+                                               sk1=sk1, sk2=sk2, authed=True)
                         print("    *** AUTH OK - the key is %s ***" % keyhex)
                         print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
                     else:
@@ -582,9 +706,11 @@ while args:
                 rnda_back, _ = tdes_cbc(key, bytes.fromhex(d), resp_iv, decrypt=True, legacy=legacy)
                 if rnda_back == rotate_left(rnda):
                     sesskey = desfire_des_session_key(rnda, rndb, len(key))
+                    sk1, sk2 = (None, None) if legacy else df_cmac_subkeys(sesskey, "iso")
                     DESFire_Session.update(key=sesskey, type=ktype, keyno=keyno,
                                            iv=bytes(8), cmdctr=0,
-                                           sm=("legacy" if legacy else "iso"), authed=True)
+                                           sm=("legacy" if legacy else "iso"),
+                                           sk1=sk1, sk2=sk2, authed=True)
                     print("    *** AUTH OK - the key is %s ***" % keyhex)
                     print("    session established: RndA' verified, %s session key %s" % (ktype, sesskey.hex().upper()))
                 else:
@@ -618,39 +744,83 @@ while args:
             return int(d[2:4], 16) if (sw == "9100" and len(d) >= 4) else 0
 
         def df_sm_ok(comm):
-            "True if we can wrap for this comm mode (plain always; MAC/enc need a legacy session)"
-            if comm == 0:
+            "True if we can wrap for this comm mode (free plain files need no session)"
+            if DESFire_Session["authed"] or comm == 0:
                 return True
-            if not DESFire_Session["authed"] or DESFire_Session["sm"] != "legacy":
-                print("    need a legacy (0x0A) session for MACed/enciphered files (AUTH LEGACY/DES first)")
-                return False
-            return True
+            print("    MACed/enciphered files need a session (AUTH ...)")
+            return False
 
         def df_send(ins, header, payload, comm):
             "send a data command, wrapping <payload> per comm mode (header stays plain)"
-            if comm == 3:                              # enciphered
+            if df_newsm():                             # EV1 new secure messaging
+                buf = bytes([int(ins, 16)]) + bytes.fromhex(header) + payload
+                if comm == 3:                          # enciphered: E(payload||CRC32||pad)
+                    s = DESFire_Session
+                    bs = 16 if s["sm"] == "aes" else 8
+                    plain = payload + crc32_jam(buf).to_bytes(4, "little")
+                    if len(plain) % bs:
+                        plain += bytes(bs - len(plain) % bs)
+                    enc, s["iv"] = _df_cbc_enc(plain, s["iv"])
+                    d, sw = df_raw(ins, header + enc.hex().upper())
+                else:                                  # plain / MACed: CMAC advances IV
+                    cm = df_cmac(buf)
+                    body = header + payload.hex().upper()
+                    if comm == 1:
+                        body += cm[:8].hex().upper()
+                    d, sw = df_raw(ins, body)
+                return df_cmac_check(d, sw)            # verify+strip the response CMAC
+            # legacy (D40) comms
+            if comm == 3:
                 body = df_legacy_encipher(payload).hex().upper()
-            elif comm == 1:                            # MACed: append 4-byte MAC over payload
+            elif comm == 1:
                 body = payload.hex().upper() + df_legacy_mac(payload).hex().upper()
-            else:                                      # plain
+            else:
                 body = payload.hex().upper()
             return df_full(ins, header + body)
 
+        def df_read(ins, header, comm):
+            "send a read command and return the (sw, unwrapped-payload) per comm mode"
+            if df_newsm():
+                df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(header))   # advance IV
+                d, sw = df_raw(ins, header)
+                while sw == "91AF":                    # gather chained frames (small files: 1)
+                    more, sw = df_raw("AF")
+                    d += more
+                return df_recv(d, sw, comm)
+            d, sw = df_full(ins, header)
+            return df_recv(d, sw, comm)
+
         def df_recv(data, sw, comm):
-            "unwrap a response <data> per comm mode; returns (payload_hex, ok, note)"
+            "unwrap a response <data> per comm mode; returns (payload_hex, sw, note)"
             if sw != "9100" or not data:
-                return data, True, ""
+                return data, sw, ""
             raw = bytes.fromhex(data)
+            if df_newsm():
+                s = DESFire_Session
+                if comm == 3:                          # enciphered: decipher, find CRC32
+                    plain, s["iv"] = _df_cbc_dec(raw, s["iv"])
+                    for n in range(0, len(plain) - 3):
+                        if crc32_jam(plain[:n] + b"\x00") == int.from_bytes(plain[n:n + 4], "little"):
+                            tail = plain[n + 4:]
+                            if all(b == 0 for b in tail) or (tail[:1] == b"\x80" and all(b == 0 for b in tail[1:])):
+                                return plain[:n].hex().upper(), sw, ""
+                    return plain.hex().upper(), sw, "  [CRC32 FAIL]"
+                # plain / MACed response: payload || CMAC8 (over payload||status)
+                if len(raw) < 8:
+                    return data, sw, "  [CMAC: short]"
+                payload, mac = raw[:-8], raw[-8:]
+                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
+                return payload.hex().upper(), sw, ("" if mac == expect else "  [CMAC FAIL]")
+            # legacy (D40) comms
             if comm == 3:
                 pl, ok = df_legacy_decipher(raw)
-                return pl.hex().upper(), ok, ("" if ok else "  [CRC FAIL]")
+                return pl.hex().upper(), sw, ("" if ok else "  [CRC FAIL]")
             if comm == 1:
                 if len(raw) < 4:
-                    return data, False, "  [MAC: short]"
+                    return data, sw, "  [MAC: short]"
                 body, mac = raw[:-4], raw[-4:]
-                ok = df_legacy_mac(body) == mac
-                return body.hex().upper(), ok, ("" if ok else "  [MAC FAIL]")
-            return data, True, ""
+                return body.hex().upper(), sw, ("" if df_legacy_mac(body) == mac else "  [MAC FAIL]")
+            return data, sw, ""
 
         if dfcommand == "FREEMEM":                 # GetFreeMemory (0x6E)
             d, sw = df_apdu("6E")
@@ -716,8 +886,7 @@ while args:
             comm = df_comm(fileno)
             if not df_sm_ok(comm):
                 continue
-            d, sw = df_full("6C", fileno)
-            d, ok, note = df_recv(d, sw, comm)
+            d, sw, note = df_read("6C", fileno, comm)
             if sw == "9100" and len(d) >= 8:
                 print("  Value file %s = %d (%s comm)%s" % (
                     fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16), COMM_NAME[comm], note))
@@ -731,8 +900,7 @@ while args:
             comm = df_comm(fileno)
             if not df_sm_ok(comm):
                 continue
-            d, sw = df_full("BD", fileno + le3(off) + le3(length))
-            d, ok, note = df_recv(d, sw, comm)
+            d, sw, note = df_read("BD", fileno + le3(off) + le3(length), comm)
             print("  ReadData file %s off %s len %s (%s comm): %s%s" % (
                 fileno, off, length, COMM_NAME[comm], df_status(sw), note))
             if d:
@@ -745,8 +913,7 @@ while args:
             comm = df_comm(fileno)
             if not df_sm_ok(comm):
                 continue
-            d, sw = df_full("BB", fileno + le3(off) + le3(num))
-            d, ok, note = df_recv(d, sw, comm)
+            d, sw, note = df_read("BB", fileno + le3(off) + le3(num), comm)
             print("  ReadRecords file %s off %s num %s (%s comm): %s%s" % (
                 fileno, off, num, COMM_NAME[comm], df_status(sw), note))
             if d:
