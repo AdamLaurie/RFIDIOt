@@ -3,13 +3,117 @@
 Carried over from the 2026-09-14 session (also recorded in Claude memory).
 Everything else from that session is done and pushed to `origin/python3`.
 
-## 1. Import personal DESFire script
-- RFIDIOt has **no** DESFire tool of its own (only a SAK `20` -> "MIFARE DESFIRE"
-  label at `rfidiot/RFIDIOt.py:849`). `libfreefare`'s `mifare-desfire-info` is the
-  interim stand-in.
-- Import Adam's personal DESFire script into the repo/toolset.
-- Known-good test card: genuine **MIFARE DESFire EV1 4K**, UID `044E32AA571290`
-  (free directory listing without auth; app `003806` has a free-read file).
+## 1. DESFire support in rfidiot-cli (branch `desfire`)
+`rfidiot-cli` now has a **DESFIRE** command group (native commands over the ISO 7816
+wrapping, chaining 91AF), working on any APDU reader and through `relayuid`:
+- **[DONE, hw-verified on the test card]** VERSION, AIDS, DFNAMES, FREEMEM, SELECT,
+  KEYSETTINGS, KEYVERSION, FILEIDS, FILESETTINGS (decoded), GETVALUE, READ, RECORDS,
+  and a generic CMD `<ins> <data>` escape.
+- **AUTH - all three schemes, hw-verified on a legacy-keyed EV1 card** (`AUTH [SCHEME] <keyno>
+  <key> [<iv>]`, SCHEME = AES (default) | LEGACY/DES/3DES | ISO):
+  - **LEGACY (0x0A)** DES / 2K3DES / 3K3DES - the legacy "inverted" CBC (encipher =
+    block-decrypt, decipher = block-encrypt), **IV reset to 0 per message**. Verified
+    `AUTH DES 0 0` and `AUTH LEGACY 0 0` -> 9100, RndA' verified, session key derived.
+  - **ISO (0x1A)** 2K3DES / 3K3DES - standard CBC (IV chains, like AES; **token IV = the
+    LAST block of the challenge** - ek[-8:], which == ek for a 1-block 2K3DES challenge
+    but is block 2 of a 16-byte 3K3DES challenge; getting this wrong gave 9100 with a
+    RndA' mismatch on 3K3DES only). Verified `AUTH ISO 0 0` (2K3DES) and a 3K3DES app
+    (24-byte key) -> 9100, RndA' verified.
+  - **AES (0xAA)** - standard CBC, response IV optional (AUTO=ek(RndB) | ZERO | 32 hex).
+    **Now hw-verified**: created an AES application (`CREATEAPP <aid> 0F 81`) and
+    `AUTH AES 0 0` -> 9100, RndA' verified, AES session key derived. (On the DES-keyed
+    PICC master, AES correctly returns 91AE.)
+  - (3)DES built from single-DES ECB blocks (NIST SP800-67 EDE) so **weak/all-zero keys
+    work** - pycryptodome's DES3 rejects degenerate keys, single DES allows them. The CBC
+    ops follow libfreefare: RECEIVE always block-DECRYPT; SEND block-DECRYPT for legacy,
+    block-ENCRYPT for standard/ISO. (The all-zero key hid a receive-op bug - E0=D0 - until
+    a non-zero key was tested; now fixed.) Session-key composition matches libfreefare
+    (DES RndA[0:4]+RndB[0:4]; 2K3DES +RndA[4:8]+RndB[4:8]; 3K3DES strided; AES halves).
+  - **[DONE] genuine non-zero + true 2K3DES (K1!=K2) auth hw-verified** via ChangeKey
+    (below): set master to `00112233445566778899AABBCCDDEEFF`, then `AUTH LEGACY 0 <nk>`
+    and `AUTH ISO 0 <nk>` -> 9100 with RndA' verified; `AUTH DES` on the wrong 8 bytes
+    correctly 91AE. Card restored to all-zero afterwards.
+- **[DONE] CHANGEKEY (0xC4), legacy (3)DES** `CHANGEKEY <keyno> <newkey>` (same key as
+  the active session): plaintext = NewKey || CRC16(NewKey) (ISO-14443-A CRC), zero-padded,
+  enciphered under the **session key** (legacy inverted CBC, IV=0). hw-verified both ways
+  (all-zero <-> non-zero) on the EV1.
+  **Key finding**: the secure-messaging session length must match the card's *actual*
+  master key type - this card treats the all-zero factory key as **single DES** (8-byte
+  session, so `AUTH DES`), while a K1!=K2 16-byte key is **2K3DES** (16-byte session,
+  `AUTH LEGACY`/`ISO`). Authenticating all-zero with the wrong scheme still returns 9100
+  (handshake is key-length-agnostic for all-zero) but yields a session the card won't
+  accept for ChangeKey (911E). Only same-key change is implemented; different-key change
+  (XOR with old key + second CRC) and AES/EV1 ChangeKey are TODO.
+- **[DONE] run-level session carry**: `DESFire_Session` at module scope (next to
+  `Mifare_Key`) holds the session key, type, auth'd key number, selected AID, running
+  IV and command counter. SELECT (app change) and a new/failed AUTH reset it;
+  `DESFIRE SESSION` prints it. Verified on hardware that state set by SELECT/AUTH is
+  read back by a later command in the same run.
+- **[DONE] AES-CMAC primitive** (`aes_cmac`, RFC 4493 / SP 800-38B) - unit-tested
+  against all four RFC 4493 vectors. Not yet wired into command comms (next item).
+- **[DONE] legacy session comms - all three modes**, auto-selected from each file's
+  GetFileSettings comm byte and wrapped under the session key:
+  - **plain** (00): as-is.
+  - **MACed** (01): 4-byte legacy CBC-MAC (standard-CBC-encrypt, session key, IV=0; MAC =
+    first 4 bytes of the final block) appended on send, verified+stripped on receive.
+  - **enciphered** (03): send = E(data || CRC16(data) || zero-pad) via the inverted CBC;
+    receive = decipher then locate+verify CRC16 by low->high search (the all-zero tail
+    rules out early false matches). Only the data payload is wrapped; the fileno/offset/
+    length header stays plain.
+  `df_legacy_encipher` / `df_legacy_decipher` / `df_legacy_mac` + `df_send`/`df_recv`.
+- **[DONE] modifying commands, hw-verified on the EV1** (full lifecycle, all comm modes):
+  CREATEAPP/DELETEAPP, CREATEFILE (std data), CREATEBACKUP, CREATEVALUE, CREATERECORD
+  (linear/cyclic), DELETEFILE, WRITE/READ, WRITEREC/RECORDS, CREDIT/DEBIT, LIMITEDCREDIT,
+  COMMIT/ABORT, CLEARREC, CHANGEKEY (same- AND different-key), CHANGEKEYSETTINGS,
+  CHANGEFILESETTINGS, SETCONFIG, GETCARDUID, FORMAT. Verified: app with plain/MACed/
+  enciphered std-data files (write+read round-trip, MAC & CRC checked); **backup file
+  transactional rollback** (WRITE+COMMIT persists, WRITE+ABORT reverts); value file
+  credit/debit/limited-credit/commit/getvalue; linear record file; different-key ChangeKey
+  (change key 1 authed as key 0, then AUTH key 1 verified); ChangeKeySettings (0F->0D);
+  ChangeFileSettings (comm plain->MACed). NB on EV1, DeleteApplication does NOT reclaim
+  memory - only FormatPICC does.
+  **Re-verified with a genuine non-zero K1!=K2 2K3DES session** (not just the degenerate
+  all-zero key): changed an app master to 00112233445566778899AABBCCDDEEFF and under that
+  session ran enciphered + MACed file R/W, enciphered backup rollback, enciphered value
+  file credit/debit/limited-credit, ChangeFileSettings, ChangeKeySettings and different-key
+  ChangeKey - all 9100 with correct data/MAC/CRC, so the legacy comms are exercised with
+  real (non-degenerate) 3DES.
+- **[DONE] EV1 "new" secure messaging** (AES 0xAA and ISO 0x1A sessions): AES-CMAC / 3DES-
+  CMAC chained from and updating the session IV; plain/MACed via CMAC, enciphered via CRC32
+  + CBC; ChangeKey (CRC32, AES key-version byte, different-key XOR + 2nd CRC32). df_apdu is
+  CMAC-aware; df_send/df_read/df_recv dispatch legacy vs new SM. **hw-verified**: non-zero
+  AES (ChangeKey -> re-auth -> enciphered/MACed/plain file R/W, value credit/debit/limited-
+  credit, backup rollback, ChangeFileSettings, ChangeKeySettings, different-key ChangeKey)
+  and non-zero 3K3DES (ISO ChangeKey -> re-auth -> enciphered file). So DES, 2K3DES, 3K3DES
+  and AES are all exercised non-zero across the command set.
+  - **[DONE/CORRECT] error handling**: per the DESFire EV1 spec, any error status (!= 00,
+    != AF) **invalidates the authentication** - "the session key is no longer valid and so
+    a CMAC must not be calculated" (hack.cert.pl DESFire EV1 doc; NXP say the same for
+    DESFire Light). So we drop the session on error and require re-AUTH - this is the
+    card's own behaviour, not a workaround. (Earlier thought a lost CMAC IV; it's by design.)
+- **[DONE] EV1 ISO 7816-4 file access + misc**, hw-verified on the EV1:
+  - CREATEAPPISO / CREATEFILEISO (2-byte ISO FIDs + DF name; sets KeySettings2 bit 0x20 so
+    files can carry ISO FIDs). DFNAMES / ISOFILEIDS now return real entries.
+  - ISO commands (CLA 00): ISOSELECT (by EF FID), ISOSELECTDF (by DF name), ISOREAD (B0),
+    ISOUPDATE (D6) - round-trip verified ("HelloISO" written/read via ISO 7816).
+  - SETCONFIG also covers set_default_key (opt 01, verified 9100 with 24-byte key + non-zero
+    version) and set_ats (opt 02, same mechanism; not fired - it rewrites the ATS).
+  - READSIG (0x3C) implemented; this early EV1 firmware (SW 1.03) returns 911C (unsupported).
+  - GetVersion generation decode fixed: 0x00 D40, 0x01 EV1, 0x12 EV2, 0x33 EV3.
+  **So the EV1 feature set is complete.** Remaining DESFire work is EV2/EV3 - see section 19.
+- Test cards on hand:
+  - **EV1 (legacy DES keys)** UID `047E30F9B61E80` (plus a sibling `047D48F9B61E80` from the
+    same batch), HW major `0x01`, 2K, SW 1.3, **DES/3DES** master
+    key (all-zero factory). All four auth schemes (DES/2K3DES via 0x0A, 2K3DES/3K3DES via
+    0x1A, AES via an AES app), ChangeKey (same + different key), the full file/app
+    lifecycle in all three comm modes, transactional rollback, and SetConfiguration all
+    verified against it. **Now permanently in random-UID mode** (SETCONFIG 00 02 demo) -
+    anticollision returns changing `80..` UIDs (DESFire bug: emits 0x80 not ISO's 0x08;
+    see section 18), real UID via GETCARDUID. Its original app `543249` was FormatPICC'd (card was
+    full); left clean/empty, PICC key all-zero.
+  - EV2 UID `044E32AA571290`, HW major `0x12`, 4K, **AES** master key (v `2F`), app
+    `F53630` (auth required for file/key ops). (An **EV1** is coming next to exercise AES
+    + the EV1 secure-messaging session.)
 
 ## 2. Finish the Py3 typing sweep (untested tools)
 True-division `/` -> `//` (float used as index / length / APDU-Lc):
@@ -816,3 +920,53 @@ back - so a reader sees our UID and talks to the real card. This is the thing a 
   easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
   UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
   of scope (Crypto1 not available in target mode).
+
+## 18. DESFire random-UID 0x80/0x08 quirk in emulation/relay tools
+A DESFire card with random UID enabled (SetConfiguration, see section 1) returns a
+changing 4-byte anticollision UID whose **first byte is `0x80`**, not the ISO/IEC
+14443-3 random-ID marker `0x08`. This is a **bug in the DESFire silicon** (Adam
+confirmed - NXP got 0x08/0x80 the wrong way round); RFIDIOt reports it faithfully.
+
+Make every emulation/relay tool cater for it so a cloned/relayed random-UID DESFire
+behaves like the real card and nothing silently "corrects" the byte:
+- `emulateuid.py` / `relayuid.py` - when cloning (`auto`) a card UID, pass the 4-byte
+  `0x80..` UID through unchanged; `random` mode already fabricates `0x08`+random (the
+  ISO-correct marker, honouring the "80 byte on the front" note) - document that an
+  emulated DESFire would really use `0x80`, and consider a flag to emit `0x80`+random
+  to match DESFire exactly.
+- `relayuid.py` relay path - a random-UID DESFire changes UID every select; the
+  emulator presents ONE fixed UID for the session, so the relayed UID won't match a
+  fresh read of the real card. Note this (it's inherent to random UID), and when
+  cloning, clone the UID seen at relay-start.
+- `pn532emulate.py` / `pn532mitm.py` - same: pass a `0x80`-prefixed UID through
+  untouched; don't assume `0x08` is the only random marker.
+- Add a short note wherever UID validity is checked so `0x80` isn't rejected/normalised.
+See Claude memory `desfire-random-uid-08-80-bug`.
+
+## 19. DESFire EV2 / EV3 (needs an EV2 / EV3 card)
+The EV1 feature set in section 1 is complete and hw-verified. The next generations
+add their own secure messaging and commands - needs the matching silicon to implement
+and test (our card is an EV1, HW major 0x01; EV2 = 0x12, EV3 = 0x33).
+
+**EV2** (on top of EV1):
+- **EV2 secure messaging**: `AuthenticateEV2First` (0x71) / `AuthenticateEV2NonFirst`
+  (0x77). Introduces a **Transaction Identifier (TI)** and a **command counter (CmdCtr)**
+  that both feed the AES-CMAC (MAC over CmdCtr||TI||cmd||...) and the enciphered-mode IV
+  (IV = E(session key, 0xA5 0x5A||TI||CmdCtr||...)). Distinct from EV1's chained-IV CMAC -
+  a separate SM path alongside the legacy/EV1 ones already built.
+- **Key sets**: `InitializeKeySet` (0x56), `FinalizeKeySet` (0x57), `RollKeySet` (0x55),
+  `ChangeKeyEV2` (0xC6).
+- **Transaction MAC files**: `CreateTransactionMACFile` (0xCE), `CommitReaderID` (0xC8),
+  `GetFileCounters` (0xF6).
+- **Proximity check** (relay-attack mitigation): PreparePC / ProximityCheck / VerifyPC.
+- **Virtual Card Architecture** (VCA): virtual-card select + proximity check.
+- EV2-only `SetConfiguration` options (failed-auth counter / PICC capabilities).
+
+**EV3** (on top of EV2):
+- **Secure Dynamic Messaging (SDM)** with mirroring (UID / read-counter / CMAC mirrored
+  into a file, read over plain NDEF) - `ChangeFileSettings` SDM options.
+- Enhanced/again-reworked proximity check, transaction timer, more SetConfiguration options.
+
+When an EV2/EV3 lands: add the 0x71/0x77 auth + TI/CmdCtr SM as a new `sm` scheme in
+`DESFire_Session` (the dispatch in df_apdu/df_send/df_read already branches on `sm`), then
+the key-set / transaction-MAC / proximity / SDM commands on top.
