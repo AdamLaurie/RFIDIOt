@@ -315,6 +315,7 @@ if chelp or len(sys.argv) == 1:
     print("        WRITEREC <FNO> <OFFSET> <DATA>                  WriteRecord (DATA hex)")
     print("     DUMP <START> <END>                               Show data blocks")
     print('     FILE <"A|H"> <ASCII|HEX>                         Select ISO 7816 FILE')
+    print("     FIRMWARE                                         Read ACS reader firmware version (ACR122U/tikitag; PC/SC path)")
     print("     HSS <SPEED>                                      High Speed Select TAG. SPEED values are:")
     print("                                                        1 == 106 kBaud")
     print("                                                        2 == 212 kBaud")
@@ -366,7 +367,7 @@ except Exception as e:
     sys.exit(True)
 
 print()
-card.info("rfidiot-cli v3.1h")
+card.info("rfidiot-cli v3.1i")
 
 # globals
 Mifare_Key = None
@@ -466,6 +467,11 @@ COMMAND_HELP = {
                  "  SLOT <n> UID <HEX> [TYPE <name>]   emulate a UID on slot n (1-8)",
     "DUMP": "DUMP <START> <END>\n  Show data blocks START..END (hex block numbers) with ASCII.",
     "FILE": "FILE <A|H> <ASCII|HEX>\n  Select an ISO 7816 file by name: A = name given as ASCII, H = name given as hex.",
+    "FIRMWARE": "FIRMWARE\n"
+                "  Read the ACS reader firmware version (Get-Firmware-Version pseudo-APDU\n"
+                "  FF 00 48 00 00) - e.g. ACR122U / tikitag. Answered by the reader over the\n"
+                "  PC/SC path (-r, or -r ccid); the -f ccid / libnfc path won't answer (it talks\n"
+                "  to the PN532). No tag needed.",
     "HSS": "HSS <SPEED>\n  High-Speed Select the tag. SPEED (decimal): 1=106, 2=212, 4=424, 8=848 kBaud.",
     "IDENTIFY": "IDENTIFY\n  Show the current tag's type (and decode its ATR/ATS where possible).",
     "MF": "MF <SUBCOMMAND> [...]   MIFARE Classic commands\n"
@@ -1523,6 +1529,30 @@ while args:
                 print("    OK")
             else:
                 print("    Failed: " + card.get_error_str(card.errorcode))
+            continue
+        if command == "FIRMWARE":
+            # ACS "Get Firmware Version" pseudo-APDU (FF 00 48 00 00). Answered by the
+            # reader (no tag needed) on ACR122U / tikitag / other ACS readers over the
+            # PC/SC path (-r, or -r ccid). The -f ccid / libnfc path talks to the PN532
+            # and won't answer it. The version is returned as an ASCII string.
+            print()
+            card.send_apdu("", "", "", "", "FF", "00", "48", "00", "00", "", "")
+            resp = (card.data or "").upper()
+            sw = (card.errorcode or "").upper()
+            # the whole response is the version string; a trailing 9000 (if any) is a SW,
+            # otherwise the last 2 bytes are part of the string
+            ver_hex = resp if sw == "9000" else resp + sw
+            try:
+                ver = bytes.fromhex(ver_hex).decode("ascii")
+            except (ValueError, UnicodeDecodeError):
+                ver = ""
+            if ver and ver.isprintable() and len(ver) >= 3:
+                print("  Reader firmware: %s" % ver)
+                print("    (raw %s)" % ver_hex)
+            else:
+                print("  No firmware string returned (data '%s' sw '%s')." % (resp, sw))
+                print("  FIRMWARE needs an ACS reader over PC/SC (-r or -r ccid); the -f ccid /")
+                print("  libnfc path speaks to the PN532 and won't answer this ACS command.")
             continue
         if command == "HSS":
             speed = "%02X" % int(args.pop())
