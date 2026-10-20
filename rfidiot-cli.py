@@ -461,38 +461,77 @@ COMMAND_HELP = {
     "CHANGE": "CHANGE <MESSAGE>\n  Print MESSAGE and wait until the tag is removed and a different one presented.",
     "CHAMELEON": "CHAMELEON <SUBCOMMAND> [...]   (needs -R READER_CHAMELEON)\n"
                  "  INFO                       list the 8 slots and the active one\n"
-                 "  SLOT <n> UID <HEX> [TYPE <name>]   emulate a UID on slot n (1-8)\n"
+                 "  REBOOT                     reboot into the DFU bootloader\n"
                  "  SLOT <n> MFLOAD <FILE>     load a MIFARE dump onto slot n and emulate\n"
-                 "  REBOOT                     reboot into the DFU bootloader",
+                 "  SLOT <n> UID <HEX> [TYPE <name>]   emulate a UID on slot n (1-8)",
     "DUMP": "DUMP <START> <END>\n  Show data blocks START..END (hex block numbers) with ASCII.",
     "FILE": "FILE <A|H> <ASCII|HEX>\n  Select an ISO 7816 file by name: A = name given as ASCII, H = name given as hex.",
     "HSS": "HSS <SPEED>\n  High-Speed Select the tag. SPEED (decimal): 1=106, 2=212, 4=424, 8=848 kBaud.",
     "IDENTIFY": "IDENTIFY\n  Show the current tag's type (and decode its ATR/ATS where possible).",
     "MF": "MF <SUBCOMMAND> [...]   MIFARE Classic commands\n"
-          "  KEY <A|B> <HEXKEY>      set key A or B (6-byte hex) for later AUTH\n"
           "  AUTH <A|B> <BLOCK>      authenticate a sector with key A or B (future auths auto)\n"
-          "  DUMP <START> <END>      show data blocks\n"
-          "  READ <START> <END> <FILE>   read blocks START..END and save to FILE\n"
-          "  WRITE <START> <FILE>    write blocks from FILE (KEY A/B re-inserted from set values)\n"
           "  CLONE <HEXKEY>          duplicate the tag to a blank (KEY is key A of the blank)\n"
-          "  WIPE                    set the tag to all 00",
+          "  DUMP <START> <END>      show data blocks\n"
+          "  KEY <A|B> <HEXKEY>      set key A or B (6-byte hex) for later AUTH\n"
+          "  READ <START> <END> <FILE>   read blocks START..END and save to FILE\n"
+          "  WIPE                    set the tag to all 00\n"
+          "  WRITE <START> <FILE>    write blocks from FILE (KEY A/B re-inserted from set values)",
     "PROMPT": "PROMPT <MESSAGE>\n  Print MESSAGE and wait for Y/N; exit if N.",
     "SCRIPT": "SCRIPT <FILE>\n  Read and run commands from FILE (see script.txt for the format).",
     "SELECT": "SELECT\n  Select (activate) the tag in the field. Run this before most other commands.",
     "WAIT": "WAIT <MESSAGE>\n  Print MESSAGE and wait for a tag to be presented.",
     "WRITEHEX": "WRITEHEX <BLOCK> <HEX>\n  Write HEX data to BLOCK (hex block number).",
     # ---- DESFire group ----
-    "DESFIRE": "DESFIRE <SUBCOMMAND> [ARGS]   NXP DESFire native commands (SELECT the tag first).\n"
-               "  Run `DESFIRE <SUBCOMMAND> HELP` (or `... ?`) for a subcommand's detailed help.\n"
-               "  Conventions: numbers are HEX; AID/ISO-FID are MSB-first; key \"0\" = all-zero\n"
-               "  factory key; access-rights AR = 4 hex nibbles rd/wr/rw/chg (E=free, F=never);\n"
-               "  file comm mode COMM = 00 plain / 01 MACed / 03 enciphered.\n"
-               "  Subcommands: ABORT AIDS AUTH CHANGEFILESETTINGS CHANGEKEY CHANGEKEYSETTINGS\n"
-               "    CLEARREC CMD COMMIT CREATEAPP CREATEAPPISO CREATEBACKUP CREATEFILE\n"
-               "    CREATEFILEISO CREATERECORD CREATEVALUE CREDIT DEBIT DELETEAPP DELETEFILE\n"
-               "    DFNAMES FILEIDS FILESETTINGS FORMAT FREEMEM GETCARDUID GETVALUE ISOFILEIDS\n"
-               "    ISOREAD ISOSELECT ISOSELECTDF ISOUPDATE KEYSETTINGS KEYVERSION LIMITEDCREDIT\n"
-               "    READ READSIG RECORDS SELECT SESSION SETCONFIG VERSION WRITE WRITEREC",
+    "DESFIRE": "DESFIRE <SUBCOMMAND> [ARGS]   NXP DESFire native commands (SELECT the tag first;\n"
+               "  modify commands need a session via AUTH). `DESFIRE <SUBCOMMAND> ?` for a\n"
+               "  subcommand's detailed per-argument help. Conventions: numbers HEX; AID/ISO-FID\n"
+               "  MSB-first; key 0 = all-zero factory key; AR = 4 hex nibbles rd/wr/rw/chg\n"
+               "  (E=free, F=never); COMM = 00 plain / 01 MACed / 03 enciphered.\n"
+               "  ABORT                               AbortTransaction (discard since last COMMIT)\n"
+               "  AIDS                                GetApplicationIDs\n"
+               "  AUTH [<SCHEME>] <KEYNO> <KEY> [<IV>]  Authenticate (SCHEME AES|LEGACY/DES/3DES|ISO)\n"
+               "  CHANGEFILESETTINGS <FNO> <COMM> <AR>  ChangeFileSettings (enciphered)\n"
+               "  CHANGEKEY <KEYNO> <NEWKEY> [<OLDKEY>]  ChangeKey\n"
+               "  CHANGEKEYSETTINGS <SETTINGS>        ChangeKeySettings (enciphered)\n"
+               "  CLEARREC <FNO>                      ClearRecordFile (then COMMIT)\n"
+               "  CMD <INS> <DATA>                    raw native command\n"
+               "  COMMIT                              CommitTransaction\n"
+               "  CREATEAPP <AID> <KS> <NKEYS>        CreateApplication\n"
+               "  CREATEAPPISO <AID> <KS> <NKEYS> <ISOFID> <DFNAME>   CreateApplication w/ ISO FID+DF name\n"
+               "  CREATEBACKUP <FNO> <COMM> <AR> <SIZE>  CreateBackupDataFile (transactional)\n"
+               "  CREATEFILE <FNO> <COMM> <AR> <SIZE>  CreateStdDataFile\n"
+               "  CREATEFILEISO <FNO> <ISOFID> <COMM> <AR> <SIZE>   CreateStdDataFile w/ ISO FID\n"
+               "  CREATERECORD <FNO> <COMM> <AR> <RECSIZE> <MAX> <LINEAR|CYCLIC>   CreateRecordFile\n"
+               "  CREATEVALUE <FNO> <COMM> <AR> <LO> <HI> <VAL> <LCR>   CreateValueFile\n"
+               "  CREDIT <FNO> <AMOUNT>               value-file credit (then COMMIT)\n"
+               "  DEBIT <FNO> <AMOUNT>                value-file debit (then COMMIT)\n"
+               "  DELETEAPP <AID>                     DeleteApplication\n"
+               "  DELETEFILE <FNO>                    DeleteFile\n"
+               "  DFNAMES                             GetDFNames (ISO DF names)\n"
+               "  FILEIDS                             GetFileIDs\n"
+               "  FILESETTINGS <FNO>                  GetFileSettings\n"
+               "  FORMAT                              FormatPICC (wipes ALL applications)\n"
+               "  FREEMEM                             GetFreeMemory\n"
+               "  GETCARDUID                          GetCardUID - real UID (needs a session)\n"
+               "  GETVALUE <FNO>                      GetValue (value file)\n"
+               "  ISOFILEIDS                          GetISOFileIDs\n"
+               "  ISOREAD <OFFSET> <LEN>              ISOReadBinary (ISO 7816)\n"
+               "  ISOSELECT <ISOFID>                  ISOSelectFile - EF by ISO FID\n"
+               "  ISOSELECTDF <DFNAME>                ISOSelectFile - app by DF name\n"
+               "  ISOUPDATE <OFFSET> <DATA>           ISOUpdateBinary (ISO 7816)\n"
+               "  KEYSETTINGS                         GetKeySettings\n"
+               "  KEYVERSION <KEYNO>                  GetKeyVersion\n"
+               "  LIMITEDCREDIT <FNO> <AMOUNT>        value-file limited credit (then COMMIT)\n"
+               "  READ <FNO> <OFFSET> <LENGTH>        ReadData (LENGTH 0 = whole file)\n"
+               "  READSIG                             Read_Sig - NXP originality signature\n"
+               "  RECORDS <FNO> <OFFSET> <NUM>        ReadRecords (NUM 0 = all)\n"
+               "  SELECT <AID>                        SelectApplication (000000 = PICC master)\n"
+               "  SESSION                             show the authenticated-session state\n"
+               "  SETCONFIG <OPTION> <DATA>           SetConfiguration (00 PICC cfg/random UID,\n"
+               "                                        01 default key, 02 ATS)\n"
+               "  VERSION                             GetVersion (HW/SW/UID, decoded)\n"
+               "  WRITE <FNO> <OFFSET> <DATA>         WriteData\n"
+               "  WRITEREC <FNO> <OFFSET> <DATA>      WriteRecord",
     "DESFIRE VERSION": "DESFIRE VERSION\n  GetVersion: HW/SW (vendor/type/subtype/version/storage/protocol), UID, batch,\n  production week/year, and the decoded generation (D40/EV1/EV2/EV3).",
     "DESFIRE AIDS": "DESFIRE AIDS\n  GetApplicationIDs: list the applications on the card (3-byte AIDs, MSB-first).",
     "DESFIRE DFNAMES": "DESFIRE DFNAMES\n  GetDFNames: per-app ISO DF name + ISO FID (apps created with an ISO FID/DF name).",
