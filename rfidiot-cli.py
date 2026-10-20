@@ -343,6 +343,9 @@ if chelp or len(sys.argv) == 1:
     print("  Commands will be executed sequentially and must be combined as appropriate.")
     print("  Block numbers must be specified in HEX.")
     print()
+    print("  Per-command help: `HELP <COMMAND>`, or `<COMMAND> ?` / `<COMMAND> HELP`, or just run")
+    print("  a command with missing arguments. e.g. `HELP DESFIRE CREATEAPP`, `MF AUTH ?`.")
+    print()
     print("  Examples:")
     print()
     print('     Select TAG, set Mifare KEY A to "FFFFFFFFFFFF" and authenticate against sector 0:')
@@ -444,246 +447,460 @@ def df_legacy_mac(payload):
     out, _ = tdes_cbc(DESFire_Session["key"], p, bytes(8), decrypt=False, legacy=False)
     return out[-8:-4]
 
+# Per-command detailed help. Shown by `HELP <cmd>`, by `<cmd> ?` / `<cmd> HELP`, or
+# automatically when a command is missing required arguments. Keys are the top-level
+# command, or "DESFIRE <SUBCOMMAND>" for a DESFire sub-command. Common conventions:
+# all numbers are HEX; AIDs/ISO-FIDs are MSB-first; access rights (AR) are 4 hex nibbles
+# read/write/read&write/change where E=free and F=never.
+COMMAND_HELP = {
+    "AID": "AID <AID|ALL|ANY>\n"
+           "  Select an ISO 7816 application by name from the built-in well-known-AID table.\n"
+           "  ALL = try every known AID; ANY = stop at the first that selects.",
+    "AIDS": "AIDS\n  List the built-in well-known ISO 7816 AIDs (name table), not the card's apps.",
+    "APDU": "APDU <CLA> <INS> <P1> <P2> <LC> <DATA> <LE>\n"
+            "  Send one raw ISO 7816 APDU. Each field is hex; use \"\" for an empty field\n"
+            "  (e.g. no LC/DATA/LE). Prints the response data and status word.",
+    "CHANGE": "CHANGE <MESSAGE>\n  Print MESSAGE and wait until the tag is removed and a different one presented.",
+    "CHAMELEON": "CHAMELEON <SUBCOMMAND> [...]   (needs -R READER_CHAMELEON)\n"
+                 "  INFO                       list the 8 slots and the active one\n"
+                 "  SLOT <n> UID <HEX> [TYPE <name>]   emulate a UID on slot n (1-8)\n"
+                 "  SLOT <n> MFLOAD <FILE>     load a MIFARE dump onto slot n and emulate\n"
+                 "  REBOOT                     reboot into the DFU bootloader",
+    "DUMP": "DUMP <START> <END>\n  Show data blocks START..END (hex block numbers) with ASCII.",
+    "FILE": "FILE <A|H> <ASCII|HEX>\n  Select an ISO 7816 file by name: A = name given as ASCII, H = name given as hex.",
+    "HSS": "HSS <SPEED>\n  High-Speed Select the tag. SPEED (decimal): 1=106, 2=212, 4=424, 8=848 kBaud.",
+    "IDENTIFY": "IDENTIFY\n  Show the current tag's type (and decode its ATR/ATS where possible).",
+    "MF": "MF <SUBCOMMAND> [...]   MIFARE Classic commands\n"
+          "  KEY <A|B> <HEXKEY>      set key A or B (6-byte hex) for later AUTH\n"
+          "  AUTH <A|B> <BLOCK>      authenticate a sector with key A or B (future auths auto)\n"
+          "  DUMP <START> <END>      show data blocks\n"
+          "  READ <START> <END> <FILE>   read blocks START..END and save to FILE\n"
+          "  WRITE <START> <FILE>    write blocks from FILE (KEY A/B re-inserted from set values)\n"
+          "  CLONE <HEXKEY>          duplicate the tag to a blank (KEY is key A of the blank)\n"
+          "  WIPE                    set the tag to all 00",
+    "PROMPT": "PROMPT <MESSAGE>\n  Print MESSAGE and wait for Y/N; exit if N.",
+    "SCRIPT": "SCRIPT <FILE>\n  Read and run commands from FILE (see script.txt for the format).",
+    "SELECT": "SELECT\n  Select (activate) the tag in the field. Run this before most other commands.",
+    "WAIT": "WAIT <MESSAGE>\n  Print MESSAGE and wait for a tag to be presented.",
+    "WRITEHEX": "WRITEHEX <BLOCK> <HEX>\n  Write HEX data to BLOCK (hex block number).",
+    # ---- DESFire group ----
+    "DESFIRE": "DESFIRE <SUBCOMMAND> [ARGS]   NXP DESFire native commands (SELECT the tag first).\n"
+               "  Run `DESFIRE <SUBCOMMAND> HELP` (or `... ?`) for a subcommand's detailed help.\n"
+               "  Conventions: numbers are HEX; AID/ISO-FID are MSB-first; key \"0\" = all-zero\n"
+               "  factory key; access-rights AR = 4 hex nibbles rd/wr/rw/chg (E=free, F=never);\n"
+               "  file comm mode COMM = 00 plain / 01 MACed / 03 enciphered.\n"
+               "  Subcommands: VERSION AIDS DFNAMES FREEMEM SELECT AUTH KEYSETTINGS KEYVERSION\n"
+               "    FILEIDS ISOFILEIDS FILESETTINGS READ GETVALUE GETCARDUID READSIG RECORDS\n"
+               "    CMD SESSION CREATEAPP CREATEAPPISO DELETEAPP CREATEFILE CREATEFILEISO\n"
+               "    CREATEBACKUP CREATEVALUE CREATERECORD DELETEFILE WRITE WRITEREC CREDIT DEBIT\n"
+               "    LIMITEDCREDIT COMMIT ABORT CLEARREC CHANGEKEY CHANGEKEYSETTINGS\n"
+               "    CHANGEFILESETTINGS FORMAT SETCONFIG ISOSELECT ISOSELECTDF ISOREAD ISOUPDATE",
+    "DESFIRE VERSION": "DESFIRE VERSION\n  GetVersion: HW/SW (vendor/type/subtype/version/storage/protocol), UID, batch,\n  production week/year, and the decoded generation (D40/EV1/EV2/EV3).",
+    "DESFIRE AIDS": "DESFIRE AIDS\n  GetApplicationIDs: list the applications on the card (3-byte AIDs, MSB-first).",
+    "DESFIRE DFNAMES": "DESFIRE DFNAMES\n  GetDFNames: per-app ISO DF name + ISO FID (apps created with an ISO FID/DF name).",
+    "DESFIRE FREEMEM": "DESFIRE FREEMEM\n  GetFreeMemory: free EEPROM in bytes.",
+    "DESFIRE SELECT": "DESFIRE SELECT <AID>\n  SelectApplication. AID is 3 bytes MSB-first (e.g. F53630); 000000 = PICC (card)\n  level. Selecting an app drops any authenticated session.",
+    "DESFIRE AUTH": "DESFIRE AUTH [<SCHEME>] <KEYNO> <KEY> [<IV>]\n"
+                    "  Authenticate with key number KEYNO.\n"
+                    "  SCHEME: AES (default, cmd 0xAA) | LEGACY or DES or 3DES (0x0A native) | ISO (0x1A).\n"
+                    "  KEY: hex - 8 bytes DES, 16 bytes 2K3DES/AES, 24 bytes 3K3DES - or 0 for the\n"
+                    "       all-zero factory key (DES for the DES keyword, else 16-byte).\n"
+                    "  IV (AES only, optional, for testing): AUTO (default, ek(RndB)) | ZERO | 32 hex.\n"
+                    "  On success the session is kept for following commands (SESSION shows it).",
+    "DESFIRE KEYSETTINGS": "DESFIRE KEYSETTINGS\n  GetKeySettings: decode the settings byte, key count and key type of the selected app.",
+    "DESFIRE KEYVERSION": "DESFIRE KEYVERSION <KEYNO>\n  GetKeyVersion of key number KEYNO (hex).",
+    "DESFIRE FILEIDS": "DESFIRE FILEIDS\n  GetFileIDs: the file numbers in the selected application.",
+    "DESFIRE ISOFILEIDS": "DESFIRE ISOFILEIDS\n  GetISOFileIDs: the 2-byte ISO file identifiers of files that have one.",
+    "DESFIRE FILESETTINGS": "DESFIRE FILESETTINGS <FILENO>\n  GetFileSettings: file type, comm mode, access rights (rd/wr/rw/chg) and size.",
+    "DESFIRE READ": "DESFIRE READ <FILENO> <OFFSET> <LENGTH>\n  ReadData from a data file. OFFSET/LENGTH hex; LENGTH 0 = whole file. Unwrapped per\n  the file's comm mode (needs a session for MACed/enciphered or key-protected files).",
+    "DESFIRE GETVALUE": "DESFIRE GETVALUE <FILENO>\n  GetValue of a value file (decoded signed amount).",
+    "DESFIRE GETCARDUID": "DESFIRE GETCARDUID\n  GetCardUID: the real 7-byte UID (enciphered under the session) - needed when the\n  card is in random-UID mode. Requires a session (AUTH first).",
+    "DESFIRE READSIG": "DESFIRE READSIG\n  Read_Sig (0x3C): the NXP originality (ECC) signature. Returns 911C on firmwares\n  that don't support it.",
+    "DESFIRE RECORDS": "DESFIRE RECORDS <FILENO> <OFFSET> <NUM>\n  ReadRecords from a record file. OFFSET/NUM hex; NUM 0 = all records.",
+    "DESFIRE CMD": "DESFIRE CMD <INS> <DATA>\n  Send a raw native command (INS hex, DATA hex or 0/-/NONE for none), gathering any\n  chained 91AF frames. Bypasses secure-messaging wrapping.",
+    "DESFIRE SESSION": "DESFIRE SESSION\n  Show the current run's session state: selected AID, auth state, key type, secure-\n  messaging scheme, session key, IV and command counter.",
+    "DESFIRE CREATEAPP": "DESFIRE CREATEAPP <AID> <KEYSETTINGS> <NKEYS>\n"
+                         "  CreateApplication. AID = 3 bytes MSB-first.\n"
+                         "  KEYSETTINGS (1 byte): bit0 master changeable, bit1 free dir listing w/o auth,\n"
+                         "    bit2 free create/delete w/o auth, bit3 settings changeable; high nibble =\n"
+                         "    key# that may ChangeKey (0=key0, E=self, F=frozen). 0F = all flags, key 0.\n"
+                         "  NKEYS (1 byte): low nibble = number of keys (1-14); key type in the top bits:\n"
+                         "    00 = DES/2K3DES, 40 = 3K3DES, 80 = AES. e.g. 01=1 DES key, 81=1 AES key.",
+    "DESFIRE CREATEAPPISO": "DESFIRE CREATEAPPISO <AID> <KEYSETTINGS> <NKEYS> <ISOFID> <DFNAME>\n"
+                            "  CreateApplication with an ISO file id and DF name (enables ISO 7816 access).\n"
+                            "  AID/KEYSETTINGS/NKEYS as for CREATEAPP (KeySettings2 bit 0x20 is set here so\n"
+                            "  files may carry ISO FIDs). ISOFID = 2-byte app ISO FID MSB-first. DFNAME =\n"
+                            "  1-16 bytes hex ISO DF name, or - / 0 for none.",
+    "DESFIRE DELETEAPP": "DESFIRE DELETEAPP <AID>\n  DeleteApplication (AID MSB-first). NB on D40/EV1 this does not reclaim memory -\n  only FORMAT does.",
+    "DESFIRE CREATEFILE": "DESFIRE CREATEFILE <FILENO> <COMM> <AR> <SIZE>\n"
+                          "  CreateStdDataFile. COMM = 00 plain / 01 MACed / 03 enciphered. AR = 4 hex\n"
+                          "  (rd/wr/rw/chg; E=free, F=never). SIZE = bytes (hex).",
+    "DESFIRE CREATEFILEISO": "DESFIRE CREATEFILEISO <FILENO> <ISOFID> <COMM> <AR> <SIZE>\n"
+                             "  CreateStdDataFile with a 2-byte ISO file id (MSB-first) so the file can be\n"
+                             "  reached with the ISO 7816 commands. App must have been made with CREATEAPPISO.",
+    "DESFIRE CREATEBACKUP": "DESFIRE CREATEBACKUP <FILENO> <COMM> <AR> <SIZE>\n"
+                            "  CreateBackupDataFile - a transactional std data file: a WRITE is only kept\n"
+                            "  after COMMIT, and reverted by ABORT.",
+    "DESFIRE CREATEVALUE": "DESFIRE CREATEVALUE <FILENO> <COMM> <AR> <LOWER> <UPPER> <VALUE> <LCR>\n"
+                           "  CreateValueFile. LOWER/UPPER = limits, VALUE = initial amount (all hex).\n"
+                           "  LCR = limited-credit enabled (01) or not (00). CREDIT/DEBIT then COMMIT.",
+    "DESFIRE CREATERECORD": "DESFIRE CREATERECORD <FILENO> <COMM> <AR> <RECSIZE> <MAXREC> <LINEAR|CYCLIC>\n"
+                            "  Create a Linear or Cyclic record file. RECSIZE = bytes per record, MAXREC =\n"
+                            "  number of records (hex). WRITEREC then COMMIT; RECORDS to read.",
+    "DESFIRE DELETEFILE": "DESFIRE DELETEFILE <FILENO>\n  DeleteFile.",
+    "DESFIRE WRITE": "DESFIRE WRITE <FILENO> <OFFSET> <DATA>\n  WriteData (DATA hex). Wrapped per the file comm mode. Backup files need COMMIT.",
+    "DESFIRE WRITEREC": "DESFIRE WRITEREC <FILENO> <OFFSET> <DATA>\n  WriteRecord (DATA hex). Record files need COMMIT afterwards.",
+    "DESFIRE CREDIT": "DESFIRE CREDIT <FILENO> <AMOUNT>\n  Credit a value file by AMOUNT (hex), then COMMIT.",
+    "DESFIRE DEBIT": "DESFIRE DEBIT <FILENO> <AMOUNT>\n  Debit a value file by AMOUNT (hex), then COMMIT.",
+    "DESFIRE LIMITEDCREDIT": "DESFIRE LIMITEDCREDIT <FILENO> <AMOUNT>\n  Limited-credit a value file by AMOUNT (hex) - bounded by prior debits; needs the\n  file's limited-credit flag enabled. Then COMMIT.",
+    "DESFIRE COMMIT": "DESFIRE COMMIT\n  CommitTransaction: persist pending writes to backup/value/record files.",
+    "DESFIRE ABORT": "DESFIRE ABORT\n  AbortTransaction: discard pending writes since the last COMMIT.",
+    "DESFIRE CLEARREC": "DESFIRE CLEARREC <FILENO>\n  ClearRecordFile: empty a record file (needs COMMIT).",
+    "DESFIRE CHANGEKEY": "DESFIRE CHANGEKEY <KEYNO> <NEWKEY> [<OLDKEY>]\n"
+                         "  Change key number KEYNO to NEWKEY (hex, or 0 for all-zero). If KEYNO is not\n"
+                         "  the key you authenticated with, give its current value as OLDKEY. Changing the\n"
+                         "  authenticated key drops the session (re-AUTH with the new key).",
+    "DESFIRE CHANGEKEYSETTINGS": "DESFIRE CHANGEKEYSETTINGS <SETTINGS>\n  ChangeKeySettings: new key-settings byte (see CREATEAPP). Enciphered under the session.",
+    "DESFIRE CHANGEFILESETTINGS": "DESFIRE CHANGEFILESETTINGS <FILENO> <COMM> <AR>\n  Change a file's comm mode and access rights (enciphered under the session).",
+    "DESFIRE FORMAT": "DESFIRE FORMAT\n  FormatPICC: wipe ALL applications and files (keeps the PICC master key). Needs PICC\n  master auth.",
+    "DESFIRE SETCONFIG": "DESFIRE SETCONFIG <OPTION> <DATA>\n"
+                         "  SetConfiguration (data enciphered under the PICC-master session).\n"
+                         "  OPTION 00 = PICC config byte: 00 none, 01 disable-format, 02 ENABLE RANDOM UID\n"
+                         "             (bit1 is PERMANENT and cannot be undone).\n"
+                         "  OPTION 01 = default key for new apps: 24-byte key + 1 version byte.\n"
+                         "  OPTION 02 = ATS (semi-permanent).",
+    "DESFIRE ISOSELECT": "DESFIRE ISOSELECT <ISOFID>\n  ISOSelectFile (ISO 7816): select an EF by its 2-byte ISO file id (MSB-first).",
+    "DESFIRE ISOSELECTDF": "DESFIRE ISOSELECTDF <DFNAME>\n  ISOSelectFile (ISO 7816): select an application by its ISO DF name (hex).",
+    "DESFIRE ISOREAD": "DESFIRE ISOREAD <OFFSET> <LEN>\n  ISOReadBinary (ISO 7816) from the selected EF. OFFSET/LEN hex.",
+    "DESFIRE ISOUPDATE": "DESFIRE ISOUPDATE <OFFSET> <DATA>\n  ISOUpdateBinary (ISO 7816) to the selected EF. DATA hex.",
+}
+
+
+def print_cmd_help(key):
+    "print detailed help for a command key, or list the commands if unknown/None"
+    if key and key.upper() in COMMAND_HELP:
+        print("\n  " + COMMAND_HELP[key.upper()].replace("\n", "\n  ") + "\n")
+        return
+    if key and key.upper().startswith("DESFIRE "):
+        print("\n  No detailed help for '%s'. See `HELP DESFIRE` for the subcommand list.\n" % key)
+        return
+    print("\n  Commands with detailed help (use `HELP <command>` or `<command> ?`):")
+    tops = sorted(k for k in COMMAND_HELP if " " not in k)
+    print("    " + "  ".join(tops))
+    print("  DESFire subcommands: `HELP DESFIRE <SUBCOMMAND>` or `DESFIRE <SUBCOMMAND> ?`\n")
+
+
 # main loop
 args.reverse()
 while args:
     command = args.pop().upper()
-    if command == "AID":
-        arg = args.pop().upper()
-        if arg in ["ANY", "ALL"]:
-            aids = list(card.AIDS.keys())
-        else:
-            aids = [arg]
-        while aids:
-            aid = aids.pop()
+    # top-level HELP command: `HELP`, `HELP <cmd>`, `HELP DESFIRE <sub>`
+    if command in ("HELP", "?"):
+        if not args:
+            print_cmd_help(None)
+            continue
+        target = args.pop().upper()
+        if target == "DESFIRE" and args:
+            target = "DESFIRE " + args.pop().upper()
+        print_cmd_help(target)
+        continue
+    # `<command> ?` / `<command> HELP` -> that command's detailed help (DESFIRE handled below)
+    if command != "DESFIRE" and args and args[-1].upper() in ("?", "HELP"):
+        args.pop()
+        print_cmd_help(command)
+        continue
+    # track what help to show if the command runs short on arguments
+    _help_key = command
+    try:
+        if command == "AID":
+            arg = args.pop().upper()
+            if arg in ["ANY", "ALL"]:
+                aids = list(card.AIDS.keys())
+            else:
+                aids = [arg]
+            while aids:
+                aid = aids.pop()
+                print()
+                print("  Selecting AID: %s" % aid, end="")
+                try:
+                    print("(%s)" % card.AIDS[aid], end="")
+                except:
+                    pass
+                print()
+                print()
+                if card.iso_7816_select_file(aid, card.ISO_7816_SELECT_BY_NAME, "0C"):
+                    print("    OK")
+                    if arg == "ANY":
+                        break
+                else:
+                    print("    Failed: " + card.get_error_str(card.errorcode))
+            continue
+        if command == "AIDS":
             print()
-            print("  Selecting AID: %s" % aid, end="")
-            try:
-                print("(%s)" % card.AIDS[aid], end="")
-            except:
-                pass
+            print("  AIDs:")
             print()
+            for aid in card.AIDS.items():
+                print("    % 24s: %s" % (aid[0], aid[1]))
             print()
-            if card.iso_7816_select_file(aid, card.ISO_7816_SELECT_BY_NAME, "0C"):
+            continue
+        if command == "APDU":
+            cla = args.pop().upper()
+            ins = args.pop().upper()
+            p1 = args.pop().upper()
+            p2 = args.pop().upper()
+            lc = args.pop().upper()
+            data = args.pop().upper()
+            le = args.pop().upper()
+            print()
+            print("  Sending APDU:", cla + ins + p1 + p2 + lc + data + le)
+            print()
+            if card.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le):
                 print("    OK")
-                if arg == "ANY":
-                    break
+                print("    Data:", card.data)
             else:
                 print("    Failed: " + card.get_error_str(card.errorcode))
-        continue
-    if command == "AIDS":
-        print()
-        print("  AIDs:")
-        print()
-        for aid in card.AIDS.items():
-            print("    % 24s: %s" % (aid[0], aid[1]))
-        print()
-        continue
-    if command == "APDU":
-        cla = args.pop().upper()
-        ins = args.pop().upper()
-        p1 = args.pop().upper()
-        p2 = args.pop().upper()
-        lc = args.pop().upper()
-        data = args.pop().upper()
-        le = args.pop().upper()
-        print()
-        print("  Sending APDU:", cla + ins + p1 + p2 + lc + data + le)
-        print()
-        if card.send_apdu("", "", "", "", cla, ins, p1, p2, lc, data, le):
-            print("    OK")
-            print("    Data:", card.data)
-        else:
-            print("    Failed: " + card.get_error_str(card.errorcode))
-        continue
-    if command == "CHANGE":
-        message = args.pop()
-        print()
-        current = card.uid
-        card.waitfortag(message)
-        while card.uid == current or card.uid == '':
-            card.waitfortag("")
-        print()
-        continue
-    if command == "DESFIRE":
-        # NXP MIFARE DESFire native commands, sent over the ISO 7816 wrapping
-        # (CLA 90, native INS, Le 00; chained commands continue with 90 AF). The
-        # DESFire status comes back as SW2 after 0x91 (9100 = OK, 91AF = another
-        # frame follows). Works over any reader that passes APDUs (libnfc, -f ccid,
-        # -r ccid/PC-SC, TWN4, Chameleon). SELECT the tag first.
-        COMM_NAME = {0: "plain", 1: "MACed", 3: "enciphered"}
-        DF_STATUS = {
-            "9100": "OK", "91AF": "ADDITIONAL FRAME", "910C": "NO CHANGES",
-            "910E": "OUT OF MEMORY", "911C": "ILLEGAL COMMAND", "911E": "INTEGRITY ERROR",
-            "9140": "NO SUCH KEY", "917E": "LENGTH ERROR", "919D": "PERMISSION DENIED",
-            "919E": "PARAMETER ERROR", "91A0": "APPLICATION NOT FOUND", "91A1": "APPL INTEGRITY ERROR",
-            "91AE": "AUTHENTICATION ERROR", "91AF": "ADDITIONAL FRAME", "91BE": "BOUNDARY ERROR",
-            "91C1": "CARD INTEGRITY ERROR", "91CA": "COMMAND ABORTED", "91CD": "CARD DISABLED",
-            "91CE": "COUNT ERROR", "91DE": "DUPLICATE", "91EE": "EEPROM ERROR",
-            "91F0": "FILE NOT FOUND", "91F1": "FILE INTEGRITY ERROR",
-        }
-
-        def df_raw(ins, data=""):
-            "send one native command over the 7816 wrapping; return (data_hex, sw_hex)"
-            if data:
-                card.send_apdu("", "", "", "", "90", ins, "00", "00", "%02X" % (len(data) // 2), data, "00")
-            else:
-                card.send_apdu("", "", "", "", "90", ins, "00", "00", "", "", "00")
-            return card.data.upper(), card.errorcode.upper()
-
-        def df_newsm():
-            "True when an EV1 'new' secure-messaging (CMAC) session is active"
-            return DESFire_Session["authed"] and DESFire_Session["sm"] in ("aes", "iso")
-
-        def df_apdu(ins, data=""):
-            "send a command; in an EV1 session apply the CMAC chain (plain command -"
-            "CMAC advances the IV but is not appended - and verify the response CMAC)."
-            if ins != "AF" and df_newsm():
-                df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(data))   # advance IV
-                d, sw = df_raw(ins, data)
-                return df_cmac_check(d, sw)
-            return df_raw(ins, data)
-
-        def df_cmac_check(d, sw):
-            "On a 9100/91AF reply the card appends an 8-byte CMAC over (payload||status); "
-            "strip+verify it and advance the session IV in step. Per the DESFire EV1 spec, "
-            "any error status (!= 00 and != AF) INVALIDATES the authentication - the session "
-            "key is no longer valid - so we drop the session (re-AUTH required), exactly as "
-            "the card does."
-            if df_newsm() and sw in ("9100", "91AF") and len(d) >= 16:
-                raw = bytes.fromhex(d)
-                payload, mac = raw[:-8], raw[-8:]
-                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
-                if mac != expect:
-                    print("    [new-SM response CMAC verify FAILED]")
-                return payload.hex().upper(), sw
-            if df_newsm() and sw.startswith("91") and sw not in ("9100", "91AF"):
-                print("    (error invalidates the EV1 session - re-AUTH to continue)")
-                desfire_reset_session(DESFire_Session["aid"])
-            return d, sw
-
-        def df_full(ins, data=""):
-            "send a command and gather all chained (91AF) frames: (all_data, final_sw)"
-            d, sw = df_apdu(ins, data)
-            while sw == "91AF":
-                more, sw = df_apdu("AF")
-                d += more
-            return d, sw
-
-        def df_status(sw):
-            # a real DESFire response is always 91xx; anything else is a transport
-            # failure (e.g. PN00 = libnfc transceive failed - no tag activated)
-            if sw in DF_STATUS:
-                return "%s (%s)" % (sw, DF_STATUS[sw])
-            if not sw.startswith("91"):
-                return "%s (no DESFire response - SELECT a tag first; is one present?)" % sw
-            return "%s (unknown)" % sw
-
-        def df_rev_aid(aid):
-            "AID is 3 bytes LSB-first on the wire; show/accept it MSB-first (F53630)"
-            return aid[4:6] + aid[2:4] + aid[0:2]
-
-        def _ishex(t):
-            return len(t) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in t)
-
-        dfcommand = args.pop().upper()
-        print()
-        if dfcommand == "VERSION":
-            d, sw = df_full("60")       # GetVersion: HW frame, SW frame, UID/production frame
-            if sw != "9100" or len(d) < 42:
-                print("  GetVersion: " + df_status(sw))
-                continue
-            hw, soft, prod = d[0:14], d[14:28], d[28:]
-            print("  GetVersion:")
-            print("    Hardware: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
-                  (hw[0:2], hw[2:4], hw[4:6], hw[6:8], hw[8:10], hw[10:12], hw[12:14]))
-            print("    Software: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
-                  (soft[0:2], soft[2:4], soft[4:6], soft[6:8], soft[8:10], soft[10:12], soft[12:14]))
-            print("    UID %s  batch %s  week/year %s%s" % (prod[0:14], prod[14:24], prod[24:26], prod[26:28]))
-            gen = {"00": "D40", "01": "EV1", "12": "EV2", "33": "EV3"}.get(hw[6:8], "?")
-            print("    -> DESFire %s (HW major 0x%s)" % (gen, hw[6:8]))
             continue
-        if dfcommand == "AIDS":
-            d, sw = df_full("6A")       # GetApplicationIDs
-            if sw != "9100":
-                print("  GetApplicationIDs: " + df_status(sw))
-                continue
-            aids = [d[i:i + 6] for i in range(0, len(d), 6)]
-            print("  Applications (%d):" % len(aids))
-            for a in aids:
-                print("    AID %s" % df_rev_aid(a))
-            if not aids:
-                print("    (none - PICC level only)")
+        if command == "CHANGE":
+            message = args.pop()
+            print()
+            current = card.uid
+            card.waitfortag(message)
+            while card.uid == current or card.uid == '':
+                card.waitfortag("")
+            print()
             continue
-        if dfcommand == "SELECT":
-            aid = args.pop().upper()                    # MSB-first, e.g. F53630 (000000 = PICC master)
-            d, sw = df_apdu("5A", df_rev_aid(aid))       # send LSB-first
-            print("  SelectApplication %s: %s" % (aid, df_status(sw)))
-            # selecting an application always drops any authenticated session
-            if sw == "9100":
-                desfire_reset_session(aid)
-            continue
-        if dfcommand == "AUTH":
-            # authenticate. Optional scheme keyword (default AES):
-            #   LEGACY / DES / 3DES -> 0x0A native DES/2K3DES/3K3DES (D40 "inverted" CBC)
-            #   ISO                 -> 0x1A ISO 2K3DES/3K3DES (standard CBC)
-            #   AES                 -> 0xAA AuthenticateAES
-            # key length (8/16/24, or 16 for AES) picks DES/2K3DES/3K3DES; key "0"
-            # = the all-zero factory default (DES for the DES keyword, else 16-byte).
-            import os as _os
-            SCHEMES = {"AES": "AES", "LEGACY": "LEGACY", "DES": "LEGACY",
-                       "3DES": "LEGACY", "ISO": "ISO"}
-            rawscheme = ""
-            if args and args[-1].upper() in SCHEMES:
-                rawscheme = args.pop().upper()
-            scheme = SCHEMES.get(rawscheme, "AES")
-            keyno = args.pop().upper().zfill(2)          # key number, e.g. 00 (accept 0)
-            keyhex = args.pop().upper()                   # hex key, or 0 for all-zero
-            if keyhex in ("0", "ZERO"):
-                keyhex = "00" * (8 if rawscheme == "DES" else 16)
+        if command == "DESFIRE":
+            # NXP MIFARE DESFire native commands, sent over the ISO 7816 wrapping
+            # (CLA 90, native INS, Le 00; chained commands continue with 90 AF). The
+            # DESFire status comes back as SW2 after 0x91 (9100 = OK, 91AF = another
+            # frame follows). Works over any reader that passes APDUs (libnfc, -f ccid,
+            # -r ccid/PC-SC, TWN4, Chameleon). SELECT the tag first.
+            COMM_NAME = {0: "plain", 1: "MACed", 3: "enciphered"}
+            DF_STATUS = {
+                "9100": "OK", "91AF": "ADDITIONAL FRAME", "910C": "NO CHANGES",
+                "910E": "OUT OF MEMORY", "911C": "ILLEGAL COMMAND", "911E": "INTEGRITY ERROR",
+                "9140": "NO SUCH KEY", "917E": "LENGTH ERROR", "919D": "PERMISSION DENIED",
+                "919E": "PARAMETER ERROR", "91A0": "APPLICATION NOT FOUND", "91A1": "APPL INTEGRITY ERROR",
+                "91AE": "AUTHENTICATION ERROR", "91AF": "ADDITIONAL FRAME", "91BE": "BOUNDARY ERROR",
+                "91C1": "CARD INTEGRITY ERROR", "91CA": "COMMAND ABORTED", "91CD": "CARD DISABLED",
+                "91CE": "COUNT ERROR", "91DE": "DUPLICATE", "91EE": "EEPROM ERROR",
+                "91F0": "FILE NOT FOUND", "91F1": "FILE INTEGRITY ERROR",
+            }
 
-            # optional response-IV override (AES only, chain-safe peek) for testing
-            ivmode = "AUTO"
-            if scheme == "AES" and args and (args[-1].upper() in ("AUTO", "ZERO")
-                                             or (len(args[-1]) == 32 and _ishex(args[-1]))):
-                ivmode = args.pop().upper()
-            try:
-                key = bytes.fromhex(keyhex)
-            except ValueError:
-                print("  AUTH: key must be hex or 0")
+            def df_raw(ins, data=""):
+                "send one native command over the 7816 wrapping; return (data_hex, sw_hex)"
+                if data:
+                    card.send_apdu("", "", "", "", "90", ins, "00", "00", "%02X" % (len(data) // 2), data, "00")
+                else:
+                    card.send_apdu("", "", "", "", "90", ins, "00", "00", "", "", "00")
+                return card.data.upper(), card.errorcode.upper()
+
+            def df_newsm():
+                "True when an EV1 'new' secure-messaging (CMAC) session is active"
+                return DESFire_Session["authed"] and DESFire_Session["sm"] in ("aes", "iso")
+
+            def df_apdu(ins, data=""):
+                "send a command; in an EV1 session apply the CMAC chain (plain command -"
+                "CMAC advances the IV but is not appended - and verify the response CMAC)."
+                if ins != "AF" and df_newsm():
+                    df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(data))   # advance IV
+                    d, sw = df_raw(ins, data)
+                    return df_cmac_check(d, sw)
+                return df_raw(ins, data)
+
+            def df_cmac_check(d, sw):
+                "On a 9100/91AF reply the card appends an 8-byte CMAC over (payload||status); "
+                "strip+verify it and advance the session IV in step. Per the DESFire EV1 spec, "
+                "any error status (!= 00 and != AF) INVALIDATES the authentication - the session "
+                "key is no longer valid - so we drop the session (re-AUTH required), exactly as "
+                "the card does."
+                if df_newsm() and sw in ("9100", "91AF") and len(d) >= 16:
+                    raw = bytes.fromhex(d)
+                    payload, mac = raw[:-8], raw[-8:]
+                    expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
+                    if mac != expect:
+                        print("    [new-SM response CMAC verify FAILED]")
+                    return payload.hex().upper(), sw
+                if df_newsm() and sw.startswith("91") and sw not in ("9100", "91AF"):
+                    print("    (error invalidates the EV1 session - re-AUTH to continue)")
+                    desfire_reset_session(DESFire_Session["aid"])
+                return d, sw
+
+            def df_full(ins, data=""):
+                "send a command and gather all chained (91AF) frames: (all_data, final_sw)"
+                d, sw = df_apdu(ins, data)
+                while sw == "91AF":
+                    more, sw = df_apdu("AF")
+                    d += more
+                return d, sw
+
+            def df_status(sw):
+                # a real DESFire response is always 91xx; anything else is a transport
+                # failure (e.g. PN00 = libnfc transceive failed - no tag activated)
+                if sw in DF_STATUS:
+                    return "%s (%s)" % (sw, DF_STATUS[sw])
+                if not sw.startswith("91"):
+                    return "%s (no DESFire response - SELECT a tag first; is one present?)" % sw
+                return "%s (unknown)" % sw
+
+            def df_rev_aid(aid):
+                "AID is 3 bytes LSB-first on the wire; show/accept it MSB-first (F53630)"
+                return aid[4:6] + aid[2:4] + aid[0:2]
+
+            def _ishex(t):
+                return len(t) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in t)
+
+            dfcommand = args.pop().upper()
+            _help_key = "DESFIRE " + dfcommand          # for missing-arg help
+            if dfcommand in ("HELP", "?"):              # `DESFIRE HELP [<sub>]`
+                print_cmd_help("DESFIRE " + args.pop().upper() if args else "DESFIRE")
                 continue
-            # a new authentication attempt invalidates any prior session
-            desfire_reset_session()
-
-            if scheme == "AES":
-                from Crypto.Cipher import AES
-                if len(key) != 16:
-                    print("  AUTH AES: key must be 16 bytes (32 hex) or 0")
+            if args and args[-1].upper() in ("?", "HELP"):   # `DESFIRE <sub> ?`
+                args.pop()
+                print_cmd_help(_help_key)
+                continue
+            print()
+            if dfcommand == "VERSION":
+                d, sw = df_full("60")       # GetVersion: HW frame, SW frame, UID/production frame
+                if sw != "9100" or len(d) < 42:
+                    print("  GetVersion: " + df_status(sw))
                     continue
-                d, sw = df_apdu("AA", keyno)              # AuthenticateAES, key <keyno>
-                if sw != "91AF" or len(d) != 32:
-                    print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
+                hw, soft, prod = d[0:14], d[14:28], d[28:]
+                print("  GetVersion:")
+                print("    Hardware: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
+                      (hw[0:2], hw[2:4], hw[4:6], hw[6:8], hw[8:10], hw[10:12], hw[12:14]))
+                print("    Software: vendor %s type %s subtype %s ver %s.%s storage 0x%s proto %s" %
+                      (soft[0:2], soft[2:4], soft[4:6], soft[6:8], soft[8:10], soft[10:12], soft[12:14]))
+                print("    UID %s  batch %s  week/year %s%s" % (prod[0:14], prod[14:24], prod[24:26], prod[26:28]))
+                gen = {"00": "D40", "01": "EV1", "12": "EV2", "33": "EV3"}.get(hw[6:8], "?")
+                print("    -> DESFire %s (HW major 0x%s)" % (gen, hw[6:8]))
+                continue
+            if dfcommand == "AIDS":
+                d, sw = df_full("6A")       # GetApplicationIDs
+                if sw != "9100":
+                    print("  GetApplicationIDs: " + df_status(sw))
+                    continue
+                aids = [d[i:i + 6] for i in range(0, len(d), 6)]
+                print("  Applications (%d):" % len(aids))
+                for a in aids:
+                    print("    AID %s" % df_rev_aid(a))
+                if not aids:
+                    print("    (none - PICC level only)")
+                continue
+            if dfcommand == "SELECT":
+                aid = args.pop().upper()                    # MSB-first, e.g. F53630 (000000 = PICC master)
+                d, sw = df_apdu("5A", df_rev_aid(aid))       # send LSB-first
+                print("  SelectApplication %s: %s" % (aid, df_status(sw)))
+                # selecting an application always drops any authenticated session
+                if sw == "9100":
+                    desfire_reset_session(aid)
+                continue
+            if dfcommand == "AUTH":
+                # authenticate. Optional scheme keyword (default AES):
+                #   LEGACY / DES / 3DES -> 0x0A native DES/2K3DES/3K3DES (D40 "inverted" CBC)
+                #   ISO                 -> 0x1A ISO 2K3DES/3K3DES (standard CBC)
+                #   AES                 -> 0xAA AuthenticateAES
+                # key length (8/16/24, or 16 for AES) picks DES/2K3DES/3K3DES; key "0"
+                # = the all-zero factory default (DES for the DES keyword, else 16-byte).
+                import os as _os
+                SCHEMES = {"AES": "AES", "LEGACY": "LEGACY", "DES": "LEGACY",
+                           "3DES": "LEGACY", "ISO": "ISO"}
+                rawscheme = ""
+                if args and args[-1].upper() in SCHEMES:
+                    rawscheme = args.pop().upper()
+                scheme = SCHEMES.get(rawscheme, "AES")
+                keyno = args.pop().upper().zfill(2)          # key number, e.g. 00 (accept 0)
+                keyhex = args.pop().upper()                   # hex key, or 0 for all-zero
+                if keyhex in ("0", "ZERO"):
+                    keyhex = "00" * (8 if rawscheme == "DES" else 16)
+
+                # optional response-IV override (AES only, chain-safe peek) for testing
+                ivmode = "AUTO"
+                if scheme == "AES" and args and (args[-1].upper() in ("AUTO", "ZERO")
+                                                 or (len(args[-1]) == 32 and _ishex(args[-1]))):
+                    ivmode = args.pop().upper()
+                try:
+                    key = bytes.fromhex(keyhex)
+                except ValueError:
+                    print("  AUTH: key must be hex or 0")
+                    continue
+                # a new authentication attempt invalidates any prior session
+                desfire_reset_session()
+
+                if scheme == "AES":
+                    from Crypto.Cipher import AES
+                    if len(key) != 16:
+                        print("  AUTH AES: key must be 16 bytes (32 hex) or 0")
+                        continue
+                    d, sw = df_apdu("AA", keyno)              # AuthenticateAES, key <keyno>
+                    if sw != "91AF" or len(d) != 32:
+                        print("  AuthenticateAES key %s: %s (no challenge - AES key?)" % (keyno, df_status(sw)))
+                        continue
+                    ek = bytes.fromhex(d)
+                    rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
+                    rndb_rot = rotate_left(rndb)
+                    rnda = _os.urandom(16)
+                    enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
+                    token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
+                    d, sw = df_apdu("AF", token.hex().upper())
+                    which = "all-zero key" if key == bytes(16) else "key " + keyhex
+                    ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
+                    print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
+                    if sw == "9100" and len(d) == 32:
+                        rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
+                        if rnda_back == rotate_left(rnda):
+                            sesskey = desfire_aes_session_key(rnda, rndb)
+                            sk1, sk2 = df_cmac_subkeys(sesskey, "aes")
+                            DESFire_Session.update(key=sesskey, type="AES", keyno=keyno,
+                                                   iv=bytes(16), cmdctr=0, sm="aes",
+                                                   sk1=sk1, sk2=sk2, authed=True)
+                            print("    *** AUTH OK - the key is %s ***" % keyhex)
+                            print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
+                        else:
+                            print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
+                            print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
+                    else:
+                        print("    auth failed (as expected unless %s is the real key)" % which)
+                    continue
+
+                # (3)DES: LEGACY (0x0A, D40 inverted CBC) or ISO (0x1A, standard CBC)
+                if len(key) not in (8, 16, 24):
+                    print("  AUTH %s: key must be 8/16/24 bytes (DES/2K3DES/3K3DES) or 0" % scheme)
+                    continue
+                legacy = scheme == "LEGACY"
+                ins = "0A" if legacy else "1A"
+                ktype = {8: "DES", 16: "2K3DES", 24: "3K3DES"}[len(key)]
+                label = "AuthenticateLegacy(0A)" if legacy else "AuthenticateISO(1A)"
+                d, sw = df_apdu(ins, keyno)
+                if sw != "91AF" or len(d) not in (16, 32):   # 8- or 16-byte challenge
+                    print("  %s %s key %s: %s (no challenge - wrong key type?)" % (label, ktype, keyno, df_status(sw)))
                     continue
                 ek = bytes.fromhex(d)
-                rndb = AES.new(key, AES.MODE_CBC, bytes(16)).decrypt(ek)
+                rndb, _ = tdes_cbc(key, ek, bytes(8), decrypt=True, legacy=legacy)
                 rndb_rot = rotate_left(rndb)
-                rnda = _os.urandom(16)
-                enc_iv = ek if ivmode == "AUTO" else (bytes(16) if ivmode == "ZERO" else bytes.fromhex(ivmode))
-                token = AES.new(key, AES.MODE_CBC, enc_iv).encrypt(rnda + rndb_rot)
+                rnda = _os.urandom(len(rndb))
+                # D40 legacy resets IV=0 per message; ISO chains from the last challenge
+                # block (ek[-8:], which == ek for a 1-block 2K3DES challenge but is the
+                # 2nd block for a 16-byte 3K3DES challenge)
+                tok_iv = bytes(8) if legacy else ek[-8:]
+                token, lastc = tdes_cbc(key, rnda + rndb_rot, tok_iv, decrypt=False, legacy=legacy)
                 d, sw = df_apdu("AF", token.hex().upper())
-                which = "all-zero key" if key == bytes(16) else "key " + keyhex
-                ivdesc = {"AUTO": "IV=ek(RndB)", "ZERO": "IV=0"}.get(ivmode, "IV=" + ivmode)
-                print("  AuthenticateAES key %s with %s (%s): %s" % (keyno, which, ivdesc, df_status(sw)))
-                if sw == "9100" and len(d) == 32:
-                    rnda_back = AES.new(key, AES.MODE_CBC, token[-16:]).decrypt(bytes.fromhex(d))
+                which = "all-zero key" if key == bytes(len(key)) else "key " + keyhex
+                print("  %s %s key %s with %s: %s" % (label, ktype, keyno, which, df_status(sw)))
+                if sw == "9100" and len(d) == len(ek) * 2:
+                    # D40 legacy resets IV=0 for each message; ISO chains (resp IV = last
+                    # token cipher block, like AES)
+                    resp_iv = bytes(8) if legacy else lastc
+                    rnda_back, _ = tdes_cbc(key, bytes.fromhex(d), resp_iv, decrypt=True, legacy=legacy)
                     if rnda_back == rotate_left(rnda):
-                        sesskey = desfire_aes_session_key(rnda, rndb)
-                        sk1, sk2 = df_cmac_subkeys(sesskey, "aes")
-                        DESFire_Session.update(key=sesskey, type="AES", keyno=keyno,
-                                               iv=bytes(16), cmdctr=0, sm="aes",
+                        sesskey = desfire_des_session_key(rnda, rndb, len(key))
+                        sk1, sk2 = (None, None) if legacy else df_cmac_subkeys(sesskey, "iso")
+                        DESFire_Session.update(key=sesskey, type=ktype, keyno=keyno,
+                                               iv=bytes(8), cmdctr=0,
+                                               sm=("legacy" if legacy else "iso"),
                                                sk1=sk1, sk2=sk2, authed=True)
                         print("    *** AUTH OK - the key is %s ***" % keyhex)
-                        print("    session established: RndA' verified, AES session key %s" % sesskey.hex().upper())
+                        print("    session established: RndA' verified, %s session key %s" % (ktype, sesskey.hex().upper()))
                     else:
                         print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
                         print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
@@ -691,1055 +908,1014 @@ while args:
                     print("    auth failed (as expected unless %s is the real key)" % which)
                 continue
 
-            # (3)DES: LEGACY (0x0A, D40 inverted CBC) or ISO (0x1A, standard CBC)
-            if len(key) not in (8, 16, 24):
-                print("  AUTH %s: key must be 8/16/24 bytes (DES/2K3DES/3K3DES) or 0" % scheme)
-                continue
-            legacy = scheme == "LEGACY"
-            ins = "0A" if legacy else "1A"
-            ktype = {8: "DES", 16: "2K3DES", 24: "3K3DES"}[len(key)]
-            label = "AuthenticateLegacy(0A)" if legacy else "AuthenticateISO(1A)"
-            d, sw = df_apdu(ins, keyno)
-            if sw != "91AF" or len(d) not in (16, 32):   # 8- or 16-byte challenge
-                print("  %s %s key %s: %s (no challenge - wrong key type?)" % (label, ktype, keyno, df_status(sw)))
-                continue
-            ek = bytes.fromhex(d)
-            rndb, _ = tdes_cbc(key, ek, bytes(8), decrypt=True, legacy=legacy)
-            rndb_rot = rotate_left(rndb)
-            rnda = _os.urandom(len(rndb))
-            # D40 legacy resets IV=0 per message; ISO chains from the last challenge
-            # block (ek[-8:], which == ek for a 1-block 2K3DES challenge but is the
-            # 2nd block for a 16-byte 3K3DES challenge)
-            tok_iv = bytes(8) if legacy else ek[-8:]
-            token, lastc = tdes_cbc(key, rnda + rndb_rot, tok_iv, decrypt=False, legacy=legacy)
-            d, sw = df_apdu("AF", token.hex().upper())
-            which = "all-zero key" if key == bytes(len(key)) else "key " + keyhex
-            print("  %s %s key %s with %s: %s" % (label, ktype, keyno, which, df_status(sw)))
-            if sw == "9100" and len(d) == len(ek) * 2:
-                # D40 legacy resets IV=0 for each message; ISO chains (resp IV = last
-                # token cipher block, like AES)
-                resp_iv = bytes(8) if legacy else lastc
-                rnda_back, _ = tdes_cbc(key, bytes.fromhex(d), resp_iv, decrypt=True, legacy=legacy)
-                if rnda_back == rotate_left(rnda):
-                    sesskey = desfire_des_session_key(rnda, rndb, len(key))
-                    sk1, sk2 = (None, None) if legacy else df_cmac_subkeys(sesskey, "iso")
-                    DESFire_Session.update(key=sesskey, type=ktype, keyno=keyno,
-                                           iv=bytes(8), cmdctr=0,
-                                           sm=("legacy" if legacy else "iso"),
-                                           sk1=sk1, sk2=sk2, authed=True)
-                    print("    *** AUTH OK - the key is %s ***" % keyhex)
-                    print("    session established: RndA' verified, %s session key %s" % (ktype, sesskey.hex().upper()))
+            def le3(x):
+                "3-byte little-endian hex from a hex/int string (offsets, lengths, values)"
+                n = int(x, 16)
+                return "%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF)
+
+            def le4(x):
+                "4-byte little-endian hex (value-file amounts)"
+                n = int(x, 16)
+                return "%02X%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF)
+
+            def ar_le(ar):
+                "access-rights 4-hex (read/write/rw/change, MSB-first) -> 2 bytes LSB-first on wire"
+                ar = ar.upper().zfill(4)
+                return ar[2:4] + ar[0:2]
+
+            def ar_name(n):
+                return {0xE: "free", 0xF: "never"}.get(n, "key %X" % n)
+
+            def df_comm(fileno):
+                "file comm mode (0 plain / 1 MACed / 3 enciphered) from GetFileSettings"
+                d, sw = df_apdu("F5", fileno)
+                return int(d[2:4], 16) if (sw == "9100" and len(d) >= 4) else 0
+
+            def df_sm_ok(comm):
+                "True if we can wrap for this comm mode (free plain files need no session)"
+                if DESFire_Session["authed"] or comm == 0:
+                    return True
+                print("    MACed/enciphered files need a session (AUTH ...)")
+                return False
+
+            def df_send(ins, header, payload, comm):
+                "send a data command, wrapping <payload> per comm mode (header stays plain)"
+                if df_newsm():                             # EV1 new secure messaging
+                    buf = bytes([int(ins, 16)]) + bytes.fromhex(header) + payload
+                    saved = DESFire_Session["iv"]
+                    if comm == 3:                          # enciphered: E(payload||CRC32||pad)
+                        s = DESFire_Session
+                        bs = 16 if s["sm"] == "aes" else 8
+                        plain = payload + crc32_jam(buf).to_bytes(4, "little")
+                        if len(plain) % bs:
+                            plain += bytes(bs - len(plain) % bs)
+                        enc, s["iv"] = _df_cbc_enc(plain, s["iv"])
+                        d, sw = df_raw(ins, header + enc.hex().upper())
+                    else:                                  # plain / MACed: CMAC advances IV
+                        cm = df_cmac(buf)
+                        body = header + payload.hex().upper()
+                        if comm == 1:
+                            body += cm[:8].hex().upper()
+                        d, sw = df_raw(ins, body)
+                    return df_cmac_check(d, sw)            # verify+strip the response CMAC
+                # legacy (D40) comms
+                if comm == 3:
+                    body = df_legacy_encipher(payload).hex().upper()
+                elif comm == 1:
+                    body = payload.hex().upper() + df_legacy_mac(payload).hex().upper()
                 else:
-                    print("    *** AUTH OK (9100) but RndA' MISMATCH - session NOT established ***")
-                    print("      expected %s got %s" % (rotate_left(rnda).hex().upper(), rnda_back.hex().upper()))
-            else:
-                print("    auth failed (as expected unless %s is the real key)" % which)
-            continue
+                    body = payload.hex().upper()
+                return df_full(ins, header + body)
 
-        def le3(x):
-            "3-byte little-endian hex from a hex/int string (offsets, lengths, values)"
-            n = int(x, 16)
-            return "%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF)
-
-        def le4(x):
-            "4-byte little-endian hex (value-file amounts)"
-            n = int(x, 16)
-            return "%02X%02X%02X%02X" % (n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF)
-
-        def ar_le(ar):
-            "access-rights 4-hex (read/write/rw/change, MSB-first) -> 2 bytes LSB-first on wire"
-            ar = ar.upper().zfill(4)
-            return ar[2:4] + ar[0:2]
-
-        def ar_name(n):
-            return {0xE: "free", 0xF: "never"}.get(n, "key %X" % n)
-
-        def df_comm(fileno):
-            "file comm mode (0 plain / 1 MACed / 3 enciphered) from GetFileSettings"
-            d, sw = df_apdu("F5", fileno)
-            return int(d[2:4], 16) if (sw == "9100" and len(d) >= 4) else 0
-
-        def df_sm_ok(comm):
-            "True if we can wrap for this comm mode (free plain files need no session)"
-            if DESFire_Session["authed"] or comm == 0:
-                return True
-            print("    MACed/enciphered files need a session (AUTH ...)")
-            return False
-
-        def df_send(ins, header, payload, comm):
-            "send a data command, wrapping <payload> per comm mode (header stays plain)"
-            if df_newsm():                             # EV1 new secure messaging
-                buf = bytes([int(ins, 16)]) + bytes.fromhex(header) + payload
-                saved = DESFire_Session["iv"]
-                if comm == 3:                          # enciphered: E(payload||CRC32||pad)
-                    s = DESFire_Session
-                    bs = 16 if s["sm"] == "aes" else 8
-                    plain = payload + crc32_jam(buf).to_bytes(4, "little")
-                    if len(plain) % bs:
-                        plain += bytes(bs - len(plain) % bs)
-                    enc, s["iv"] = _df_cbc_enc(plain, s["iv"])
-                    d, sw = df_raw(ins, header + enc.hex().upper())
-                else:                                  # plain / MACed: CMAC advances IV
-                    cm = df_cmac(buf)
-                    body = header + payload.hex().upper()
-                    if comm == 1:
-                        body += cm[:8].hex().upper()
-                    d, sw = df_raw(ins, body)
-                return df_cmac_check(d, sw)            # verify+strip the response CMAC
-            # legacy (D40) comms
-            if comm == 3:
-                body = df_legacy_encipher(payload).hex().upper()
-            elif comm == 1:
-                body = payload.hex().upper() + df_legacy_mac(payload).hex().upper()
-            else:
-                body = payload.hex().upper()
-            return df_full(ins, header + body)
-
-        def df_read(ins, header, comm):
-            "send a read command and return the (sw, unwrapped-payload) per comm mode"
-            if df_newsm():
-                df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(header))   # advance IV
-                d, sw = df_raw(ins, header)
-                while sw == "91AF":                    # gather chained frames (small files: 1)
-                    more, sw = df_raw("AF")
-                    d += more
-                if sw.startswith("91") and sw != "9100":   # error invalidates the EV1 session (spec)
-                    print("    (error invalidates the EV1 session - re-AUTH to continue)")
-                    desfire_reset_session(DESFire_Session["aid"])
+            def df_read(ins, header, comm):
+                "send a read command and return the (sw, unwrapped-payload) per comm mode"
+                if df_newsm():
+                    df_cmac(bytes([int(ins, 16)]) + bytes.fromhex(header))   # advance IV
+                    d, sw = df_raw(ins, header)
+                    while sw == "91AF":                    # gather chained frames (small files: 1)
+                        more, sw = df_raw("AF")
+                        d += more
+                    if sw.startswith("91") and sw != "9100":   # error invalidates the EV1 session (spec)
+                        print("    (error invalidates the EV1 session - re-AUTH to continue)")
+                        desfire_reset_session(DESFire_Session["aid"])
+                    return df_recv(d, sw, comm)
+                d, sw = df_full(ins, header)
                 return df_recv(d, sw, comm)
-            d, sw = df_full(ins, header)
-            return df_recv(d, sw, comm)
 
-        def df_recv(data, sw, comm):
-            "unwrap a response <data> per comm mode; returns (payload_hex, sw, note)"
-            if sw != "9100" or not data:
+            def df_recv(data, sw, comm):
+                "unwrap a response <data> per comm mode; returns (payload_hex, sw, note)"
+                if sw != "9100" or not data:
+                    return data, sw, ""
+                raw = bytes.fromhex(data)
+                if df_newsm():
+                    s = DESFire_Session
+                    if comm == 3:                          # enciphered: decipher, find CRC32
+                        plain, s["iv"] = _df_cbc_dec(raw, s["iv"])
+                        for n in range(0, len(plain) - 3):
+                            if crc32_jam(plain[:n] + b"\x00") == int.from_bytes(plain[n:n + 4], "little"):
+                                tail = plain[n + 4:]
+                                if all(b == 0 for b in tail) or (tail[:1] == b"\x80" and all(b == 0 for b in tail[1:])):
+                                    return plain[:n].hex().upper(), sw, ""
+                        return plain.hex().upper(), sw, "  [CRC32 FAIL]"
+                    # plain / MACed response: payload || CMAC8 (over payload||status)
+                    if len(raw) < 8:
+                        return data, sw, "  [CMAC: short]"
+                    payload, mac = raw[:-8], raw[-8:]
+                    expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
+                    return payload.hex().upper(), sw, ("" if mac == expect else "  [CMAC FAIL]")
+                # legacy (D40) comms
+                if comm == 3:
+                    pl, ok = df_legacy_decipher(raw)
+                    return pl.hex().upper(), sw, ("" if ok else "  [CRC FAIL]")
+                if comm == 1:
+                    if len(raw) < 4:
+                        return data, sw, "  [MAC: short]"
+                    body, mac = raw[:-4], raw[-4:]
+                    return body.hex().upper(), sw, ("" if df_legacy_mac(body) == mac else "  [MAC FAIL]")
                 return data, sw, ""
-            raw = bytes.fromhex(data)
-            if df_newsm():
-                s = DESFire_Session
-                if comm == 3:                          # enciphered: decipher, find CRC32
-                    plain, s["iv"] = _df_cbc_dec(raw, s["iv"])
-                    for n in range(0, len(plain) - 3):
-                        if crc32_jam(plain[:n] + b"\x00") == int.from_bytes(plain[n:n + 4], "little"):
-                            tail = plain[n + 4:]
-                            if all(b == 0 for b in tail) or (tail[:1] == b"\x80" and all(b == 0 for b in tail[1:])):
-                                return plain[:n].hex().upper(), sw, ""
-                    return plain.hex().upper(), sw, "  [CRC32 FAIL]"
-                # plain / MACed response: payload || CMAC8 (over payload||status)
-                if len(raw) < 8:
-                    return data, sw, "  [CMAC: short]"
-                payload, mac = raw[:-8], raw[-8:]
-                expect = df_cmac(payload + bytes([int(sw[2:4], 16)]))[:8]
-                return payload.hex().upper(), sw, ("" if mac == expect else "  [CMAC FAIL]")
-            # legacy (D40) comms
-            if comm == 3:
-                pl, ok = df_legacy_decipher(raw)
-                return pl.hex().upper(), sw, ("" if ok else "  [CRC FAIL]")
-            if comm == 1:
-                if len(raw) < 4:
-                    return data, sw, "  [MAC: short]"
-                body, mac = raw[:-4], raw[-4:]
-                return body.hex().upper(), sw, ("" if df_legacy_mac(body) == mac else "  [MAC FAIL]")
-            return data, sw, ""
 
-        if dfcommand == "FREEMEM":                 # GetFreeMemory (0x6E)
-            d, sw = df_apdu("6E")
-            if sw == "9100" and len(d) >= 6:
-                print("  Free memory: %d bytes" % int(d[4:6] + d[2:4] + d[0:2], 16))
-            else:
-                print("  GetFreeMemory: " + df_status(sw))
-            continue
-        if dfcommand == "KEYSETTINGS":             # GetKeySettings (0x45)
-            d, sw = df_apdu("45")
-            if sw == "9100" and len(d) >= 4:
-                settings = int(d[0:2], 16); maxk = int(d[2:4], 16)
-                ktype = {0x00: "DES/3DES", 0x40: "3K3DES", 0x80: "AES"}.get(maxk & 0xC0, "?")
-                print("  KeySettings: 0x%02X, %d keys, type %s" % (settings, maxk & 0x0F, ktype))
-                print("    change-key access: %s; config %s; create/delete w/o master-auth %s; dir-list w/o master-auth %s; master changeable %s" % (
-                    ar_name((settings >> 4) & 0x0F),
-                    "frozen" if not settings & 0x08 else "allowed",
-                    "yes" if settings & 0x04 else "no",
-                    "yes" if settings & 0x02 else "no",
-                    "yes" if settings & 0x01 else "no"))
-            else:
-                print("  GetKeySettings: " + df_status(sw))
-            continue
-        if dfcommand == "KEYVERSION":              # GetKeyVersion (0x64) <keyno>
-            keyno = args.pop().upper().zfill(2)
-            d, sw = df_apdu("64", keyno)
-            print("  Key %s version: %s (%s)" % (keyno, d if sw == "9100" else "-", df_status(sw)))
-            continue
-        if dfcommand == "FILEIDS":                 # GetFileIDs (0x6F)
-            d, sw = df_full("6F")
-            if sw != "9100":
-                print("  GetFileIDs: " + df_status(sw)); continue
-            fids = [d[i:i + 2] for i in range(0, len(d), 2)]
-            print("  Files (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
-            continue
-        if dfcommand == "ISOFILEIDS":              # GetISOFileIDs (0x61): 2-byte ISO FIDs
-            d, sw = df_full("61")
-            if sw != "9100":
-                print("  GetISOFileIDs: " + df_status(sw)); continue
-            # ISO FIDs are 2 bytes each, LSB-first on the wire; show MSB-first
-            fids = [d[i + 2:i + 4] + d[i:i + 2] for i in range(0, len(d), 4)]
-            print("  ISO FIDs (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
-            continue
-        if dfcommand == "FILESETTINGS":            # GetFileSettings (0xF5) <fileno>
-            fileno = args.pop().upper()
-            d, sw = df_apdu("F5", fileno)
-            if sw != "9100" or len(d) < 8:
-                print("  GetFileSettings file %s: %s" % (fileno, df_status(sw))); continue
-            ftype = {"00": "Standard data", "01": "Backup data", "02": "Value",
-                     "03": "Linear record", "04": "Cyclic record"}.get(d[0:2], "type " + d[0:2])
-            comm = {"00": "plain", "01": "MACed", "03": "enciphered"}.get(d[2:4], d[2:4])
-            ar = int(d[6:8] + d[4:6], 16)          # 2 bytes LSB
-            print("  File %s: %s, comm %s" % (fileno, ftype, comm))
-            print("    access: read=%s write=%s read&write=%s changeAR=%s" % (
-                ar_name((ar >> 12) & 0xF), ar_name((ar >> 8) & 0xF),
-                ar_name((ar >> 4) & 0xF), ar_name(ar & 0xF)))
-            rest = d[8:]
-            if d[0:2] in ("00", "01") and len(rest) >= 6:
-                print("    size: %d bytes" % int(rest[4:6] + rest[2:4] + rest[0:2], 16))
-            continue
-        if dfcommand == "GETVALUE":                # GetValue (0x6C) <fileno>
-            fileno = args.pop().upper().zfill(2)
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "FREEMEM":                 # GetFreeMemory (0x6E)
+                d, sw = df_apdu("6E")
+                if sw == "9100" and len(d) >= 6:
+                    print("  Free memory: %d bytes" % int(d[4:6] + d[2:4] + d[0:2], 16))
+                else:
+                    print("  GetFreeMemory: " + df_status(sw))
                 continue
-            d, sw, note = df_read("6C", fileno, comm)
-            if sw == "9100" and len(d) >= 8:
-                print("  Value file %s = %d (%s comm)%s" % (
-                    fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16), COMM_NAME[comm], note))
-            else:
-                print("  GetValue file %s: %s" % (fileno, df_status(sw)))
-            continue
-        if dfcommand == "READ":                    # ReadData (0xBD) <fileno> <offset> <length>
-            fileno = args.pop().upper().zfill(2)
-            off = args.pop()
-            length = args.pop()        # 0 = whole file
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "KEYSETTINGS":             # GetKeySettings (0x45)
+                d, sw = df_apdu("45")
+                if sw == "9100" and len(d) >= 4:
+                    settings = int(d[0:2], 16); maxk = int(d[2:4], 16)
+                    ktype = {0x00: "DES/3DES", 0x40: "3K3DES", 0x80: "AES"}.get(maxk & 0xC0, "?")
+                    print("  KeySettings: 0x%02X, %d keys, type %s" % (settings, maxk & 0x0F, ktype))
+                    print("    change-key access: %s; config %s; create/delete w/o master-auth %s; dir-list w/o master-auth %s; master changeable %s" % (
+                        ar_name((settings >> 4) & 0x0F),
+                        "frozen" if not settings & 0x08 else "allowed",
+                        "yes" if settings & 0x04 else "no",
+                        "yes" if settings & 0x02 else "no",
+                        "yes" if settings & 0x01 else "no"))
+                else:
+                    print("  GetKeySettings: " + df_status(sw))
                 continue
-            d, sw, note = df_read("BD", fileno + le3(off) + le3(length), comm)
-            print("  ReadData file %s off %s len %s (%s comm): %s%s" % (
-                fileno, off, length, COMM_NAME[comm], df_status(sw), note))
-            if d:
-                print("    %s  %s" % (d, ReadablePrintHex(d)))
-            continue
-        if dfcommand == "RECORDS":                 # ReadRecords (0xBB) <fileno> <offset> <num>
-            fileno = args.pop().upper().zfill(2)
-            off = args.pop()
-            num = args.pop()           # 0 = all records
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "KEYVERSION":              # GetKeyVersion (0x64) <keyno>
+                keyno = args.pop().upper().zfill(2)
+                d, sw = df_apdu("64", keyno)
+                print("  Key %s version: %s (%s)" % (keyno, d if sw == "9100" else "-", df_status(sw)))
                 continue
-            d, sw, note = df_read("BB", fileno + le3(off) + le3(num), comm)
-            print("  ReadRecords file %s off %s num %s (%s comm): %s%s" % (
-                fileno, off, num, COMM_NAME[comm], df_status(sw), note))
-            if d:
-                print("    %s" % d)
-            continue
-        if dfcommand == "DFNAMES":                 # GetDFNames (0x6D): one DF per frame
-            entries = []
-            d, sw = df_apdu("6D")
-            while True:
+            if dfcommand == "FILEIDS":                 # GetFileIDs (0x6F)
+                d, sw = df_full("6F")
+                if sw != "9100":
+                    print("  GetFileIDs: " + df_status(sw)); continue
+                fids = [d[i:i + 2] for i in range(0, len(d), 2)]
+                print("  Files (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
+                continue
+            if dfcommand == "ISOFILEIDS":              # GetISOFileIDs (0x61): 2-byte ISO FIDs
+                d, sw = df_full("61")
+                if sw != "9100":
+                    print("  GetISOFileIDs: " + df_status(sw)); continue
+                # ISO FIDs are 2 bytes each, LSB-first on the wire; show MSB-first
+                fids = [d[i + 2:i + 4] + d[i:i + 2] for i in range(0, len(d), 4)]
+                print("  ISO FIDs (%d): %s" % (len(fids), " ".join(fids) or "(none)"))
+                continue
+            if dfcommand == "FILESETTINGS":            # GetFileSettings (0xF5) <fileno>
+                fileno = args.pop().upper()
+                d, sw = df_apdu("F5", fileno)
+                if sw != "9100" or len(d) < 8:
+                    print("  GetFileSettings file %s: %s" % (fileno, df_status(sw))); continue
+                ftype = {"00": "Standard data", "01": "Backup data", "02": "Value",
+                         "03": "Linear record", "04": "Cyclic record"}.get(d[0:2], "type " + d[0:2])
+                comm = {"00": "plain", "01": "MACed", "03": "enciphered"}.get(d[2:4], d[2:4])
+                ar = int(d[6:8] + d[4:6], 16)          # 2 bytes LSB
+                print("  File %s: %s, comm %s" % (fileno, ftype, comm))
+                print("    access: read=%s write=%s read&write=%s changeAR=%s" % (
+                    ar_name((ar >> 12) & 0xF), ar_name((ar >> 8) & 0xF),
+                    ar_name((ar >> 4) & 0xF), ar_name(ar & 0xF)))
+                rest = d[8:]
+                if d[0:2] in ("00", "01") and len(rest) >= 6:
+                    print("    size: %d bytes" % int(rest[4:6] + rest[2:4] + rest[0:2], 16))
+                continue
+            if dfcommand == "GETVALUE":                # GetValue (0x6C) <fileno>
+                fileno = args.pop().upper().zfill(2)
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw, note = df_read("6C", fileno, comm)
+                if sw == "9100" and len(d) >= 8:
+                    print("  Value file %s = %d (%s comm)%s" % (
+                        fileno, int(d[6:8] + d[4:6] + d[2:4] + d[0:2], 16), COMM_NAME[comm], note))
+                else:
+                    print("  GetValue file %s: %s" % (fileno, df_status(sw)))
+                continue
+            if dfcommand == "READ":                    # ReadData (0xBD) <fileno> <offset> <length>
+                fileno = args.pop().upper().zfill(2)
+                off = args.pop()
+                length = args.pop()        # 0 = whole file
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw, note = df_read("BD", fileno + le3(off) + le3(length), comm)
+                print("  ReadData file %s off %s len %s (%s comm): %s%s" % (
+                    fileno, off, length, COMM_NAME[comm], df_status(sw), note))
                 if d:
-                    entries.append(d)              # AID(3 LSB) + ISO FID(2) + DF name
-                if sw != "91AF":
-                    break
-                d, sw = df_apdu("AF")
-            print("  GetDFNames: " + df_status(sw))
-            for e in entries:
-                aid = df_rev_aid(e[0:6]) if len(e) >= 6 else "?"
-                fid = (e[8:10] + e[6:8]) if len(e) >= 10 else ""   # ISO FID is LSB-first; show MSB-first
-                name = e[10:] if len(e) > 10 else ""
-                print("    AID %s  ISO-FID %s  DFname %s" % (aid, fid, name))
-            if not entries:
-                print("    (none)")
-            continue
-        if dfcommand == "CMD":                     # raw native command: CMD <ins> [<data-hex>]
-            ins = args.pop().upper()
-            data = args.pop().upper()                 # hex, or 0/- for none
-            if data in ("0", "-", "NONE"):
-                data = ""
-            d, sw = df_full(ins, data)
-            print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
-            continue
-        if dfcommand == "CHANGEKEY":               # ChangeKey (0xC4) - needs a session
-            # CHANGEKEY <keyno> <newkey> [<oldkey>]. Same-key change (keyno == the
-            # authenticated key): plaintext = NewKey || CRC16(NewKey). Different-key
-            # change (needs <oldkey>): plaintext = (NewKey XOR OldKey) ||
-            # CRC16(NewKey XOR OldKey) || CRC16(NewKey). Zero-padded, enciphered under
-            # the SESSION key (legacy inverted CBC, IV=0). Legacy (3)DES session only.
-            ck_keyno = args.pop().upper().zfill(2)
-            ck_new = args.pop().upper()
-            s = DESFire_Session
-            if ck_new in ("0", "ZERO"):
-                ck_new = "00" * (24 if s["type"] == "3K3DES" else 16)
-            # chain-safe peek for an optional old key (hex of 8/16/24 bytes)
-            ck_old = None
-            if args and len(args[-1]) in (16, 32, 48) and _ishex(args[-1]):
-                ck_old = args.pop().upper()
-            if not s["authed"]:
-                print("  CHANGEKEY: authenticate first (DESFIRE AUTH ...)")
+                    print("    %s  %s" % (d, ReadablePrintHex(d)))
                 continue
-            try:
-                newkey = bytes.fromhex(ck_new)
-                oldkey = bytes.fromhex(ck_old) if ck_old else None
-            except ValueError:
-                print("  CHANGEKEY: key must be hex or 0")
+            if dfcommand == "RECORDS":                 # ReadRecords (0xBB) <fileno> <offset> <num>
+                fileno = args.pop().upper().zfill(2)
+                off = args.pop()
+                num = args.pop()           # 0 = all records
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw, note = df_read("BB", fileno + le3(off) + le3(num), comm)
+                print("  ReadRecords file %s off %s num %s (%s comm): %s%s" % (
+                    fileno, off, num, COMM_NAME[comm], df_status(sw), note))
+                if d:
+                    print("    %s" % d)
                 continue
-            samekey = int(ck_keyno, 16) == int(s["keyno"], 16)
-            if not samekey and (oldkey is None or len(oldkey) != len(newkey)):
-                print("  CHANGEKEY: changing a different key needs <oldkey> of the same length")
+            if dfcommand == "DFNAMES":                 # GetDFNames (0x6D): one DF per frame
+                entries = []
+                d, sw = df_apdu("6D")
+                while True:
+                    if d:
+                        entries.append(d)              # AID(3 LSB) + ISO FID(2) + DF name
+                    if sw != "91AF":
+                        break
+                    d, sw = df_apdu("AF")
+                print("  GetDFNames: " + df_status(sw))
+                for e in entries:
+                    aid = df_rev_aid(e[0:6]) if len(e) >= 6 else "?"
+                    fid = (e[8:10] + e[6:8]) if len(e) >= 10 else ""   # ISO FID is LSB-first; show MSB-first
+                    name = e[10:] if len(e) > 10 else ""
+                    print("    AID %s  ISO-FID %s  DFname %s" % (aid, fid, name))
+                if not entries:
+                    print("    (none)")
                 continue
-            hdr = bytes([0xC4, int(ck_keyno, 16)])
-            if df_newsm():
-                # EV1: CRC32 over C4||keyno||newkey[||version]; AES carries a version byte;
-                # enciphered under the session, IV chaining. Different-key adds CRC32(newkey).
-                bs = 16 if s["sm"] == "aes" else 8
-                ver = b"\x00" if s["sm"] == "aes" else b""
-                if samekey:
-                    body = newkey + ver
-                    crypto_plain = body + crc32_jam(hdr + body).to_bytes(4, "little")
+            if dfcommand == "CMD":                     # raw native command: CMD <ins> [<data-hex>]
+                ins = args.pop().upper()
+                data = args.pop().upper()                 # hex, or 0/- for none
+                if data in ("0", "-", "NONE"):
+                    data = ""
+                d, sw = df_full(ins, data)
+                print("  CMD 90%s %s -> %s %s" % (ins, data, d, df_status(sw)))
+                continue
+            if dfcommand == "CHANGEKEY":               # ChangeKey (0xC4) - needs a session
+                # CHANGEKEY <keyno> <newkey> [<oldkey>]. Same-key change (keyno == the
+                # authenticated key): plaintext = NewKey || CRC16(NewKey). Different-key
+                # change (needs <oldkey>): plaintext = (NewKey XOR OldKey) ||
+                # CRC16(NewKey XOR OldKey) || CRC16(NewKey). Zero-padded, enciphered under
+                # the SESSION key (legacy inverted CBC, IV=0). Legacy (3)DES session only.
+                ck_keyno = args.pop().upper().zfill(2)
+                ck_new = args.pop().upper()
+                s = DESFire_Session
+                if ck_new in ("0", "ZERO"):
+                    ck_new = "00" * (24 if s["type"] == "3K3DES" else 16)
+                # chain-safe peek for an optional old key (hex of 8/16/24 bytes)
+                ck_old = None
+                if args and len(args[-1]) in (16, 32, 48) and _ishex(args[-1]):
+                    ck_old = args.pop().upper()
+                if not s["authed"]:
+                    print("  CHANGEKEY: authenticate first (DESFIRE AUTH ...)")
+                    continue
+                try:
+                    newkey = bytes.fromhex(ck_new)
+                    oldkey = bytes.fromhex(ck_old) if ck_old else None
+                except ValueError:
+                    print("  CHANGEKEY: key must be hex or 0")
+                    continue
+                samekey = int(ck_keyno, 16) == int(s["keyno"], 16)
+                if not samekey and (oldkey is None or len(oldkey) != len(newkey)):
+                    print("  CHANGEKEY: changing a different key needs <oldkey> of the same length")
+                    continue
+                hdr = bytes([0xC4, int(ck_keyno, 16)])
+                if df_newsm():
+                    # EV1: CRC32 over C4||keyno||newkey[||version]; AES carries a version byte;
+                    # enciphered under the session, IV chaining. Different-key adds CRC32(newkey).
+                    bs = 16 if s["sm"] == "aes" else 8
+                    ver = b"\x00" if s["sm"] == "aes" else b""
+                    if samekey:
+                        body = newkey + ver
+                        crypto_plain = body + crc32_jam(hdr + body).to_bytes(4, "little")
+                    else:
+                        body = _xor(newkey, oldkey) + ver
+                        crypto_plain = (body + crc32_jam(hdr + body).to_bytes(4, "little")
+                                        + crc32_jam(newkey).to_bytes(4, "little"))
+                    if len(crypto_plain) % bs:
+                        crypto_plain += bytes(bs - len(crypto_plain) % bs)
+                    enc, s["iv"] = _df_cbc_enc(crypto_plain, s["iv"])
+                    d, sw = df_raw("C4", ck_keyno + enc.hex().upper())
+                    if not samekey:
+                        d, sw = df_cmac_check(d, sw)      # session survives -> check response CMAC
+                    label = s["sm"]
                 else:
-                    body = _xor(newkey, oldkey) + ver
-                    crypto_plain = (body + crc32_jam(hdr + body).to_bytes(4, "little")
-                                    + crc32_jam(newkey).to_bytes(4, "little"))
-                if len(crypto_plain) % bs:
-                    crypto_plain += bytes(bs - len(crypto_plain) % bs)
-                enc, s["iv"] = _df_cbc_enc(crypto_plain, s["iv"])
-                d, sw = df_raw("C4", ck_keyno + enc.hex().upper())
-                if not samekey:
-                    d, sw = df_cmac_check(d, sw)      # session survives -> check response CMAC
-                label = s["sm"]
-            else:
-                # legacy (D40): CRC16 over newkey; enciphered inverted-CBC, IV=0
-                if samekey:
-                    plain = newkey + crc16a(newkey).to_bytes(2, "little")
+                    # legacy (D40): CRC16 over newkey; enciphered inverted-CBC, IV=0
+                    if samekey:
+                        plain = newkey + crc16a(newkey).to_bytes(2, "little")
+                    else:
+                        xored = _xor(newkey, oldkey)
+                        plain = (xored + crc16a(xored).to_bytes(2, "little")
+                                 + crc16a(newkey).to_bytes(2, "little"))
+                    if len(plain) % 8:
+                        plain += bytes(8 - len(plain) % 8)
+                    enc, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
+                    d, sw = df_apdu("C4", ck_keyno + enc.hex().upper())
+                    label = "legacy"
+                print("  ChangeKey(%s) key %s -> %s (%s): %s" % (
+                    label, ck_keyno, ck_new, "same key" if samekey else "diff key", df_status(sw)))
+                if sw == "9100":
+                    print("    *** key changed ***")
+                    if samekey:
+                        desfire_reset_session()      # changing our own key drops the session
+                continue
+            if dfcommand == "CREATEAPP":               # CreateApplication (0xCA)
+                aid = args.pop().upper()                # MSB-first
+                ksett = args.pop().upper().zfill(2)     # key settings byte (e.g. 0F)
+                nkeys = args.pop().upper().zfill(2)     # number of keys (+ 0x40=3K3DES / 0x80=AES)
+                d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + nkeys)
+                print("  CreateApplication %s (keysettings %s, %s keys): %s" % (aid, ksett, nkeys, df_status(sw)))
+                continue
+            if dfcommand == "CREATEAPPISO":            # CreateApplication w/ ISO FID + DF name
+                aid = args.pop().upper()               # <aid> <ksett> <nkeys> <iso-fid> <dfname-hex>
+                ksett = args.pop().upper().zfill(2)
+                nkeys = args.pop().upper().zfill(2)
+                isofid = args.pop().upper().zfill(4)   # MSB-first, e.g. 1234 -> sent LSB-first
+                dfname = args.pop().upper()            # ISO DF name (1-16 bytes hex); "-"/0 = none
+                if dfname in ("-", "0", "NONE"):
+                    dfname = ""
+                # set KeySettings2 bit 0x20 ("files use 2-byte ISO 7816-4 File IDs") so files
+                # in this app can carry ISO FIDs (required for CREATEFILEISO / ISO access)
+                ks2 = "%02X" % (int(nkeys, 16) | 0x20)
+                d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + ks2 + isofid[2:4] + isofid[0:2] + dfname)
+                print("  CreateApplication %s ISO-FID %s DFname %s (ksett %s, %s keys): %s" % (
+                    aid, isofid, dfname or "(none)", ksett, nkeys, df_status(sw)))
+                continue
+            if dfcommand == "DELETEAPP":               # DeleteApplication (0xDA)
+                aid = args.pop().upper()
+                d, sw = df_apdu("DA", df_rev_aid(aid))
+                print("  DeleteApplication %s: %s" % (aid, df_status(sw)))
+                continue
+            if dfcommand == "CREATEFILE":              # CreateStdDataFile (0xCD) <fno> <comm> <ar> <size>
+                fileno = args.pop().upper().zfill(2)
+                comm = args.pop().upper().zfill(2)      # 00 plain / 01 MACed / 03 enciphered
+                ar = args.pop().upper()                 # 4 hex: read/write/rw/change (E=free F=never)
+                size = args.pop()
+                d, sw = df_apdu("CD", fileno + comm + ar_le(ar) + le3(size))
+                print("  CreateStdDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
+                continue
+            if dfcommand == "CREATEFILEISO":           # CreateStdDataFile w/ ISO FID <fno> <iso-fid> <comm> <ar> <size>
+                fileno = args.pop().upper().zfill(2)
+                isofid = args.pop().upper().zfill(4)   # MSB-first -> sent LSB-first
+                comm = args.pop().upper().zfill(2)
+                ar = args.pop().upper()
+                size = args.pop()
+                d, sw = df_apdu("CD", fileno + isofid[2:4] + isofid[0:2] + comm + ar_le(ar) + le3(size))
+                print("  CreateStdDataFile %s ISO-FID %s comm %s AR %s size %s: %s" % (
+                    fileno, isofid, comm, ar.zfill(4), size, df_status(sw)))
+                continue
+            if dfcommand == "CREATEBACKUP":            # CreateBackupDataFile (0xCB) <fno> <comm> <ar> <size>
+                fileno = args.pop().upper().zfill(2)
+                comm = args.pop().upper().zfill(2)
+                ar = args.pop().upper()
+                size = args.pop()
+                d, sw = df_apdu("CB", fileno + comm + ar_le(ar) + le3(size))
+                print("  CreateBackupDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
+                continue
+            if dfcommand == "CREATEVALUE":             # CreateValueFile (0xCC) <fno> <comm> <ar> <lo> <hi> <val> <lcr>
+                fileno = args.pop().upper().zfill(2)
+                comm = args.pop().upper().zfill(2)
+                ar = args.pop().upper()
+                lo = args.pop(); hi = args.pop(); val = args.pop(); lcr = args.pop().upper().zfill(2)
+                d, sw = df_apdu("CC", fileno + comm + ar_le(ar) + le4(lo) + le4(hi) + le4(val) + lcr)
+                print("  CreateValueFile %s comm %s AR %s [%s..%s]=%s lcr %s: %s" % (
+                    fileno, comm, ar.zfill(4), lo, hi, val, lcr, df_status(sw)))
+                continue
+            if dfcommand == "CREATERECORD":            # Create{Linear,Cyclic}RecordFile (0xC1/0xC0)
+                fileno = args.pop().upper().zfill(2)
+                comm = args.pop().upper().zfill(2)
+                ar = args.pop().upper()
+                recsize = args.pop(); maxrec = args.pop()
+                kind = args.pop().upper()               # LINEAR or CYCLIC (required, chain-safe)
+                ins = "C0" if kind == "CYCLIC" else "C1"
+                d, sw = df_apdu(ins, fileno + comm + ar_le(ar) + le3(recsize) + le3(maxrec))
+                print("  Create%sRecordFile %s comm %s AR %s recsize %s max %s: %s" % (
+                    kind.capitalize(), fileno, comm, ar.zfill(4), recsize, maxrec, df_status(sw)))
+                continue
+            if dfcommand == "DELETEFILE":              # DeleteFile (0xDF)
+                fileno = args.pop().upper().zfill(2)
+                d, sw = df_apdu("DF", fileno)
+                print("  DeleteFile %s: %s" % (fileno, df_status(sw)))
+                continue
+            if dfcommand == "WRITE":                   # WriteData (0x3D) <fno> <off> <data-hex>
+                fileno = args.pop().upper().zfill(2)
+                off = args.pop()
+                wdata = bytes.fromhex(args.pop())
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                header = fileno + le3(off) + le3("%X" % len(wdata))
+                d, sw = df_send("3D", header, wdata, comm)
+                print("  WriteData file %s off %s len %d (%s comm): %s" % (
+                    fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
+                continue
+            if dfcommand == "WRITEREC":                # WriteRecord (0x3B) <fno> <off> <data-hex>
+                fileno = args.pop().upper().zfill(2)
+                off = args.pop()
+                wdata = bytes.fromhex(args.pop())
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                header = fileno + le3(off) + le3("%X" % len(wdata))
+                d, sw = df_send("3B", header, wdata, comm)
+                print("  WriteRecord file %s off %s len %d (%s comm): %s" % (
+                    fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
+                continue
+            if dfcommand == "CREDIT":                  # Credit (0x0C) <fno> <amount>
+                fileno = args.pop().upper().zfill(2)
+                amt = args.pop()
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw = df_send("0C", fileno, bytes.fromhex(le4(amt)), comm)
+                print("  Credit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+                continue
+            if dfcommand == "DEBIT":                   # Debit (0xDC) <fno> <amount>
+                fileno = args.pop().upper().zfill(2)
+                amt = args.pop()
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw = df_send("DC", fileno, bytes.fromhex(le4(amt)), comm)
+                print("  Debit file %s -= %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+                continue
+            if dfcommand == "LIMITEDCREDIT":           # LimitedCredit (0x1C) <fno> <amount>
+                fileno = args.pop().upper().zfill(2)
+                amt = args.pop()
+                comm = df_comm(fileno)
+                if not df_sm_ok(comm):
+                    continue
+                d, sw = df_send("1C", fileno, bytes.fromhex(le4(amt)), comm)
+                print("  LimitedCredit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
+                continue
+            if dfcommand == "COMMIT":                  # CommitTransaction (0xC7)
+                d, sw = df_apdu("C7")
+                print("  CommitTransaction: " + df_status(sw))
+                continue
+            if dfcommand == "ABORT":                   # AbortTransaction (0xA7)
+                d, sw = df_apdu("A7")
+                print("  AbortTransaction: " + df_status(sw))
+                continue
+            if dfcommand == "CLEARREC":                # ClearRecordFile (0xEB) <fno>
+                fileno = args.pop().upper().zfill(2)
+                d, sw = df_apdu("EB", fileno)
+                print("  ClearRecordFile %s: %s" % (fileno, df_status(sw)))
+                continue
+            if dfcommand == "FORMAT":                  # FormatPICC (0xFC) - wipes ALL applications
+                d, sw = df_apdu("FC")
+                print("  FormatPICC (wipes all apps): " + df_status(sw))
+                continue
+            if dfcommand == "SETCONFIG":               # SetConfiguration (0x5C) <option> <data-hex>
+                # the data is enciphered (legacy CRC16 / EV1 CRC32) under the PICC-master
+                # session. Option 00 = PICC config byte: bit0 disable-format, bit1 ENABLE
+                # RANDOM UID (PERMANENT!).
+                opt = args.pop().upper().zfill(2)
+                cfg = bytes.fromhex(args.pop())
+                if not DESFire_Session["authed"]:
+                    print("  SETCONFIG: authenticate (PICC master) first")
+                    continue
+                if opt == "00" and cfg and (cfg[0] & 0x02):
+                    print("  SETCONFIG: option 00 bit1 ENABLES RANDOM UID and is IRREVERSIBLE.")
+                d, sw = df_send("5C", opt, cfg, 3)
+                print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
+                continue
+            if dfcommand == "CHANGEKEYSETTINGS":       # ChangeKeySettings (0x54) <settings>
+                newset = args.pop().upper().zfill(2)
+                if not DESFire_Session["authed"]:
+                    print("  CHANGEKEYSETTINGS: authenticate first")
+                    continue
+                d, sw = df_send("54", "", bytes.fromhex(newset), 3)
+                print("  ChangeKeySettings -> %s: %s" % (newset, df_status(sw)))
+                continue
+            if dfcommand == "CHANGEFILESETTINGS":      # ChangeFileSettings (0x5F) <fno> <comm> <ar>
+                fileno = args.pop().upper().zfill(2)    # fileno stays plain; comm+AR enciphered
+                comm = args.pop().upper().zfill(2)
+                ar = args.pop().upper()
+                if not DESFire_Session["authed"]:
+                    print("  CHANGEFILESETTINGS: authenticate first")
+                    continue
+                d, sw = df_send("5F", fileno, bytes.fromhex(comm + ar_le(ar)), 3)
+                print("  ChangeFileSettings %s -> comm %s AR %s: %s" % (fileno, comm, ar.zfill(4), df_status(sw)))
+                continue
+            if dfcommand == "GETCARDUID":              # GetCardUID (0x51) - real UID, enciphered
+                if not DESFire_Session["authed"]:
+                    print("  GETCARDUID: authenticate first")
+                    continue
+                uid, sw, note = df_read("51", "", 3)
+                if sw == "9100":
+                    print("  GetCardUID (real UID): %s%s" % (uid, note))
                 else:
-                    xored = _xor(newkey, oldkey)
-                    plain = (xored + crc16a(xored).to_bytes(2, "little")
-                             + crc16a(newkey).to_bytes(2, "little"))
-                if len(plain) % 8:
-                    plain += bytes(8 - len(plain) % 8)
-                enc, _ = tdes_cbc(s["key"], plain, bytes(8), decrypt=False, legacy=True)
-                d, sw = df_apdu("C4", ck_keyno + enc.hex().upper())
-                label = "legacy"
-            print("  ChangeKey(%s) key %s -> %s (%s): %s" % (
-                label, ck_keyno, ck_new, "same key" if samekey else "diff key", df_status(sw)))
-            if sw == "9100":
-                print("    *** key changed ***")
-                if samekey:
-                    desfire_reset_session()      # changing our own key drops the session
-            continue
-        if dfcommand == "CREATEAPP":               # CreateApplication (0xCA)
-            aid = args.pop().upper()                # MSB-first
-            ksett = args.pop().upper().zfill(2)     # key settings byte (e.g. 0F)
-            nkeys = args.pop().upper().zfill(2)     # number of keys (+ 0x40=3K3DES / 0x80=AES)
-            d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + nkeys)
-            print("  CreateApplication %s (keysettings %s, %s keys): %s" % (aid, ksett, nkeys, df_status(sw)))
-            continue
-        if dfcommand == "CREATEAPPISO":            # CreateApplication w/ ISO FID + DF name
-            aid = args.pop().upper()               # <aid> <ksett> <nkeys> <iso-fid> <dfname-hex>
-            ksett = args.pop().upper().zfill(2)
-            nkeys = args.pop().upper().zfill(2)
-            isofid = args.pop().upper().zfill(4)   # MSB-first, e.g. 1234 -> sent LSB-first
-            dfname = args.pop().upper()            # ISO DF name (1-16 bytes hex); "-"/0 = none
-            if dfname in ("-", "0", "NONE"):
-                dfname = ""
-            # set KeySettings2 bit 0x20 ("files use 2-byte ISO 7816-4 File IDs") so files
-            # in this app can carry ISO FIDs (required for CREATEFILEISO / ISO access)
-            ks2 = "%02X" % (int(nkeys, 16) | 0x20)
-            d, sw = df_apdu("CA", df_rev_aid(aid) + ksett + ks2 + isofid[2:4] + isofid[0:2] + dfname)
-            print("  CreateApplication %s ISO-FID %s DFname %s (ksett %s, %s keys): %s" % (
-                aid, isofid, dfname or "(none)", ksett, nkeys, df_status(sw)))
-            continue
-        if dfcommand == "DELETEAPP":               # DeleteApplication (0xDA)
-            aid = args.pop().upper()
-            d, sw = df_apdu("DA", df_rev_aid(aid))
-            print("  DeleteApplication %s: %s" % (aid, df_status(sw)))
-            continue
-        if dfcommand == "CREATEFILE":              # CreateStdDataFile (0xCD) <fno> <comm> <ar> <size>
-            fileno = args.pop().upper().zfill(2)
-            comm = args.pop().upper().zfill(2)      # 00 plain / 01 MACed / 03 enciphered
-            ar = args.pop().upper()                 # 4 hex: read/write/rw/change (E=free F=never)
-            size = args.pop()
-            d, sw = df_apdu("CD", fileno + comm + ar_le(ar) + le3(size))
-            print("  CreateStdDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
-            continue
-        if dfcommand == "CREATEFILEISO":           # CreateStdDataFile w/ ISO FID <fno> <iso-fid> <comm> <ar> <size>
-            fileno = args.pop().upper().zfill(2)
-            isofid = args.pop().upper().zfill(4)   # MSB-first -> sent LSB-first
-            comm = args.pop().upper().zfill(2)
-            ar = args.pop().upper()
-            size = args.pop()
-            d, sw = df_apdu("CD", fileno + isofid[2:4] + isofid[0:2] + comm + ar_le(ar) + le3(size))
-            print("  CreateStdDataFile %s ISO-FID %s comm %s AR %s size %s: %s" % (
-                fileno, isofid, comm, ar.zfill(4), size, df_status(sw)))
-            continue
-        if dfcommand == "CREATEBACKUP":            # CreateBackupDataFile (0xCB) <fno> <comm> <ar> <size>
-            fileno = args.pop().upper().zfill(2)
-            comm = args.pop().upper().zfill(2)
-            ar = args.pop().upper()
-            size = args.pop()
-            d, sw = df_apdu("CB", fileno + comm + ar_le(ar) + le3(size))
-            print("  CreateBackupDataFile %s comm %s AR %s size %s: %s" % (fileno, comm, ar.zfill(4), size, df_status(sw)))
-            continue
-        if dfcommand == "CREATEVALUE":             # CreateValueFile (0xCC) <fno> <comm> <ar> <lo> <hi> <val> <lcr>
-            fileno = args.pop().upper().zfill(2)
-            comm = args.pop().upper().zfill(2)
-            ar = args.pop().upper()
-            lo = args.pop(); hi = args.pop(); val = args.pop(); lcr = args.pop().upper().zfill(2)
-            d, sw = df_apdu("CC", fileno + comm + ar_le(ar) + le4(lo) + le4(hi) + le4(val) + lcr)
-            print("  CreateValueFile %s comm %s AR %s [%s..%s]=%s lcr %s: %s" % (
-                fileno, comm, ar.zfill(4), lo, hi, val, lcr, df_status(sw)))
-            continue
-        if dfcommand == "CREATERECORD":            # Create{Linear,Cyclic}RecordFile (0xC1/0xC0)
-            fileno = args.pop().upper().zfill(2)
-            comm = args.pop().upper().zfill(2)
-            ar = args.pop().upper()
-            recsize = args.pop(); maxrec = args.pop()
-            kind = args.pop().upper()               # LINEAR or CYCLIC (required, chain-safe)
-            ins = "C0" if kind == "CYCLIC" else "C1"
-            d, sw = df_apdu(ins, fileno + comm + ar_le(ar) + le3(recsize) + le3(maxrec))
-            print("  Create%sRecordFile %s comm %s AR %s recsize %s max %s: %s" % (
-                kind.capitalize(), fileno, comm, ar.zfill(4), recsize, maxrec, df_status(sw)))
-            continue
-        if dfcommand == "DELETEFILE":              # DeleteFile (0xDF)
-            fileno = args.pop().upper().zfill(2)
-            d, sw = df_apdu("DF", fileno)
-            print("  DeleteFile %s: %s" % (fileno, df_status(sw)))
-            continue
-        if dfcommand == "WRITE":                   # WriteData (0x3D) <fno> <off> <data-hex>
-            fileno = args.pop().upper().zfill(2)
-            off = args.pop()
-            wdata = bytes.fromhex(args.pop())
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+                    print("  GetCardUID: " + df_status(sw))
                 continue
-            header = fileno + le3(off) + le3("%X" % len(wdata))
-            d, sw = df_send("3D", header, wdata, comm)
-            print("  WriteData file %s off %s len %d (%s comm): %s" % (
-                fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
-            continue
-        if dfcommand == "WRITEREC":                # WriteRecord (0x3B) <fno> <off> <data-hex>
-            fileno = args.pop().upper().zfill(2)
-            off = args.pop()
-            wdata = bytes.fromhex(args.pop())
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "READSIG":                 # Read_Sig (0x3C) - NXP originality signature
+                if DESFire_Session["authed"]:
+                    d, sw, note = df_read("3C", "00", 3)   # enciphered under the session
+                else:
+                    d, sw = df_full("3C", "00")            # unauthenticated: plain (may be refused)
+                    note = ""
+                if sw == "9100":
+                    print("  Read_Sig (originality signature, %d bytes)%s:" % (len(d) // 2, note))
+                    print("    %s" % d)
+                else:
+                    print("  Read_Sig: " + df_status(sw))
                 continue
-            header = fileno + le3(off) + le3("%X" % len(wdata))
-            d, sw = df_send("3B", header, wdata, comm)
-            print("  WriteRecord file %s off %s len %d (%s comm): %s" % (
-                fileno, off, len(wdata), COMM_NAME[comm], df_status(sw)))
-            continue
-        if dfcommand == "CREDIT":                  # Credit (0x0C) <fno> <amount>
-            fileno = args.pop().upper().zfill(2)
-            amt = args.pop()
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            # ---- ISO 7816-4 access to files that were given an ISO FID / DF name ----
+            def iso_apdu(ins, p1, p2, data="", le=""):
+                "send a plain ISO 7816-4 APDU (CLA 00); return (data_hex, sw_hex)"
+                lc = "%02X" % (len(data) // 2) if data else ""
+                card.send_apdu("", "", "", "", "00", ins, p1, p2, lc, data, le)
+                return card.data.upper(), card.errorcode.upper()
+            if dfcommand == "ISOSELECT":               # ISOSelectFile by EF ISO-FID (00 A4 00 0C)
+                isofid = args.pop().upper().zfill(4)   # 2-byte FID, big-endian in the APDU
+                d, sw = iso_apdu("A4", "00", "0C", isofid)
+                print("  ISOSelectFile EF %s: %s" % (isofid, sw))
                 continue
-            d, sw = df_send("0C", fileno, bytes.fromhex(le4(amt)), comm)
-            print("  Credit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
-            continue
-        if dfcommand == "DEBIT":                   # Debit (0xDC) <fno> <amount>
-            fileno = args.pop().upper().zfill(2)
-            amt = args.pop()
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "ISOSELECTDF":             # ISOSelectFile by DF name / AID (00 A4 04 0C)
+                dfname = args.pop().upper()
+                d, sw = iso_apdu("A4", "04", "0C", dfname)
+                print("  ISOSelectFile DF %s: %s" % (dfname, sw))
                 continue
-            d, sw = df_send("DC", fileno, bytes.fromhex(le4(amt)), comm)
-            print("  Debit file %s -= %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
-            continue
-        if dfcommand == "LIMITEDCREDIT":           # LimitedCredit (0x1C) <fno> <amount>
-            fileno = args.pop().upper().zfill(2)
-            amt = args.pop()
-            comm = df_comm(fileno)
-            if not df_sm_ok(comm):
+            if dfcommand == "ISOREAD":                 # ISOReadBinary (00 B0) <offset> <len>
+                off = int(args.pop(), 16)
+                length = int(args.pop(), 16)
+                d, sw = iso_apdu("B0", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), "", "%02X" % (length & 0xFF))
+                print("  ISOReadBinary off %d len %d: %s" % (off, length, sw))
+                if d:
+                    print("    %s  %s" % (d, ReadablePrintHex(d)))
                 continue
-            d, sw = df_send("1C", fileno, bytes.fromhex(le4(amt)), comm)
-            print("  LimitedCredit file %s += %s (%s comm): %s" % (fileno, amt, COMM_NAME[comm], df_status(sw)))
-            continue
-        if dfcommand == "COMMIT":                  # CommitTransaction (0xC7)
-            d, sw = df_apdu("C7")
-            print("  CommitTransaction: " + df_status(sw))
-            continue
-        if dfcommand == "ABORT":                   # AbortTransaction (0xA7)
-            d, sw = df_apdu("A7")
-            print("  AbortTransaction: " + df_status(sw))
-            continue
-        if dfcommand == "CLEARREC":                # ClearRecordFile (0xEB) <fno>
-            fileno = args.pop().upper().zfill(2)
-            d, sw = df_apdu("EB", fileno)
-            print("  ClearRecordFile %s: %s" % (fileno, df_status(sw)))
-            continue
-        if dfcommand == "FORMAT":                  # FormatPICC (0xFC) - wipes ALL applications
-            d, sw = df_apdu("FC")
-            print("  FormatPICC (wipes all apps): " + df_status(sw))
-            continue
-        if dfcommand == "SETCONFIG":               # SetConfiguration (0x5C) <option> <data-hex>
-            # the data is enciphered (legacy CRC16 / EV1 CRC32) under the PICC-master
-            # session. Option 00 = PICC config byte: bit0 disable-format, bit1 ENABLE
-            # RANDOM UID (PERMANENT!).
-            opt = args.pop().upper().zfill(2)
-            cfg = bytes.fromhex(args.pop())
-            if not DESFire_Session["authed"]:
-                print("  SETCONFIG: authenticate (PICC master) first")
+            if dfcommand == "ISOUPDATE":               # ISOUpdateBinary (00 D6) <offset> <data-hex>
+                off = int(args.pop(), 16)
+                wdata = args.pop().upper()
+                d, sw = iso_apdu("D6", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), wdata)
+                print("  ISOUpdateBinary off %d len %d: %s" % (off, len(wdata) // 2, sw))
                 continue
-            if opt == "00" and cfg and (cfg[0] & 0x02):
-                print("  SETCONFIG: option 00 bit1 ENABLES RANDOM UID and is IRREVERSIBLE.")
-            d, sw = df_send("5C", opt, cfg, 3)
-            print("  SetConfiguration opt %s data %s: %s" % (opt, cfg.hex().upper(), df_status(sw)))
-            continue
-        if dfcommand == "CHANGEKEYSETTINGS":       # ChangeKeySettings (0x54) <settings>
-            newset = args.pop().upper().zfill(2)
-            if not DESFire_Session["authed"]:
-                print("  CHANGEKEYSETTINGS: authenticate first")
+            if dfcommand == "SESSION":                 # show the carried-over session state
+                s = DESFire_Session
+                print("  DESFire session state (this run):")
+                print("    selected AID : %s" % s["aid"])
+                if s["authed"]:
+                    print("    authenticated: yes (%s key %s, %s secure messaging)" % (
+                        s["type"], s["keyno"], s["sm"]))
+                    print("    session key  : %s" % s["key"].hex().upper())
+                    print("    cmd counter  : %d" % s["cmdctr"])
+                    print("    IV           : %s" % s["iv"].hex().upper())
+                else:
+                    print("    authenticated: no")
                 continue
-            d, sw = df_send("54", "", bytes.fromhex(newset), 3)
-            print("  ChangeKeySettings -> %s: %s" % (newset, df_status(sw)))
+            print("  Unknown DESFIRE command:", dfcommand)
+            print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
+            print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
+            print("            GETVALUE GETCARDUID READSIG READ RECORDS DFNAMES CMD")
+            print("    create/modify: CREATEAPP CREATEAPPISO DELETEAPP CREATEFILE")
+            print("            CREATEFILEISO CREATEBACKUP CREATEVALUE CREATERECORD")
+            print("            DELETEFILE WRITE WRITEREC CREDIT DEBIT LIMITEDCREDIT")
+            print("            COMMIT ABORT CLEARREC CHANGEKEYSETTINGS CHANGEFILESETTINGS")
+            print("            FORMAT SETCONFIG")
+            print("    ISO 7816: ISOSELECT ISOSELECTDF ISOREAD ISOUPDATE")
             continue
-        if dfcommand == "CHANGEFILESETTINGS":      # ChangeFileSettings (0x5F) <fno> <comm> <ar>
-            fileno = args.pop().upper().zfill(2)    # fileno stays plain; comm+AR enciphered
-            comm = args.pop().upper().zfill(2)
-            ar = args.pop().upper()
-            if not DESFire_Session["authed"]:
-                print("  CHANGEFILESETTINGS: authenticate first")
-                continue
-            d, sw = df_send("5F", fileno, bytes.fromhex(comm + ar_le(ar)), 3)
-            print("  ChangeFileSettings %s -> comm %s AR %s: %s" % (fileno, comm, ar.zfill(4), df_status(sw)))
+        if command == "DUMP":
+            start = int(args.pop(), 16)
+            end = int(args.pop(), 16)
+            print()
+            print(f"  Dumping data blocks {start:02X} to {end:02X}:")
+            print()
+            sector = start
+            while sector <= end:
+                if card.readblock(sector):
+                    print("    %02X: %s %s" % (sector, card.data, card.ReadablePrint(card.ToBinary(card.data))))
+                else:
+                    print("    Failed: " + card.get_error_str(card.errorcode))
+                sector += 1
             continue
-        if dfcommand == "GETCARDUID":              # GetCardUID (0x51) - real UID, enciphered
-            if not DESFire_Session["authed"]:
-                print("  GETCARDUID: authenticate first")
-                continue
-            uid, sw, note = df_read("51", "", 3)
-            if sw == "9100":
-                print("  GetCardUID (real UID): %s%s" % (uid, note))
+        if command == "FILE":
+            mode = args.pop().upper()
+            if mode == "A":
+                isofile = card.ToHex(args.pop())
+            elif mode == "H":
+                isofile = args.pop().upper()
             else:
-                print("  GetCardUID: " + df_status(sw))
-            continue
-        if dfcommand == "READSIG":                 # Read_Sig (0x3C) - NXP originality signature
-            if DESFire_Session["authed"]:
-                d, sw, note = df_read("3C", "00", 3)   # enciphered under the session
-            else:
-                d, sw = df_full("3C", "00")            # unauthenticated: plain (may be refused)
-                note = ""
-            if sw == "9100":
-                print("  Read_Sig (originality signature, %d bytes)%s:" % (len(d) // 2, note))
-                print("    %s" % d)
-            else:
-                print("  Read_Sig: " + df_status(sw))
-            continue
-        # ---- ISO 7816-4 access to files that were given an ISO FID / DF name ----
-        def iso_apdu(ins, p1, p2, data="", le=""):
-            "send a plain ISO 7816-4 APDU (CLA 00); return (data_hex, sw_hex)"
-            lc = "%02X" % (len(data) // 2) if data else ""
-            card.send_apdu("", "", "", "", "00", ins, p1, p2, lc, data, le)
-            return card.data.upper(), card.errorcode.upper()
-        if dfcommand == "ISOSELECT":               # ISOSelectFile by EF ISO-FID (00 A4 00 0C)
-            isofid = args.pop().upper().zfill(4)   # 2-byte FID, big-endian in the APDU
-            d, sw = iso_apdu("A4", "00", "0C", isofid)
-            print("  ISOSelectFile EF %s: %s" % (isofid, sw))
-            continue
-        if dfcommand == "ISOSELECTDF":             # ISOSelectFile by DF name / AID (00 A4 04 0C)
-            dfname = args.pop().upper()
-            d, sw = iso_apdu("A4", "04", "0C", dfname)
-            print("  ISOSelectFile DF %s: %s" % (dfname, sw))
-            continue
-        if dfcommand == "ISOREAD":                 # ISOReadBinary (00 B0) <offset> <len>
-            off = int(args.pop(), 16)
-            length = int(args.pop(), 16)
-            d, sw = iso_apdu("B0", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), "", "%02X" % (length & 0xFF))
-            print("  ISOReadBinary off %d len %d: %s" % (off, length, sw))
-            if d:
-                print("    %s  %s" % (d, ReadablePrintHex(d)))
-            continue
-        if dfcommand == "ISOUPDATE":               # ISOUpdateBinary (00 D6) <offset> <data-hex>
-            off = int(args.pop(), 16)
-            wdata = args.pop().upper()
-            d, sw = iso_apdu("D6", "%02X" % ((off >> 8) & 0x7F), "%02X" % (off & 0xFF), wdata)
-            print("  ISOUpdateBinary off %d len %d: %s" % (off, len(wdata) // 2, sw))
-            continue
-        if dfcommand == "SESSION":                 # show the carried-over session state
-            s = DESFire_Session
-            print("  DESFire session state (this run):")
-            print("    selected AID : %s" % s["aid"])
-            if s["authed"]:
-                print("    authenticated: yes (%s key %s, %s secure messaging)" % (
-                    s["type"], s["keyno"], s["sm"]))
-                print("    session key  : %s" % s["key"].hex().upper())
-                print("    cmd counter  : %d" % s["cmdctr"])
-                print("    IV           : %s" % s["iv"].hex().upper())
-            else:
-                print("    authenticated: no")
-            continue
-        print("  Unknown DESFIRE command:", dfcommand)
-        print("  commands: VERSION AIDS SELECT AUTH CHANGEKEY SESSION FREEMEM")
-        print("            KEYSETTINGS KEYVERSION FILEIDS ISOFILEIDS FILESETTINGS")
-        print("            GETVALUE GETCARDUID READSIG READ RECORDS DFNAMES CMD")
-        print("    create/modify: CREATEAPP CREATEAPPISO DELETEAPP CREATEFILE")
-        print("            CREATEFILEISO CREATEBACKUP CREATEVALUE CREATERECORD")
-        print("            DELETEFILE WRITE WRITEREC CREDIT DEBIT LIMITEDCREDIT")
-        print("            COMMIT ABORT CLEARREC CHANGEKEYSETTINGS CHANGEFILESETTINGS")
-        print("            FORMAT SETCONFIG")
-        print("    ISO 7816: ISOSELECT ISOSELECTDF ISOREAD ISOUPDATE")
-        continue
-    if command == "DUMP":
-        start = int(args.pop(), 16)
-        end = int(args.pop(), 16)
-        print()
-        print(f"  Dumping data blocks {start:02X} to {end:02X}:")
-        print()
-        sector = start
-        while sector <= end:
-            if card.readblock(sector):
-                print("    %02X: %s %s" % (sector, card.data, card.ReadablePrint(card.ToBinary(card.data))))
-            else:
-                print("    Failed: " + card.get_error_str(card.errorcode))
-            sector += 1
-        continue
-    if command == "FILE":
-        mode = args.pop().upper()
-        if mode == "A":
-            isofile = card.ToHex(args.pop())
-        elif mode == "H":
-            isofile = args.pop().upper()
-        else:
-            print("Invalid FILE mode:", args.pop().upper())
-            sys.exit(True)
-        print()
-        print("  Selecting ISO File:", isofile)
-        print()
-        if card.iso_7816_select_file(isofile, card.ISO_7816_SELECT_BY_NAME, "00"):
-            print("    OK")
-        else:
-            print("    Failed: " + card.get_error_str(card.errorcode))
-        continue
-    if command == "HSS":
-        speed = "%02X" % int(args.pop())
-        print()
-        print(f"  High Speed Selecting ({card.ISO_SPEED[speed]})")
-        print()
-        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
-        if card.hsselect(speed) or card.hsselect(speed, "B"):
-            print("    Tag ID: " + card.uid)
-        else:
-            if card.errorcode:
-                print("    " + card.get_error_str(card.errorcode))
-            else:
-                print("    No card present")
-        continue
-    if command == "IDENTIFY":
-        print()
-        print("  Identiying TAG")
-        print()
-        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
-        if card.select() or card.select("B"):
-            print("    Tag ID:", card.uid, "   Tag Type:", end="")
-            if card.readertype == card.READER_ACG and card.readername.find("LFX") == 0:
-                print(card.LFXTags[card.tagtype])
-            else:
-                print(card.tagtype)
-            if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.sel_res:
-                print("      ATQA:", card.sens_res, "  SAK:", card.sel_res)
-                print("      Type: ISO 14443A -", card.iso14443a_type())
-                if card.atr:
-                    print("      ATS:", card.atr)
-            if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.tagtype == "ISO 14443B":
-                print("      PUPI:", card.pupi, "  Application Data:", card.appdata, "  Protocol Info:", card.protocol)
-            if card.readertype == card.READER_PCSC:
-                if card.tagtype.find("ISO 15693") >= 0:
-                    print()
-                    print("         Manufacturer:", end="")
-                    try:
-                        print(card.ISO7816Manufacturer[card.uid[2:4]])
-                    except:
-                        print("Unknown (%s)" % card.uid[2:4])
-                if not card.readersubtype == card.READER_ACS:
-                    print()
-                    card.PCSCPrintATR(card.pcsc_atr)
-        else:
-            print("    No card present", end="")
-        continue
-    if command == "MF":
-        print()
-        mfcommand = args.pop().upper()
-        if mfcommand == "AUTH":
-            keytype = args.pop().upper()
-            sector = int(args.pop(), 16)
-            print(f"  Authenticating to sector {sector:02X} with Mifare Key", end="")
-            Mifare_KeyType = keytype
-            if keytype == "A":
-                Mifare_Key = Mifare_KeyA
-                print(f"A ({Mifare_Key})")
-            elif keytype == "B":
-                Mifare_Key = Mifare_KeyB
-                print(f"B ({Mifare_Key})")
-            else:
-                print("failed! Invalid keytype:", keytype)
+                print("Invalid FILE mode:", args.pop().upper())
                 sys.exit(True)
             print()
-            if card.login(sector, Mifare_KeyType, Mifare_Key):
+            print("  Selecting ISO File:", isofile)
+            print()
+            if card.iso_7816_select_file(isofile, card.ISO_7816_SELECT_BY_NAME, "00"):
                 print("    OK")
             else:
                 print("    Failed: " + card.get_error_str(card.errorcode))
             continue
-        if mfcommand == "CLONE":
-            print("  Cloning Mifare TAG", end="")
-            if not Mifare_KeyA:
-                print("failed! KEY A not set!")
-                sys.exit(True)
-            if not Mifare_KeyType or not Mifare_Key:
-                print("failed! No authentication performed!")
-                sys.exit(True)
+        if command == "HSS":
+            speed = "%02X" % int(args.pop())
             print()
+            print(f"  High Speed Selecting ({card.ISO_SPEED[speed]})")
             print()
-            print("    Key A will be set to:", Mifare_KeyA)
-            print()
-            blank_key = args.pop()
-            start = 0
-            end = 0x3F
-            data = bytearray()
-            sector = start
-            print("    Reading...")
-            while sector <= end:
-                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                    data += card.ToBinary(card.MIFAREdata)
-                else:
-                    print("    Failed: " + card.get_error_str(card.errorcode))
-                sector += 1
-            print()
-            print("      OK")
-            print()
-            # wait for tag to change (same UID is OK)
-            card.waitfortag("    Replace TAG with TARGET")
-            while card.select():
-                pass
-            time.sleep(0.5)
-            while not card.select():
-                pass
-            time.sleep(0.5)
-            print()
-            print()
-            print("    Writing...")
-            sector = start
-            p = 0
-            while sector <= end:
-                block = card.ToHex(data[p : p + 16])
-                if not (sector + 1) % 4:
-                    # trailing block must contain keys, so reconstruct
-                    block = Mifare_KeyA + block[12:]
-                if not (card.login(sector, "A", blank_key) and card.writeblock(sector, block)):
-                    if sector == 0:
-                        print("      Sector 0 write failed")
-                        card.select()
-                    else:
-                        print("      Failed: " + card.get_error_str(card.errorcode))
-                        sys.exit(True)
-                sector += 1
-                p += 16
-            print()
-            print("      OK")
-            continue
-        if mfcommand == "DUMP":
-            start = int(args.pop(), 16)
-            end = int(args.pop(), 16)
-            print(f"  Dumping data blocks {start:02X} to {end:02X}", end="")
-            if not Mifare_KeyType or not Mifare_Key:
-                print("failed! No authentication performed!")
-                sys.exit(True)
-            print()
-            print()
-            sector = start
-            while sector <= end:
-                if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                    print(
-                        "    %02X: %s %s"
-                        % (
-                            sector,
-                            card.MIFAREdata,
-                            card.ReadablePrint(card.ToBinary(card.MIFAREdata)),
-                        )
-                    )
-                else:
-                    print("    Failed: " + card.get_error_str(card.errorcode))
-                sector += 1
-            continue
-        if mfcommand == "KEY":
-            print("  Setting Mifare Key", end="")
-            keytype = args.pop().upper()
-            if keytype == "A":
-                Mifare_KeyA = args.pop().upper()
-                print("A:", Mifare_KeyA)
-            elif keytype == "B":
-                Mifare_KeyB = args.pop().upper()
-                print("B:", Mifare_KeyB)
+            # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+            if card.hsselect(speed) or card.hsselect(speed, "B"):
+                print("    Tag ID: " + card.uid)
             else:
-                print("failed! Invalid keytype:", keytype)
-                sys.exit(True)
+                if card.errorcode:
+                    print("    " + card.get_error_str(card.errorcode))
+                else:
+                    print("    No card present")
             continue
-
-        if mfcommand == "READ":
-            start = int(args.pop(), 16)
-            end = int(args.pop(), 16)
-            filename = args.pop()
-            print(f"  Reading data blocks {start:02X} to {end:02X} and saving as {filename}:", end="")
-            if not Mifare_KeyType or not Mifare_Key:
-                print("failed! No authentication performed!")
-                sys.exit(True)
-            with open(filename, "wb") as outfile:
+        if command == "IDENTIFY":
+            print()
+            print("  Identiying TAG")
+            print()
+            # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+            if card.select() or card.select("B"):
+                print("    Tag ID:", card.uid, "   Tag Type:", end="")
+                if card.readertype == card.READER_ACG and card.readername.find("LFX") == 0:
+                    print(card.LFXTags[card.tagtype])
+                else:
+                    print(card.tagtype)
+                if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.sel_res:
+                    print("      ATQA:", card.sens_res, "  SAK:", card.sel_res)
+                    print("      Type: ISO 14443A -", card.iso14443a_type())
+                    if card.atr:
+                        print("      ATS:", card.atr)
+                if card.readertype in (card.READER_LIBNFC, card.READER_TWN4) and card.tagtype == "ISO 14443B":
+                    print("      PUPI:", card.pupi, "  Application Data:", card.appdata, "  Protocol Info:", card.protocol)
+                if card.readertype == card.READER_PCSC:
+                    if card.tagtype.find("ISO 15693") >= 0:
+                        print()
+                        print("         Manufacturer:", end="")
+                        try:
+                            print(card.ISO7816Manufacturer[card.uid[2:4]])
+                        except:
+                            print("Unknown (%s)" % card.uid[2:4])
+                    if not card.readersubtype == card.READER_ACS:
+                        print()
+                        card.PCSCPrintATR(card.pcsc_atr)
+            else:
+                print("    No card present", end="")
+            continue
+        if command == "MF":
+            print()
+            mfcommand = args.pop().upper()
+            if mfcommand == "AUTH":
+                keytype = args.pop().upper()
+                sector = int(args.pop(), 16)
+                print(f"  Authenticating to sector {sector:02X} with Mifare Key", end="")
+                Mifare_KeyType = keytype
+                if keytype == "A":
+                    Mifare_Key = Mifare_KeyA
+                    print(f"A ({Mifare_Key})")
+                elif keytype == "B":
+                    Mifare_Key = Mifare_KeyB
+                    print(f"B ({Mifare_Key})")
+                else:
+                    print("failed! Invalid keytype:", keytype)
+                    sys.exit(True)
+                print()
+                if card.login(sector, Mifare_KeyType, Mifare_Key):
+                    print("    OK")
+                else:
+                    print("    Failed: " + card.get_error_str(card.errorcode))
+                continue
+            if mfcommand == "CLONE":
+                print("  Cloning Mifare TAG", end="")
+                if not Mifare_KeyA:
+                    print("failed! KEY A not set!")
+                    sys.exit(True)
+                if not Mifare_KeyType or not Mifare_Key:
+                    print("failed! No authentication performed!")
+                    sys.exit(True)
+                print()
+                print()
+                print("    Key A will be set to:", Mifare_KeyA)
+                print()
+                blank_key = args.pop()
+                start = 0
+                end = 0x3F
+                data = bytearray()
+                sector = start
+                print("    Reading...")
+                while sector <= end:
+                    if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
+                        data += card.ToBinary(card.MIFAREdata)
+                    else:
+                        print("    Failed: " + card.get_error_str(card.errorcode))
+                    sector += 1
+                print()
+                print("      OK")
+                print()
+                # wait for tag to change (same UID is OK)
+                card.waitfortag("    Replace TAG with TARGET")
+                while card.select():
+                    pass
+                time.sleep(0.5)
+                while not card.select():
+                    pass
+                time.sleep(0.5)
+                print()
+                print()
+                print("    Writing...")
+                sector = start
+                p = 0
+                while sector <= end:
+                    block = card.ToHex(data[p : p + 16])
+                    if not (sector + 1) % 4:
+                        # trailing block must contain keys, so reconstruct
+                        block = Mifare_KeyA + block[12:]
+                    if not (card.login(sector, "A", blank_key) and card.writeblock(sector, block)):
+                        if sector == 0:
+                            print("      Sector 0 write failed")
+                            card.select()
+                        else:
+                            print("      Failed: " + card.get_error_str(card.errorcode))
+                            sys.exit(True)
+                    sector += 1
+                    p += 16
+                print()
+                print("      OK")
+                continue
+            if mfcommand == "DUMP":
+                start = int(args.pop(), 16)
+                end = int(args.pop(), 16)
+                print(f"  Dumping data blocks {start:02X} to {end:02X}", end="")
+                if not Mifare_KeyType or not Mifare_Key:
+                    print("failed! No authentication performed!")
+                    sys.exit(True)
                 print()
                 print()
                 sector = start
                 while sector <= end:
                     if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
-                        # readMIFAREblock() has already patched a sector trailer with
-                        # the key that authenticated, so the dump can be cloned
-                        outfile.write(card.ToBinary(card.MIFAREdata))
+                        print(
+                            "    %02X: %s %s"
+                            % (
+                                sector,
+                                card.MIFAREdata,
+                                card.ReadablePrint(card.ToBinary(card.MIFAREdata)),
+                            )
+                        )
                     else:
                         print("    Failed: " + card.get_error_str(card.errorcode))
                     sector += 1
-
-            #if not outfile:
-            #    print("failed! Couldn't open output file!")
-            #    sys.exit(True)
-            print("    OK")
-            continue
-
-        if mfcommand == "WIPE":
-            print("  Wiping Mifare TAG", end="")
-            if not Mifare_KeyA:
-                print("failed! KEY A not set!")
-                sys.exit(True)
-            if not Mifare_KeyB:
-                print("failed! KEY B not set!")
-                sys.exit(True)
-            if not Mifare_KeyType or not Mifare_Key:
-                print("failed! No authentication performed!")
-                sys.exit(True)
-            print()
-            print()
-            print("    Key A will be set to:", Mifare_KeyA)
-            print("    Key B will be set to:", Mifare_KeyB)
-            print()
-            start = 1
-            end = 0x3F
-            sector = start
-            perms = "FF078069"
-            while sector <= end:
-                if not (sector + 1) % 4:
-                    # trailing block must contain keys, so reconstruct
-                    block = Mifare_KeyA + perms + Mifare_KeyB
+                continue
+            if mfcommand == "KEY":
+                print("  Setting Mifare Key", end="")
+                keytype = args.pop().upper()
+                if keytype == "A":
+                    Mifare_KeyA = args.pop().upper()
+                    print("A:", Mifare_KeyA)
+                elif keytype == "B":
+                    Mifare_KeyB = args.pop().upper()
+                    print("B:", Mifare_KeyB)
                 else:
-                    block = "00" * 16
-                if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
-                    print("    Failed: " + card.get_error_str(card.errorcode))
+                    print("failed! Invalid keytype:", keytype)
                     sys.exit(True)
-                sector += 1
-            print("    OK")
-            continue
+                continue
 
-        if mfcommand == "WRITE":
-            start = int(args.pop(), 16)
-            filename = args.pop()
-            with open(filename, "rb") as infile:
-                data = infile.read()
-            print("  Writing data from file", filename, end="")
-            if len(data) % 16:
-                print("failed! File length is not divisible by Mifare block length (16)!")
-                sys.exit(True)
-            if not Mifare_KeyA:
-                print("failed! KEY A not set!")
-                sys.exit(True)
-            if not Mifare_KeyType or not Mifare_Key:
-                print("failed! No authentication performed!")
-                sys.exit(True)
-            end = start + len(data) // 16 - 1
-            print(f"to blocks {start:02X} to {end:02X}")
-            print()
-            print("    Key A will be set to:", Mifare_KeyA)
-            if Mifare_KeyB:
+            if mfcommand == "READ":
+                start = int(args.pop(), 16)
+                end = int(args.pop(), 16)
+                filename = args.pop()
+                print(f"  Reading data blocks {start:02X} to {end:02X} and saving as {filename}:", end="")
+                if not Mifare_KeyType or not Mifare_Key:
+                    print("failed! No authentication performed!")
+                    sys.exit(True)
+                with open(filename, "wb") as outfile:
+                    print()
+                    print()
+                    sector = start
+                    while sector <= end:
+                        if card.login(sector, Mifare_KeyType, Mifare_Key) and card.readMIFAREblock(sector):
+                            # readMIFAREblock() has already patched a sector trailer with
+                            # the key that authenticated, so the dump can be cloned
+                            outfile.write(card.ToBinary(card.MIFAREdata))
+                        else:
+                            print("    Failed: " + card.get_error_str(card.errorcode))
+                        sector += 1
+
+                #if not outfile:
+                #    print("failed! Couldn't open output file!")
+                #    sys.exit(True)
+                print("    OK")
+                continue
+
+            if mfcommand == "WIPE":
+                print("  Wiping Mifare TAG", end="")
+                if not Mifare_KeyA:
+                    print("failed! KEY A not set!")
+                    sys.exit(True)
+                if not Mifare_KeyB:
+                    print("failed! KEY B not set!")
+                    sys.exit(True)
+                if not Mifare_KeyType or not Mifare_Key:
+                    print("failed! No authentication performed!")
+                    sys.exit(True)
+                print()
+                print()
+                print("    Key A will be set to:", Mifare_KeyA)
                 print("    Key B will be set to:", Mifare_KeyB)
-            else:
-                print("    Key B will be set as per file")
-            print()
-            sector = start
-            p = 0
-            while sector <= end:
-                block = card.ToHex(data[p : p + 16])
-                if not (sector + 1) % 4:
-                    # trailing block must contain keys, so reconstruct
-                    if Mifare_KeyB:
-                        block = Mifare_KeyA + block[12:20] + Mifare_KeyB
+                print()
+                start = 1
+                end = 0x3F
+                sector = start
+                perms = "FF078069"
+                while sector <= end:
+                    if not (sector + 1) % 4:
+                        # trailing block must contain keys, so reconstruct
+                        block = Mifare_KeyA + perms + Mifare_KeyB
                     else:
-                        block = Mifare_KeyA + block[12:]
-                if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
-                    if sector == 0:
-                        print("    Sector 0 write failed")
-                        card.select()
-                    else:
+                        block = "00" * 16
+                    if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
                         print("    Failed: " + card.get_error_str(card.errorcode))
                         sys.exit(True)
-                sector += 1
-                p += 16
+                    sector += 1
+                print("    OK")
+                continue
+
+            if mfcommand == "WRITE":
+                start = int(args.pop(), 16)
+                filename = args.pop()
+                with open(filename, "rb") as infile:
+                    data = infile.read()
+                print("  Writing data from file", filename, end="")
+                if len(data) % 16:
+                    print("failed! File length is not divisible by Mifare block length (16)!")
+                    sys.exit(True)
+                if not Mifare_KeyA:
+                    print("failed! KEY A not set!")
+                    sys.exit(True)
+                if not Mifare_KeyType or not Mifare_Key:
+                    print("failed! No authentication performed!")
+                    sys.exit(True)
+                end = start + len(data) // 16 - 1
+                print(f"to blocks {start:02X} to {end:02X}")
+                print()
+                print("    Key A will be set to:", Mifare_KeyA)
+                if Mifare_KeyB:
+                    print("    Key B will be set to:", Mifare_KeyB)
+                else:
+                    print("    Key B will be set as per file")
+                print()
+                sector = start
+                p = 0
+                while sector <= end:
+                    block = card.ToHex(data[p : p + 16])
+                    if not (sector + 1) % 4:
+                        # trailing block must contain keys, so reconstruct
+                        if Mifare_KeyB:
+                            block = Mifare_KeyA + block[12:20] + Mifare_KeyB
+                        else:
+                            block = Mifare_KeyA + block[12:]
+                    if not (card.login(sector, Mifare_KeyType, Mifare_Key) and card.writeblock(sector, block)):
+                        if sector == 0:
+                            print("    Sector 0 write failed")
+                            card.select()
+                        else:
+                            print("    Failed: " + card.get_error_str(card.errorcode))
+                            sys.exit(True)
+                    sector += 1
+                    p += 16
+                print("    OK")
+                continue
+            print("  Invalid MF command:", mfcommand)
+            sys.exit(True)
+        if command == "CHAMELEON":
+            if card.readertype != card.READER_CHAMELEON:
+                print("  CHAMELEON commands require a Chameleon Ultra (-R READER_CHAMELEON)")
+                sys.exit(True)
+            from rfidiot import pychameleon as pc
+            cham = card.chameleon
+            cucommand = args.pop().upper()
+            if cucommand == "INFO":
+                print()
+                active = cham.get_active_slot()
+                names = {v: k for k, v in pc.TAG_TYPES.items()}
+                print("  Active slot: %d" % (active + 1))
+                print("    Slot  HF                 LF")
+                for i, (hf, lf) in enumerate(cham.get_slot_info()):
+                    hn = "-" if hf == 0 else names.get(hf, "0x%04X" % hf)
+                    ln = "-" if lf == 0 else names.get(lf, "0x%04X" % lf)
+                    print("     %d    %-17s  %-10s%s" % (i + 1, hn, ln, "  <= active" if i == active else ""))
+                continue
+            if cucommand == "REBOOT":
+                print("  Rebooting the Chameleon via the DFU bootloader (the port will drop)...")
+                cham.reboot()
+                continue
+            if cucommand == "SLOT":
+                slot = int(args.pop())
+                if not 1 <= slot <= pc.NUM_SLOTS:
+                    print("  Slot must be 1-%d" % pc.NUM_SLOTS)
+                    sys.exit(True)
+                slot_fw = slot - 1
+                sub = args.pop().upper()
+                if sub == "UID":
+                    uid = card.ToBinary(args.pop())
+                    # optional trailing 'TYPE <name>' (only consume when present, as the
+                    # arg stream may continue with another command)
+                    type_name = "MIFARE_1K"
+                    if args and args[-1].upper() == "TYPE":
+                        args.pop()
+                        type_name = args.pop().upper()
+                    if type_name not in pc.TAG_TYPES:
+                        print("  Unknown TYPE '%s'. One of: %s" % (type_name, ", ".join(sorted(pc.TAG_TYPES))))
+                        sys.exit(True)
+                    atqa = cham.default_atqa(len(uid))
+                    sak = cham.default_sak(type_name)
+                    print("  Emulating UID %s on slot %d (%s, ATQA %s SAK %s)"
+                          % (uid.hex().upper(), slot, type_name, atqa.hex().upper(), sak.hex().upper()))
+                    cham.emulate_14a(slot_fw, uid, atqa, sak, pc.TAG_TYPES[type_name])
+                    print("    OK")
+                    continue
+                if sub == "MFLOAD":
+                    filename = args.pop()
+                    with open(filename, "rb") as f:
+                        dump = f.read()
+                    if not dump or len(dump) % 16:
+                        print("  Dump length %d is not a multiple of 16" % len(dump))
+                        sys.exit(True)
+                    type_name = cham.type_from_blockcount(len(dump) // 16)
+                    block0 = dump[0:16]
+                    uid, sak, atqa = block0[0:4], block0[5:6], block0[6:8]
+                    print("  Loading %d blocks from %s onto slot %d (%s, UID %s)"
+                          % (len(dump) // 16, filename, slot, type_name, uid.hex().upper()))
+                    cham.emulate_mfload(slot_fw, dump, pc.TAG_TYPES[type_name], uid, atqa, sak)
+                    print("    OK")
+                    continue
+                print("  CHAMELEON SLOT needs UID or MFLOAD")
+                sys.exit(True)
+            print("  Invalid CHAMELEON command:", cucommand)
+            sys.exit(True)
+        if command == "PROMPT":
+            message = args.pop()
+            print()
+            x = input(message).upper()
+            if x == "N":
+                sys.exit(False)
+            continue
+
+        if command == "SCRIPT":
+            filename = args.pop()
+            with open(filename, "rb") as infile:
+                print()
+                print("  Reading commands from", filename)
+                # if not infile:
+                #     print("failed! Can't open file!")
+                #     sys.exit(True)
+                script = []
+                while 42:
+                    line = infile.readline()
+                    if line == "":
+                        break
+                    line = line.strip()
+                    if line == "":
+                        continue
+                    quoted = False
+                    for arg in line.split(" "):
+                        # skip comments
+                        if arg[0] == "#":
+                            break
+                        # quoted sections
+                        if arg[0] in ['"', "'"]:
+                            quoted = True
+                            quote = ""
+                            arg = arg[1:]
+                        if quoted:
+                            if arg[-1] in ['"', "'"]:
+                                quote += " " + arg[:-1]
+                                quoted = False
+                                script.append(quote)
+                            else:
+                                quote += " " + arg
+                        else:
+                            script.append(arg)
+
+            script.reverse()
+            args += script
+            continue
+
+        if command == "SELECT":
+            print()
+            print("  Selecting TAG")
+            print()
+            # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
+            if card.select() or card.select("B"):
+                print("    Tag ID: " + card.uid)
+                if card.readertype == card.READER_PCSC:
+                    print("    ATR: " + card.pcsc_atr)
+            else:
+                if card.errorcode:
+                    print("    Failed:  " + card.get_error_str(card.errorcode))
+                else:
+                    print("    No card present")
+            continue
+
+        if command == "WAIT":
+            message = args.pop()
+            print()
+            current = card.uid
+            card.waitfortag(message)
+            print()
+            continue
+
+        if command == "WRITEHEX":
+            block = int(args.pop(), 16)
+            data = args.pop().upper()
+            print()
+            print(f"  Writing data {data} to block {block:02x}", end="")
+            if not card.writeblock(block, data):
+                print("    Failed: " + card.get_error_str(card.errorcode))
+                sys.exit(True)
             print("    OK")
             continue
-        print("  Invalid MF command:", mfcommand)
+
+        print()
+        print("Unrecognised command:", command)
         sys.exit(True)
-    if command == "CHAMELEON":
-        if card.readertype != card.READER_CHAMELEON:
-            print("  CHAMELEON commands require a Chameleon Ultra (-R READER_CHAMELEON)")
-            sys.exit(True)
-        from rfidiot import pychameleon as pc
-        cham = card.chameleon
-        cucommand = args.pop().upper()
-        if cucommand == "INFO":
-            print()
-            active = cham.get_active_slot()
-            names = {v: k for k, v in pc.TAG_TYPES.items()}
-            print("  Active slot: %d" % (active + 1))
-            print("    Slot  HF                 LF")
-            for i, (hf, lf) in enumerate(cham.get_slot_info()):
-                hn = "-" if hf == 0 else names.get(hf, "0x%04X" % hf)
-                ln = "-" if lf == 0 else names.get(lf, "0x%04X" % lf)
-                print("     %d    %-17s  %-10s%s" % (i + 1, hn, ln, "  <= active" if i == active else ""))
-            continue
-        if cucommand == "REBOOT":
-            print("  Rebooting the Chameleon via the DFU bootloader (the port will drop)...")
-            cham.reboot()
-            continue
-        if cucommand == "SLOT":
-            slot = int(args.pop())
-            if not 1 <= slot <= pc.NUM_SLOTS:
-                print("  Slot must be 1-%d" % pc.NUM_SLOTS)
-                sys.exit(True)
-            slot_fw = slot - 1
-            sub = args.pop().upper()
-            if sub == "UID":
-                uid = card.ToBinary(args.pop())
-                # optional trailing 'TYPE <name>' (only consume when present, as the
-                # arg stream may continue with another command)
-                type_name = "MIFARE_1K"
-                if args and args[-1].upper() == "TYPE":
-                    args.pop()
-                    type_name = args.pop().upper()
-                if type_name not in pc.TAG_TYPES:
-                    print("  Unknown TYPE '%s'. One of: %s" % (type_name, ", ".join(sorted(pc.TAG_TYPES))))
-                    sys.exit(True)
-                atqa = cham.default_atqa(len(uid))
-                sak = cham.default_sak(type_name)
-                print("  Emulating UID %s on slot %d (%s, ATQA %s SAK %s)"
-                      % (uid.hex().upper(), slot, type_name, atqa.hex().upper(), sak.hex().upper()))
-                cham.emulate_14a(slot_fw, uid, atqa, sak, pc.TAG_TYPES[type_name])
-                print("    OK")
-                continue
-            if sub == "MFLOAD":
-                filename = args.pop()
-                with open(filename, "rb") as f:
-                    dump = f.read()
-                if not dump or len(dump) % 16:
-                    print("  Dump length %d is not a multiple of 16" % len(dump))
-                    sys.exit(True)
-                type_name = cham.type_from_blockcount(len(dump) // 16)
-                block0 = dump[0:16]
-                uid, sak, atqa = block0[0:4], block0[5:6], block0[6:8]
-                print("  Loading %d blocks from %s onto slot %d (%s, UID %s)"
-                      % (len(dump) // 16, filename, slot, type_name, uid.hex().upper()))
-                cham.emulate_mfload(slot_fw, dump, pc.TAG_TYPES[type_name], uid, atqa, sak)
-                print("    OK")
-                continue
-            print("  CHAMELEON SLOT needs UID or MFLOAD")
-            sys.exit(True)
-        print("  Invalid CHAMELEON command:", cucommand)
-        sys.exit(True)
-    if command == "PROMPT":
-        message = args.pop()
-        print()
-        x = input(message).upper()
-        if x == "N":
-            sys.exit(False)
-        continue
-
-    if command == "SCRIPT":
-        filename = args.pop()
-        with open(filename, "rb") as infile:
-            print()
-            print("  Reading commands from", filename)
-            # if not infile:
-            #     print("failed! Can't open file!")
-            #     sys.exit(True)
-            script = []
-            while 42:
-                line = infile.readline()
-                if line == "":
-                    break
-                line = line.strip()
-                if line == "":
-                    continue
-                quoted = False
-                for arg in line.split(" "):
-                    # skip comments
-                    if arg[0] == "#":
-                        break
-                    # quoted sections
-                    if arg[0] in ['"', "'"]:
-                        quoted = True
-                        quote = ""
-                        arg = arg[1:]
-                    if quoted:
-                        if arg[-1] in ['"', "'"]:
-                            quote += " " + arg[:-1]
-                            quoted = False
-                            script.append(quote)
-                        else:
-                            quote += " " + arg
-                    else:
-                        script.append(arg)
-
-        script.reverse()
-        args += script
-        continue
-
-    if command == "SELECT":
-        print()
-        print("  Selecting TAG")
-        print()
-        # try ISO 14443-B if no Type A card (only libnfc/CCID distinguish them)
-        if card.select() or card.select("B"):
-            print("    Tag ID: " + card.uid)
-            if card.readertype == card.READER_PCSC:
-                print("    ATR: " + card.pcsc_atr)
-        else:
-            if card.errorcode:
-                print("    Failed:  " + card.get_error_str(card.errorcode))
-            else:
-                print("    No card present")
-        continue
-
-    if command == "WAIT":
-        message = args.pop()
-        print()
-        current = card.uid
-        card.waitfortag(message)
-        print()
-        continue
-
-    if command == "WRITEHEX":
-        block = int(args.pop(), 16)
-        data = args.pop().upper()
-        print()
-        print(f"  Writing data {data} to block {block:02x}", end="")
-        if not card.writeblock(block, data):
-            print("    Failed: " + card.get_error_str(card.errorcode))
-            sys.exit(True)
-        print("    OK")
-        continue
-
-    print()
-    print("Unrecognised command:", command)
-    sys.exit(True)
+    except IndexError:
+        # a command ran out of arguments mid-way - show its detailed help
+        print("\n  *** %s: missing argument(s) ***" % _help_key)
+        print_cmd_help(_help_key)
 print()
 sys.exit(False)
