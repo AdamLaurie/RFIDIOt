@@ -42,6 +42,13 @@
 #  Readers that cycle their field before every poll (e.g. the TWN4) release
 #  the activation themselves, so they always read the '08' priming UID.
 #
+#    native - a 4-byte UID that starts with '08' is exactly what AutoColl sends
+#      anyway (08 + 3 NFCID1 bytes), so there is nothing to beat: we just arm
+#      the chip with that UID and let its hardware answer every poll. No priming,
+#      no relay, and - unlike both paths above - it survives a reader that cycles
+#      its field, because the UID is re-sent from hardware each time. This is the
+#      automatic path whenever the UID is 4 bytes beginning with 08.
+#
 #  Only the UID layer (ISO 14443-3 anticollision/select, HLTA) is emulated;
 #  later commands (RATS, MIFARE auth, ...) are shown but not answered.
 
@@ -56,7 +63,7 @@ import rfidiot
 card = rfidiot.card
 args = rfidiot.args
 
-card.info("emulateuid v3.1a")
+card.info("emulateuid v3.1b")
 
 
 def crc_a(data):
@@ -86,6 +93,9 @@ def usage():
     print("                    twn4[:port]           ELATEC TWN4")
     print("                    pn53x_usb:bus:dev     any libnfc reader (libnfc connstring)")
     print("    -w <SECONDS>  stop after this many seconds (default: run until Ctrl-C)")
+    print()
+    print("  A 4-byte UID starting with 08 is emulated natively by the chip's AutoColl:")
+    print("  no priming, no relay, and it works even with readers that cycle their field.")
     print()
     print("  Without -p the real reader primes us: its first activation fails (we never")
     print("  answer the RATS that SAK 20 provokes) and a reader that retries gets our UID.")
@@ -143,6 +153,72 @@ if len(uid) == 4 and uid[0] == 0x88:
 if card.readertype != card.READER_LIBNFC or not hasattr(card.nfc, "initAsTarget"):
     print("  The emulator must be a libnfc PN53x reader (-f <connstring>)")
     sys.exit(True)
+
+# Native hardware mode: a 4-byte UID that starts with 08 is exactly what the
+# chip's own AutoColl already sends (08 + its 3-byte NFCID1 buffer), so there is
+# nothing to beat - no priming, no host relay. We just arm TgInitAsTarget with
+# the UID and let the hardware answer anticollision on every poll. This is the
+# ONLY mode that survives a reader which drops its field before each poll (the
+# TWN4, PN5180-based embedded readers): the UID is re-sent from hardware each
+# time the field returns, where the relay path below would lose its activation.
+# A plain UID read sends no post-select command, so initAsTarget blocks until a
+# command arrives or the field cycles - the chip keeps answering AutoColl the
+# whole time it is armed. Later commands (RATS, MIFARE auth, ...) are not
+# answered; this is the ISO 14443-3 UID layer only, same as the relay path.
+if len(uid) == 4 and uid[0] == 0x08:
+    if atqa is None:
+        atqa = b"\x04\x00"
+    if primer:
+        print("  (primer ignored: an 08-prefixed UID is emulated natively, no priming needed)")
+    nt = card.nfc.make_iso14443a_target(atqa.hex(), uid.hex(), "%02X" % sak)
+    print()
+    print("  Emulating UID %s natively via hardware AutoColl (ATQA %s, SAK %02X)"
+          % (uid.hex().upper(), atqa.hex().upper(), sak))
+    print("  Works with field-cycling readers; 4-byte 08-prefix UID only (Ctrl-C to stop)")
+    print()
+
+    # Keep the chip armed continuously with a single blocking initAsTarget
+    # (timeout=0): while it blocks, hardware AutoColl answers every poll, so reads
+    # are clean. Re-arming on a short timeout instead leaves a gap where a poll
+    # catches the chip mid-reinit and reads a garbage/zero UID. The block can't be
+    # interrupted by Ctrl-C from the main thread (it sits in libnfc's C call), so
+    # run it in a daemon thread and stop it with nfc_abort_command on exit.
+    stop = threading.Event()
+    activations = [0]
+
+    def arm_loop():
+        while not stop.is_set():
+            ok, first = card.nfc.initAsTarget(nt, 0, raw=True, quiet=True)
+            if stop.is_set():
+                break
+            if ok:
+                # only reached if a reader sent a post-select command (a plain
+                # UID read sends none); re-arm straight away
+                activations[0] += 1
+                print("  %.3f activated as %s (post-select cmd %s)"
+                      % (time.time(), uid.hex().upper(), first or "(none)"))
+
+    arm = threading.Thread(target=arm_loop, daemon=True)
+    arm.start()
+    try:
+        if wait:
+            stop.wait(wait)
+        else:
+            while not stop.is_set():
+                stop.wait(3600)
+    except KeyboardInterrupt:
+        pass
+    stop.set()
+    card.nfc.abort()            # unblock the armed initAsTarget cleanly
+    arm.join(timeout=2)
+    print()
+    # the hardware answers every poll while armed; the host only "sees" an
+    # activation if the reader sends a post-select command (a plain UID read
+    # sends none), so this count is usually 0 even though reads happened
+    print("  Stopped (%d host-visible activations; the UID was read in hardware on every poll)"
+          % activations[0])
+    card.shutdown()
+    sys.exit(False)
 
 # per cascade level: (SEL code, UID CLn bytes + BCC, SAK for this level)
 if atqa is None:

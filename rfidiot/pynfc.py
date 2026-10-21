@@ -856,11 +856,12 @@ class NFC(_ISODEP):
             nai.abtAts[i] = ats[i]
         return nt
 
-    def initAsTarget(self, nfc_target, timeout=0, raw=True):
+    def initAsTarget(self, nfc_target, timeout=0, raw=True, quiet=False):
         """Enter target (card-emulation) mode and block until an initiator
         activates us. timeout is in ms (0 = block indefinitely). Returns
         (True, rx_hex) where rx_hex is the first command the initiator sent on
         activation ('' if none), or (False, rc) with the libnfc return code.
+        quiet=True suppresses libnfc's error print, for re-arming on a timeout.
 
         With raw=True (the default) libnfc "easy framing" is turned off before
         entering target mode. This is required for an ISO 14443-A (non-DEP)
@@ -882,7 +883,8 @@ class NFC(_ISODEP):
             int(timeout),
         )
         if rxlen < 0:
-            self.libnfc.nfc_perror(self.device, b"nfc_target_init")
+            if not quiet or rfidiotglobals.Debug:  # debug overrides quiet
+                self.libnfc.nfc_perror(self.device, b"nfc_target_init")
             return False, rxlen
         # Set raw framing *after* nfc_target_init - it resets these properties, so
         # setting them earlier has no effect and target send/receive then fail
@@ -903,7 +905,7 @@ class NFC(_ISODEP):
             self.device, ctypes.byref(rx), ctypes.c_size_t(MAX_FRAME_LEN), int(timeout)
         )
         if rxlen < 0:
-            if not quiet:
+            if not quiet or rfidiotglobals.Debug:  # debug overrides quiet
                 self.libnfc.nfc_perror(self.device, b"nfc_target_receive_bytes")
             return False, rxlen
         return True, "".join([f"{x:02x}" for x in rx[:rxlen]]).upper()
@@ -914,6 +916,16 @@ class NFC(_ISODEP):
         CRC, so a host answering anticollision itself needs it off (see
         emulateuid.py), appending CRC_A to the SAK by hand."""
         self.libnfc.nfc_device_set_property_bool(self.device, NP_HANDLE_CRC, bool(on))
+
+    def abort(self):
+        """abort a blocking initiator/target command (libnfc nfc_abort_command).
+        Safe to call from another thread: it makes a pending initAsTarget or
+        targetReceive return NFC_EOPABORTED so the caller can stop cleanly,
+        without the hard kill that can wedge a PN533 (see emulateuid.py)."""
+        try:
+            return self.libnfc.nfc_abort_command(self.device)
+        except Exception:
+            return None
 
     def targetSend(self, apdu, timeout=0):
         "send one frame (hex in) back to the initiator; (True, nbytes) or (False, rc)"
@@ -1382,9 +1394,10 @@ class ACR122CCID(_ISODEP):
             self.log.error("%s: %s" % (what, r.hex().upper() or "no reply"))
         return err
 
-    def initAsTarget(self, nfc_target, timeout=0, raw=True):
+    def initAsTarget(self, nfc_target, timeout=0, raw=True, quiet=False):
         """Enter target (card-emulation) mode and block until an initiator
-        activates us; as NFC.initAsTarget. timeout is in ms (0 = for ever)."""
+        activates us; as NFC.initAsTarget. timeout is in ms (0 = for ever).
+        quiet is accepted for call compatibility (a timeout returns silently)."""
         nai = nfc_target.nti.nai
         uid = list(nai.abtUid[:nai.uiUidLen])
         if len(uid) != 4 or uid[0] != 0x08:  # the PN532 only sends 08 + NFCID1t
