@@ -122,6 +122,7 @@ def printoptions():
     print("\t\t\t\tREADER_NONE:\tNone")
     print("\t\t\t\tREADER_OMNIKEY:\tPC/SC Subtype OmniKey")
     print("\t\t\t\tREADER_PCSC:\tPC/SC")
+    print("\t\t\t\tREADER_PN5180:\tNXP PN5180 over FT232H/pyftdi (ISO 14443-A reader)")
     print("\t\t\t\tREADER_SCM:\tPC/SC Subtype SCM")
     print("\t\t\t\tREADER_TWN4:\tELATEC TWN4 (Simple Protocol, ISO 14443-A/B reader)")
     print("\t-s <baud>\tSpeed of reader/writer")

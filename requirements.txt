@@ -10,3 +10,5 @@ Pillow
 pyasn1
 # serial readers: ACG / Frosch / DemoTag, and the Chameleon Ultra (READER_CHAMELEON)
 pyserial
+# PN5180 reader over an FT232H USB bridge (READER_PN5180); optional, imported lazily
+pyftdi

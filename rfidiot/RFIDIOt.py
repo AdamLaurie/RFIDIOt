@@ -266,6 +266,19 @@ class rfidiot:
                     print("TWN4: %s" % e)
                     sys.exit(True)
                 self.readername = self.twn4.readername
+            # NXP PN5180 over an FT232H (pyftdi), register-level reader
+            elif self.readertype == self.READER_PN5180:
+                from . import pypn5180
+
+                # -l carries the pyftdi FTDI URL (default ftdi://ftdi:232h/1);
+                # a plain device path is passed through too
+                pn_url = self.NFCReader if isinstance(self.NFCReader, str) else (port or None)
+                try:
+                    self.pn5180 = pypn5180.PN5180(url=pn_url, debug=self.DEBUG, timeout=to)
+                except pypn5180.PN5180Error as e:
+                    print("PN5180: %s" % e)
+                    sys.exit(True)
+                self.readername = self.pn5180.readername
             # Andoid reader
             elif self.readertype == self.READER_ANDROID:
                 self.android = pyandroid.Android()
@@ -326,6 +339,7 @@ class rfidiot:
     READER_ANDROID = 0x10
     READER_CHAMELEON = 0x11
     READER_TWN4 = 0x12
+    READER_PN5180 = 0x13
     # TAG related globals
     errorcode = ""
     binary = ""
@@ -1536,6 +1550,33 @@ class rfidiot:
                     print("TWN4 select error:", e)
                 return False
 
+        if self.readertype == self.READER_PN5180:
+            from . import pypn5180
+
+            if cardtype != "A":
+                if self.DEBUG:
+                    print("PN5180 back-end supports ISO 14443-A only (so far)")
+                return False
+            try:
+                tag = self.pn5180.select("A")
+            except pypn5180.PN5180Error as e:
+                self.errorcode = "PN00"
+                if self.DEBUG:
+                    print("PN5180 select error:", e)
+                return False
+            if not tag:
+                if self.DEBUG:
+                    print("No TAG present!")
+                return False
+            self.uid = tag.uid
+            self.tagtype = "ISO 14443A"
+            self.sens_res = tag.atqa
+            self.sel_res = tag.sak
+            self.atr = tag.ats
+            if self.DEBUG:
+                print("UID: " + self.uid)
+            return True
+
         if self.readertype == self.READER_ANDROID:
             try:
                 if self.DEBUG:
@@ -2080,6 +2121,23 @@ class rfidiot:
                     print("TWN4 APDU error:", e)
             if not ret:
                 self.errorcode = "TW00"
+                return False
+            self.data = result[0:-4]
+            self.errorcode = result[len(result) - 4 : len(result)]
+            if self.errorcode != self.ISO_OK:
+                return False
+            return True
+        if self.readertype == self.READER_PN5180:
+            if self.DEBUG:
+                print("In send_apdu - for PN5180:", cla + ins + p1 + p2 + lc + data + le)
+            try:
+                ret, result = self.pn5180.sendAPDU(cla + ins + p1 + p2 + lc + data + le, self.timeout)
+            except Exception as e:
+                ret = False
+                if self.DEBUG:
+                    print("PN5180 APDU error:", e)
+            if not ret:
+                self.errorcode = "PN00"
                 return False
             self.data = result[0:-4]
             self.errorcode = result[len(result) - 4 : len(result)]
@@ -3307,4 +3365,6 @@ class rfidiot:
             self.nfc.deconfigure()
         if self.readertype == self.READER_TWN4:
             self.twn4.close()
+        if self.readertype == self.READER_PN5180:
+            self.pn5180.close()
         sys.exit(False)
