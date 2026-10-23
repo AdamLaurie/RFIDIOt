@@ -873,6 +873,21 @@ Remaining:
 - ACR122U (PN532) as the emulator via the direct-CCID path: not tried - note a raw
   7-bit REQA sent through that path wedges the ACR122U-WB-R until replugged.
 
+**Hardware now on hand - PN532 V3 module** (Hailege "PN532 NFC V3 Kit", Amazon B07YDG6X2V;
+bare NXP **PN532**, selectable I2C / SPI / HSU-UART, no USB). A *genuine PN532*, not the
+PN533/SCL3711, which unblocks several items above and elsewhere:
+- the **chip-side T=CL** emulation path in `pn532emulate` / `pn532mitm` (the chip runs the
+  ISO 14443-4 block protocol under easy framing, host just trades APDUs) - this needs a PN532
+  and could not be tested with the PN533 SCL3711 (see section 12 and the "why separate" note
+  below; `relayuid` only does Type 4 on the PN533 by running T=CL on the *host*).
+- a **PN532 real reader** whose `InListPassiveTarget` retries after a failed RATS (the
+  assumption behind `emulateuid` retry mode) - lets us test emulateuid/relayuid against a
+  non-ACR122U reader, and PN532-vs-PN533 emulator behaviour.
+- Transport: bare module, so drive it over **UART for libnfc** (`pn532_uart:` via a USB-UART
+  adapter - simplest), or over I2C/SPI using the **FT232H** already slated for the PN5180
+  (section 21). libnfc has `pn532_uart` / `pn532_i2c` / `pn532_spi` connstrings, so this may
+  need no new RFIDIOt back-end at all - just the right wiring + connstring.
+
 ### Why `emulateuid` stays separate from `pn532emulate` / `pn532mitm` (not a merge)
 They are two mutually exclusive modes of the PN53x target, not a feature flag:
 - `pn532emulate` / `pn532mitm`: the **chip** owns ISO 14443-3 (anticollision + CRC,
@@ -970,3 +985,88 @@ and test (our card is an EV1, HW major 0x01; EV2 = 0x12, EV3 = 0x33).
 When an EV2/EV3 lands: add the 0x71/0x77 auth + TI/CmdCtr SM as a new `sm` scheme in
 `DESFire_Session` (the dispatch in df_apdu/df_send/df_read already branches on `sm`), then
 the key-set / transaction-MAC / proximity / SDM commands on top.
+
+## 20. HID iCLASS / Picopass support in rfidiot-cli (port from libnfc `iclasstool`)
+Bring iCLASS (HID iCLASS / INSIDE Secure Picopass) functionality into RFIDIOt, as a new
+`ICLASS` command group in `rfidiot-cli.py` (same standalone-primitive style as `DESFIRE`/`MF`
+- each command does one thing, never auto-runs a dependency like select; see the cli-primitives
+rule). The reference implementation is **`iclasstool`** (in libnfc; written by Adam Laurie) -
+port its command set and crypto, crediting it in the source as we credited libfreefare for DESFire.
+
+Protocol / transport:
+- iCLASS is a 13.56 MHz Picopass card: ISO 15693-style framing with its own anticollision and
+  command set, NOT the ISO 14443-A/B path the other tools use. A PN53x over libnfc can drive it
+  (that is how `iclasstool` works); `rfidiot/pynfc.py` needs the iCLASS transceive primitive
+  (the right modulation/framing to send raw Picopass frames and get the answer, CRC16 as iCLASS
+  uses it). Decide how it surfaces in `RFIDIOt.py` (likely a new reader method behind a
+  `READER_LIBNFC` branch, as with the other raw paths).
+- It should also work on any **PN5xx reader we have register-level control over** (e.g. a PN5180,
+  or a PN512/PN53x driven by raw register access): iCLASS just needs the RF analogue/framing
+  registers set for the Picopass modulation (subcarrier, bit rate, coding) and then raw frame
+  transceive with iCLASS CRC16. So the iCLASS primitive should be factored so it can sit on any
+  such back-end, not only libnfc - the register-poke path is the general route when a reader does
+  not expose iCLASS directly. (No PN5180 RFIDIOt back-end exists yet; tie this in if/when one lands.)
+- Card lifecycle commands to port: ACTALL / ACT, IDENTIFY (ASNB/anticollision), SELECT (get the
+  card serial / CSN), READCHECK, CHECK (the authenticate step), READ (block), UPDATE (write block),
+  PAGESEL for the 16k/8-page cards. Config/app areas: the HID config block, the key/epurse blocks.
+
+Crypto / keys (the hard part - from `iclasstool`):
+- Legacy iCLASS: the proprietary iCLASS cipher with the HID master key, Kd (debit/standard
+  area) and Kc (credit), **key diversification** per CSN, and the **elite / high-security**
+  ("custom key") variant. Port the diversification + the CHECK (authenticate) MAC exactly as
+  `iclasstool` does it.
+- iCLASS SE / SR / SEOS are a different (AES / Secure Element) generation - scope them separately;
+  start with legacy iCLASS + Picopass, note SE/SR/SEOS as follow-up (like the DESFire EV2/EV3 split).
+- Never commit real site/HID keys or captured card data (same rule as passport MRZ / EMV PANs).
+
+Suggested shape: `ICLASS IDENTIFY | SELECT | READCHECK | CHECK <key> | READ <blk> | UPDATE <blk> <data>
+| DUMP | KEYDIV <csn>`, with per-command help (the `COMMAND_HELP` system). Needs an iCLASS card +
+a PN53x (or the PN5180, section 21) to verify; add a hardware-verification entry to section 3 when porting.
+
+## 21. NXP PN5180 reader back-end (`READER_PN5180`) - **hardware on hand**
+Add the NXP **PN5180** as a supported reader. The PN5180 is a high-performance NFC frontend
+(ISO 14443-A/B to 848 kbit/s, ISO 15693 / ICODE, ISO 18092 / FeliCa) controlled at the
+register level over **SPI** (with a BUSY line) - not USB CDC like the TWN4/Chameleon. Because we
+drive its RF registers directly, it is the natural home for the iCLASS / Picopass work in
+section 20 (iCLASS needs custom RF framing registers, which the PN5180 exposes). A reader is on
+hand to develop against.
+
+Shape (mirror `rfidiot/pytwn4.py` / `pychameleon.py`):
+- New `rfidiot/pypn5180.py` with the PN5180 instruction set: `WRITE_REGISTER` /
+  `WRITE_REGISTER_OR_MASK` / `WRITE_REGISTER_AND_MASK`, `READ_REGISTER`, `WRITE_EEPROM` /
+  `READ_EEPROM`, `LOAD_RF_CONFIG`, `RF_ON` / `RF_OFF`, `SEND_DATA` / `READ_DATA`,
+  `SWITCH_MODE`, `MIFARE_AUTHENTICATE`. Poll BUSY between transfers.
+- New reader-type constant `READER_PN5180` in `RFIDIOt.py`, with dispatch branches for
+  select / APDU / transceive (as the other reader types). `LoadRFConfig` picks the TX/RX
+  config per protocol from EEPROM; for protocols without a stock config (iCLASS/Picopass)
+  set the registers by hand - the general register-control route noted in section 20.
+- Transport: the board on hand (RAKSTORE/generic PN5180, Amazon B0C1SXFG8Z) is a **bare SPI
+  module, no onboard USB** - the standard PN5180 header (RST, NSS/CS, MOSI, MISO, SCK, BUSY,
+  GPIO, IRQ, AUX, 5V, 3V3, GND), 5V supply with on-board 3.3 V logic. **Chosen host route:
+  an FT232H USB bridge driven by `pyftdi`** (MPSSE), on the current Linux dev host (no GPIO
+  header of its own). Details for the back-end:
+    - SPI via `pyftdi.spi.SpiController` on the FT232H MPSSE pins: SCK=ADBUS0, MOSI=ADBUS1,
+      MISO=ADBUS2, NSS/CS=ADBUS3 (a `SpiController` CS line). PN5180 SPI mode 0, MSB-first;
+      the PN5180 wants NSS to frame each command AND each response as a separate transfer with
+      BUSY low at the start - so drive NSS deliberately around the BUSY handshake rather than
+      relying on per-byte auto-CS.
+    - GPIO via the FT232H's remaining pins (`pyftdi.gpio` / the SpiController's GPIO port):
+      **BUSY** (input, poll - must be low before a command and read the response only after it
+      goes low→high→low per the PN5180 flow), **RST** (output, active low), optionally **IRQ**
+      and the board **GPIO/AUX**. Fix a pin map (e.g. BUSY=ADBUS4, RST=ADBUS5, IRQ=ADBUS6).
+    - `pyftdi` is an optional, lazily-imported dep (like pyserial); needs libusb + an FT232H
+      udev rule for non-root (document in `linux/`, as with the PN53x blacklist/udev rule).
+    - Selection: `-l` / a connstring carries the FTDI URL (e.g. `ftdi://ftdi:232h/1`) and, if
+      not fixed in the driver, the GPIO pin map.
+  (A Linux `spidev` + GPIO route on an SBC is the obvious alternative if an FT232H isn't to
+  hand, but FT232H/pyftdi is the one to build.)
+
+Scope / order:
+1. Bring-up: open, reset, read the firmware/EEPROM version, RF on/off.
+2. ISO 14443-A: REQA/anticollision/select, RATS + T=CL, so IDENTIFY / APDU / ChAP / mrpkey work.
+3. ISO 15693 and then iCLASS / Picopass (section 20) via custom RF config.
+4. ISO 14443-B; MIFARE Classic via `MIFARE_AUTHENTICATE`.
+- Card-emulation (target) mode is secondary: the PN5180 is primarily a reader, and its AutoColl
+  has the same hard-wired first-UID-byte limit noted for emulation in section 17 / the emulation
+  notes - treat emulation as a later, separate step if at all.
+- Add a hardware-verification entry to section 3 as each layer comes up.
