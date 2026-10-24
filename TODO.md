@@ -1274,3 +1274,35 @@ Shape (mirror `pypn5180.py`; factor the shared FT232H bits out of it):
 Scope/order: bring-up (GetFirmwareVersion over SPI) -> SAMConfiguration -> InListPassiveTarget (14443-A
 IDENTIFY) -> InDataExchange/InCommunicateThru (APDUs, T=CL) -> iCLASS via the raw-frame path.
 Add a hardware-verification entry to section 3 when it comes up.
+
+
+## 23. iCLASS relay (relayuid-style split, but NOT on a PN53x)
+Relay an iCLASS/Picopass card the way `relayuid.py` (section 17a) relays EMV/ePassport: a fake card
+presented to a victim reader transparently forwards its commands to a real card elsewhere and returns
+the real card's answers. iCLASS auth is a challenge-response (ACTALL -> IDENTIFY -> SELECT -> READCHECK
+-> card e-purse challenge -> CHECK with reader MAC -> READ), so a transparent relay works **without the
+keys** - the classic relay / mafia-fraud, and the whole point when the card uses elite/custom keys you
+can't clone. Legacy iCLASS has no strong anti-relay timing, so socket latency should be tolerable.
+
+**Half of it already exists**: the card-reading end. `pynfc.iclass_*` (+ the OMNIKEY escape) and the
+`loclass` frame builders (cmd_actall/identify/select/readcheck/check/read/update) are exactly what the
+"card end" forwards.
+
+**The blocker is the emulator end**: unlike relayuid, the PN53x CANNOT be the fake card here - iCLASS is
+NOT ISO 14443, it is an ISO 15693-family modulation with its own anticollision, and the PN53x AutoColl /
+target mode is 14443-A (+ FeliCa/DEP) only. The PN5180's card/target mode is 14443/ISO-DEP too. So the
+fake-card endpoint needs **iCLASS card-emulation hardware - a Proxmark3 (`hf iclass sim`)** or equivalent.
+
+Shape (mirror relayuid's split): 
+- **Card end** = our PN532 (`pn532_uart`/future `pn532_spi`) or OMNIKEY running the `iclass_*` reads,
+  with a socket agent (like relayuid's `-S <port>`) that accepts raw iCLASS command frames and returns
+  the real card's replies.
+- **Emulator end** = a Proxmark3 in iCLASS sim mode, relaying the reader's frames over the socket to the
+  card end (needs a pm3 sim/relay mode or a small bridge on the pm3 client).
+- Transparent frame relay (no crypto): ACTALL/IDENTIFY/SELECT/READCHECK/CHECK/READ/UPDATE pass straight
+  through; the CSN the emulator advertises must match the real card (diversification is tied to it).
+
+NB for KNOWN-key cards (default/elite we hold) a relay is unnecessary - just read + clone/emulate the
+credential (dump PACS -> blank iCLASS, or pm3 `hf iclass sim`). Relay's value is the key-less case.
+Scope this as a later item; it depends on an iCLASS-capable emulator (pm3), which the PN53x/PN5180 are
+not. Add a hardware-verification entry to section 3 if/when built.
