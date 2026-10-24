@@ -142,7 +142,11 @@ Three layers:
      `~/.rfidiot/iclass_decryptionkey.bin`). The iCLASS cipher/diversification live in
      `rfidiot/loclass.py`. NB only ~one secured session works per physical card placement —
      after a read the card's RF link desyncs (everything → 6982) and software reset won't clear
-     it; remove and re-present the card between runs.
+     it; remove and re-present the card between runs. `-f <dev>` instead selects a **libnfc
+     PN53x/PN5180 raw-frame backend** (`LibnfcIClass`): selectICLASS then loclass command frames
+     over `pynfc.iclass_transceive`, with CSN-diversified default-key auth (READCHECK→MAC→CHECK).
+     Built but needs a reader that can modulate iCLASS — a genuine PN532 or the PN5180; the
+     SCL3711/PN533 and cheap PN532 clones can't (iClass select times out, `-6`).
 
 ### Support modules in `rfidiot/`
 - `iclass_omnikey.py` — the OMNIKEY iCLASS transport used by `iclass.py`: the `0x42000C21`

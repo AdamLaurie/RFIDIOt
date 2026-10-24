@@ -27,7 +27,73 @@ import sys
 # default reader key slot (0x21 = OMNIKEY KMDC, pre-loaded default HID iCLASS Kd)
 SLOT_KD_DEFAULT = 0x21
 
-VERSION = "0.1a"
+VERSION = "0.1b"
+
+
+class LibnfcIClass:
+    """iCLASS backend for a libnfc PN53x / PN5180 - raw-frame path (loclass).
+
+    Mirrors OmnikeyIClass's interface so the tool's command dispatch is
+    backend-agnostic. Unlike the OMNIKEY (which auths from a reader key slot),
+    this does the card crypto on the host: READCHECK -> doReaderMAC -> CHECK with
+    a diversified key from the public default dictionary (rfidiot.loclass)."""
+
+    def __init__(self, dev, debug=False):
+        self.dev = dev
+        self.debug = debug
+        self.csn = None
+        self.card = None
+        self.nfc = None
+        self._authed = False
+
+    def open(self, reset=True):
+        # rfidiot parses sys.argv at import; point it at this libnfc device
+        sys.argv = ["iclass.py", "-f", self.dev] + (["-d"] if self.debug else [])
+        import rfidiot
+        self.card = rfidiot.card
+        self.nfc = self.card.nfc
+        ic = None
+        for _ in range(4):
+            ic = self.nfc.selectICLASS()
+            if ic:
+                break
+        if not ic:
+            raise RuntimeError("iCLASS select failed (no coupling / reader can't "
+                               "modulate iCLASS - see the PN532-clone caveat)")
+        self.csn = bytes.fromhex(ic.uid)
+        return self.csn
+
+    def _divkeys(self):
+        "yield diversified keys from the public default dictionary for this CSN"
+        from rfidiot import loclass
+        csn_rev = bytes(reversed(self.csn))     # iClass stores CSN LSB-first; libnfc reverses
+        for k in loclass.load_keys():
+            if len(k) == 8:
+                yield k, loclass.diversifyKey(csn_rev, k)
+
+    def identify(self):
+        return {"config": self.nfc.iclass_readblock(1), "aia": self.nfc.iclass_readblock(5)}
+
+    def authenticate(self, slot=None):
+        "try each diversified default key until READCHECK/CHECK succeeds"
+        for raw, dk in self._divkeys():
+            # re-select before each attempt (a failed CHECK leaves the card unselected)
+            if self.nfc.selectICLASS() and self.nfc.iclass_authenticate(dk):
+                self._authed = True
+                self._divkey = dk
+                return True
+        raise RuntimeError("no default key authenticated this card "
+                           "(custom/elite key? add it to ~/.rfidiot/iclass_keys.dic)")
+
+    def read_block(self, block, secure=True):
+        data = self.nfc.iclass_readblock(block)
+        return (data, 0x9000) if data else (None, None)
+
+    def dump(self, start=0, end=0x1F, secure=True):
+        return [(b, *self.read_block(b, secure)) for b in range(start, end + 1)]
+
+    def close(self):
+        pass
 
 
 def usage():
@@ -40,6 +106,8 @@ Usage:
   iclass.py [-d] DECRYPT                  dump app1, 3DES-decrypt credential, decode PACS/Wiegand
   iclass.py [-d] ... SLOT <hex>          reader key slot for auth (default 0x%02X = default HID Kd)
   iclass.py [-d] ... -k <hexkey>         HID 3DES transport key for DECRYPT (32 hex chars)
+  iclass.py [-d] -f <dev> ...            use a libnfc PN53x/PN5180 (raw-frame path) instead of the
+                                         OMNIKEY, e.g. -f 0 or -f pn532_uart:/dev/ttyUSB0
 
   -d    debug (dump the raw escape frames)
 
@@ -67,6 +135,17 @@ def main(argv):
     if "-h" in args or "--help" in args:
         usage()
         return 0
+
+    # optional "-f <dev>" selects the libnfc (PN53x/PN5180) raw-frame backend
+    libnfc_dev = None
+    if "-f" in args:
+        i = args.index("-f")
+        try:
+            libnfc_dev = args[i + 1]
+        except IndexError:
+            print("-f needs a libnfc device (e.g. 0 or pn532_uart:/dev/ttyUSB0)")
+            return 1
+        del args[i:i + 2]
 
     # optional "-k <hexkey>" (HID transport key for DECRYPT)
     keyarg = None
@@ -111,11 +190,16 @@ def main(argv):
             return 1
 
     print("iclass.py v%s" % VERSION)
-    ic = OmnikeyIClass(debug=debug)
+    if libnfc_dev is not None:
+        ic = LibnfcIClass(libnfc_dev, debug=debug)
+        backend = "libnfc %s" % libnfc_dev
+    else:
+        ic = OmnikeyIClass(debug=debug)
+        backend = "OMNIKEY"
     try:
         csn = ic.open(reset=True)
-    except IClassError as e:
-        print("Couldn't open OMNIKEY iCLASS reader: %s" % e)
+    except (IClassError, RuntimeError) as e:
+        print("Couldn't open iCLASS reader (%s): %s" % (backend, e))
         return 1
 
     try:
@@ -179,7 +263,7 @@ def main(argv):
         else:
             usage()
             return 1
-    except IClassError as e:
+    except (IClassError, RuntimeError) as e:
         print("iCLASS error: %s" % e)
         return 1
     finally:

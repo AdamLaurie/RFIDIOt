@@ -769,6 +769,55 @@ class NFC(_ISODEP):
             return None
         return ICLASS(nt.nti.nic)
 
+    # ------------------------------------------------- raw iClass transceive
+    def iclass_transceive(self, frame, rxmax=16, timeout=-1):
+        """Exchange one raw iClass/Picopass frame after selectICLASS().
+
+        `frame` is a list/bytes that already carries its iClass CRC where the
+        command needs one (use the rfidiot.loclass cmd_* builders). Returns the
+        response bytes (card CRC included), or None on an RF/timeout error.
+        libnfc's BICLASS mode sends the frame as-is (no 14443 framing), exactly
+        as nfc-iclass does with nfc_initiator_transceive_bytes."""
+        frame = list(frame)
+        tx = (ctypes.c_ubyte * len(frame))(*frame)
+        rx = (ctypes.c_ubyte * rxmax)()
+        rxlen = self.libnfc.nfc_initiator_transceive_bytes(
+            self.device, ctypes.byref(tx), ctypes.c_size_t(len(tx)),
+            ctypes.byref(rx), ctypes.c_size_t(rxmax), timeout)
+        if rxlen < 0:
+            if rfidiotglobals.Debug:
+                self.log.debug("iclass_transceive rv=%d" % rxlen)
+            return None
+        return bytes(rx[:rxlen])
+
+    def iclass_readblock(self, block):
+        "read one 8-byte iClass block (public, or after auth); bytes or None"
+        from rfidiot import loclass
+        resp = self.iclass_transceive(loclass.cmd_read(block), rxmax=10)
+        if not resp or len(resp) < 8:
+            return None
+        return resp[:8]                     # drop the 2 trailing CRC bytes
+
+    def iclass_readcheck(self, debit=True):
+        "READCHECK (0x88/0x18 block 2): returns the 8-byte card challenge (e-purse)"
+        from rfidiot import loclass
+        return self.iclass_transceive(loclass.cmd_readcheck(debit), rxmax=8)
+
+    def iclass_check(self, mac):
+        "CHECK (0x05 + nR=0 + readerMAC): returns the 4-byte card TMAC or None"
+        from rfidiot import loclass
+        return self.iclass_transceive(loclass.cmd_check(mac), rxmax=4)
+
+    def iclass_authenticate(self, div_key, debit=True):
+        "authenticate an app area with a diversified key (READCHECK->MAC->CHECK)"
+        from rfidiot import loclass
+        challenge = self.iclass_readcheck(debit)
+        if not challenge or len(challenge) < 8:
+            return False
+        mac = loclass.doReaderMAC(challenge[:8], div_key)
+        tmac = self.iclass_check(mac)
+        return bool(tmac) and len(tmac) >= 4
+
     # ----------------------------------------------------- software ISO 14443-4
     def enable_software_tcl(self):
         """Take over ISO 14443-4 (T=CL) block handling from the reader firmware.
