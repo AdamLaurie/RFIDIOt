@@ -162,6 +162,12 @@ paths that can't be hardware-tested with the current SCL3711 (libnfc) setup.
 Survey of what ChAP.py could do that it doesn't yet. Work these one at a time,
 top to bottom.
 
+**Bug (found 2026-10-24):** the PSE record-reading loop (`ChAP.py` ~1963) only processes a record
+when the card answers READ RECORD (Le=00) with `6Cxx` (wrong-length retry); a card that returns the
+record data directly with `9000` is skipped, so PSE-advertised AIDs are missed (ChAP then falls back
+to its built-in AID list). Seen on a contactless Visa Debit (UID 1FD24605). Fix: also process a
+direct `9000`+data response, not only the `6C` path.
+
 1. **[DONE] Live card authentication (complete what `-c` starts).** `-c` now runs,
    after the cert chain, SDA + DDA/fDDA against the recovered keys:
    - **SDA** - `verify_sda()` recovers Signed Static Application Data (tag 93)
@@ -887,6 +893,11 @@ PN533/SCL3711, which unblocks several items above and elsewhere:
   adapter - simplest), or over I2C/SPI using the **FT232H** already slated for the PN5180
   (section 21). libnfc has `pn532_uart` / `pn532_i2c` / `pn532_spi` connstrings, so this may
   need no new RFIDIOt back-end at all - just the right wiring + connstring.
+  **CONFIRMED (2026-10-23): no new back-end needed over UART.** The Hailege PN532 wired to a
+  USB-UART (`/dev/ttyUSB0`) opens as `-f pn532_uart:/dev/ttyUSB0` and runs the normal
+  READER_LIBNFC path - `rfidiot-cli IDENTIFY` initialised the reader and polled correctly.
+  So it's usable now for reading; next, use it as the **PN532 emulator** for the chip-side
+  T=CL paths in `pn532emulate`/`pn532mitm` (section 12) that the PN533 SCL3711 can't do.
 
 ### Why `emulateuid` stays separate from `pn532emulate` / `pn532mitm` (not a merge)
 They are two mutually exclusive modes of the PN53x target, not a feature flag:
@@ -935,6 +946,24 @@ back - so a reader sees our UID and talks to the real card. This is the thing a 
   easy-framing Type 4 target); the ACR122U over `-f ccid` can't yet because its custom
   UID SELECT arrives as a bare `93` (unresolved - section 14). MIFARE Classic stays out
   of scope (Crypto1 not available in target mode).
+
+### relayuid full relay - HW-VERIFIED 2026-10-24 (SCL3711 emulator + PN532 victim + TWN4 card reader)
+- Full **EMV** relay (ChAP -c) and full **ePassport** relay (mrpkey BAC + DGs) both complete
+  end-to-end through the three readers: EMV cert chain + fDDA VERIFIED, passport BAC + DG reads OK.
+  Also the native-08 UID path verified via `random` (08+3 bytes) and a stub responder.
+- **Fixed a real bug (relayuid v0.1c):** response fragmentation used a fixed FRAG=240 and ignored
+  the victim's FSD. A libnfc PN532 victim RATSes FSDI 5 (FSD 64), so a 74 B SELECT-AID FCI (and the
+  176 B cert records) sent in one I-block overflowed it and the read stalled before GPO. relayuid now
+  parses the RATS FSDI and clamps response chaining to the victim's FSD (frag = FSD-3). The old
+  ACR122U-WB-R victim RATSes FSD 256, which is why the earlier full relay never tripped it.
+- **Rough edge (open):** the **native-08 path does not stop promptly on Ctrl-C/SIGINT** while blocked
+  in `initAsTarget` (the libnfc C call swallows the signal, exactly as emulateuid's old poll loop did).
+  Give the native relayuid path the same daemon-thread + `nfc_abort_command` treatment emulateuid now
+  uses (or arm in short chunks). Workaround: poke the victim with one poll so `initAsTarget` returns
+  and the pending SIGINT fires -> clean exit. NB SIGINT the *python* pid (not the bash wrapper); never
+  SIGTERM (wedges the PN533, needs a replug/power-cycle).
+- MIFARE Classic cannot be relayed (not T=CL; no Crypto1 in target mode; auth timing far exceeds a
+  host relay round-trip) - confirmed, not an open item.
 
 ## 18. DESFire random-UID 0x80/0x08 quirk in emulation/relay tools
 A DESFire card with random UID enabled (SetConfiguration, see section 1) returns a
