@@ -361,6 +361,52 @@ def divkey_elite(csn, key):
 
 
 # --------------------------------------------------------------------------- #
+#  legacy iClass command frames (raw transceive layer; see TODO 20). pm3 opcodes:
+#  ACTALL 0x0A, IDENTIFY/READ 0x0C, SELECT 0x81, READCHECK 0x88(debit)/0x18(credit),
+#  CHECK 0x05, UPDATE 0x87. CRC is appended only on IDENTIFY/READ and plain UPDATE.
+# --------------------------------------------------------------------------- #
+KEYTYPE_DEBIT = 0x88
+KEYTYPE_CREDIT = 0x18
+
+
+def cmd_actall():
+    return bytes([0x0A])                                   # no CRC
+
+
+def cmd_identify():
+    return add_crc(bytes([0x0C, 0x00]))                    # -> 0C007333
+
+
+def cmd_select(csn):
+    return bytes([0x81]) + bytes(csn)                      # 0x81 + 8-byte CSN, no CRC
+
+
+def cmd_readcheck(debit=True):
+    return bytes([KEYTYPE_DEBIT if debit else KEYTYPE_CREDIT, 0x02])  # block 2, no CRC
+
+
+def cmd_check(mac, nr=b"\x00\x00\x00\x00"):
+    return bytes([0x05]) + bytes(nr) + bytes(mac)         # 0x05 + nR(4) + MAC(4), no CRC
+
+
+def cmd_read(block):
+    return add_crc(bytes([0x0C, block]))                  # read 1 block, CRC appended
+
+
+def cmd_update(block, data, mac=None):
+    """UPDATE a block. Secure tag: pass the 4-byte MAC -> [87][blk][8 data][4 MAC], NO
+    CRC. Non-secure/perso tag: mac=None -> [87][blk][8 data][2 CRC], no MAC."""
+    if mac is not None:
+        return bytes([0x87, block]) + bytes(data) + bytes(mac)        # 14 bytes, no CRC
+    return add_crc(bytes([0x87, block]) + bytes(data))
+
+
+def reader_check(challenge, div_key, nr=b"\x00\x00\x00\x00"):
+    "CHECK frame authenticating div_key against the card challenge (block-2 e-purse)"
+    return cmd_check(doReaderMAC(challenge, div_key), nr)
+
+
+# --------------------------------------------------------------------------- #
 #  self-test (offline, no hardware) - run:  python3 -m rfidiot.loclass
 # --------------------------------------------------------------------------- #
 def selftest():
@@ -417,6 +463,21 @@ def selftest():
     print("divKey: %s (= hash0(DES))  %s"
           % (dk.hex().upper(), "OK" if dk == dkref else "FAIL"))
     ok = ok and dk == dkref
+
+    # command frames
+    frames = {
+        "IDENTIFY ": (cmd_identify().hex().upper(), "0C007333"),
+        "READ(1)  ": (cmd_read(1).hex().upper(), "0C01FA22"),
+        "READCHK D": (cmd_readcheck(True).hex().upper(), "8802"),
+        "READCHK C": (cmd_readcheck(False).hex().upper(), "1802"),
+        # reader_check uses the validated testMAC vector: cc=FEFF..FF, key=E033..F9 -> MAC 1D49C9DA
+        "CHECK    ": (reader_check(bytes.fromhex("FEFFFFFFFFFFFFFF"),
+                                   bytes.fromhex("E033CA419AEE43F9")).hex().upper(),
+                      "05000000001D49C9DA"),
+    }
+    for name, (got, want) in frames.items():
+        print("%s: %-18s want %-18s %s" % (name, got, want, "OK" if got == want else "FAIL"))
+        ok = ok and got == want
 
     # elite: permutekey vector (pm3 optimized_elite.c)
     pk = permutekey(bytes.fromhex("6C8D44F92A2D01BF")).hex().upper()
