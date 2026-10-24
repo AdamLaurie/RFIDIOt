@@ -1109,6 +1109,28 @@ pm3's behaviour where they differ:
   pm3 to identify the card. The raw-frame port (own handshake) is the robust path and sidesteps
   libnfc's iclass mode.
 
+### OMNIKEY CardMan 5321 path (reverse-engineered 2026-10-24) - the reader that reads this card
+The test card is legacy iCLASS "DL" (dual-tech, CSN E012FFF9007CF89E). Only the OMNIKEY read it.
+iCLASS on the OMNIKEY is NOT plain PC/SC - it uses proprietary commands over an SCardControl **escape**
+channel. Full method (from ColdHeat/iclass + the HID 5321-903 Rev B.4 guide; see memory [[iclass-port]]):
+- Escape transport: SCardControl code SCARD_CTL_CODE(1)=0x42000001 (RFIDIOt's IOCTL_SMARTCARD_VENDOR_IFD_
+  EXCHANGE), payload = `[0xF7, len, 0,0,0, <apdu>]` (keep <=271 B, dwMaxCCIDMsgLen). Raw-CCID equivalent:
+  PC_to_RDR_Escape msg type 0x6B (CCIDDev.escape() added) on contactless slot 1 (CCIDDev.set_slot(1)).
+- Commands: Select Page 80/84 A6 (P2 04/08/0C -> CSN/config/AIA directly); Load Key 80/84 82; Authenticate
+  80/84 88 (P1 00=Kd debit/01=Kc credit, P2=key slot); Read 80/84 B0 (P1 blk MSB, P2 LSB, Le 08);
+  Update 80/84 D6. CLA 80 = plain; CLA 84 = secured (3DES-EDE2-CBC + DES CBC-MAC) after a Manage Session.
+- Read flow (ColdHeat): connect -> Manage Session `84 72 00 01 08 <8B challenge>` -> Authenticate
+  `84 88 00 21 00` (reader key SLOT 0x21 = pre-loaded default HID debit key) -> Manage Session -> Read
+  `84 B0 00 <blk> 00 08`. Public-domain reader session keys (KCUR): read `A596154AB73CD8941F5678F5E3F1DF73`,
+  read/write `B497CA728A8066DAC32E5B858C2C7028`. Secured-session crypto to port = SCardCLICCTransmitS in
+  ColdHeat iclassified.c.
+- BLOCKER on this box: **libccid 1.7.1 has no escape for the OMNIKEY 5321** ("Feature not supported" even
+  with ifdDriverOptions=0x0001). Raw-CCID escape reaches the reader but contactless slot-1 activation over
+  usbdevfs is fiddly and wedged the reader (needs a replug). **Install HID `ifdokccid`** (nhos-project/
+  ifdokccid open-source, or HID official) -> escape works via pcscd -> implement the flow above + the
+  secured-session 3DES. The loclass crypto (keys/diversification) is ready; the OMNIKEY uses reader key
+  slots, but Load Key can push a loclass-diversified key into a slot for non-default keys.
+
 ## 21. NXP PN5180 reader back-end (`READER_PN5180`) - **hardware on hand**
 Add the NXP **PN5180** as a supported reader. The PN5180 is a high-performance NFC frontend
 (ISO 14443-A/B to 848 kbit/s, ISO 15693 / ICODE, ISO 18092 / FeliCa) controlled at the
