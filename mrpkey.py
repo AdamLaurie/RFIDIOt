@@ -1221,7 +1221,7 @@ Help = rfidiot.help
 Nogui = rfidiot.nogui
 DEBUG = rfidiot.rfidiotglobals.Debug
 
-myver = "mrpkey v3.1d"
+myver = "mrpkey v3.1e"
 
 TEST = False
 FILES = False
@@ -1293,7 +1293,7 @@ if (
     )
     or len(args) > 2
 ):
-    help()
+    print_help()
 
 if len(args) == 2:
     arg1 = args[1].upper()
