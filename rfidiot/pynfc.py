@@ -526,6 +526,15 @@ class NFC(_ISODEP):
             ctypes.c_void_p,
             ctypes.c_size_t,
         ]
+        # select ONE passive target (nm passed by value); iClass needs a Type B
+        # activation then the iClass modulation, in sequence, field kept up.
+        self.libnfc.nfc_initiator_select_passive_target.argtypes = [
+            ctypes.c_void_p,
+            NFC_MODULATION,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_void_p,
+        ]
         self.libnfc.nfc_initiator_transceive_bytes.argtypes = [
             ctypes.c_void_p,
             ctypes.c_void_p,
@@ -731,20 +740,34 @@ class NFC(_ISODEP):
         return None
 
     def selectICLASS(self):
-        """Detect and initialise an iClass card, returns an ICLASS() object."""
+        """Detect and initialise an iClass (Picopass) card, returns an ICLASS().
+
+        An iClass card is woken by an ISO 14443-2 Type B activation FIRST, then
+        the iClass-specific modulation - in sequence, field kept up (exactly as
+        nfc-iclass's iclass_select does). Polling the iClass modulation on its own
+        (the previous implementation) does not wake the card and always failed."""
         if rfidiotglobals.Debug:
             self.log.debug("Polling for ICLASS cards")
         self.powerOff()
         self.powerOn()
-        nm = NFC_MODULATION()
-        target = (NFC_TARGET * MAX_TARGET_COUNT)()
-        nm.nmt = NMT_ISO14443BICLASS
-        nm.nbr = NBR_106
-        if self.libnfc.nfc_initiator_list_passive_targets(
-            self.device, nm, ctypes.byref(target), MAX_TARGET_COUNT
-        ):
-            return ICLASS(target[0].nti.nic)
-        return None
+        # only try once per modulation, and keep the field up between the two selects
+        self.libnfc.nfc_device_set_property_bool(self.device, NP_INFINITE_SELECT, False)
+        nt = NFC_TARGET()
+        nmB = NFC_MODULATION()
+        nmB.nmt = NMT_ISO14443B
+        nmB.nbr = NBR_106
+        if self.libnfc.nfc_initiator_select_passive_target(
+            self.device, nmB, None, 0, ctypes.byref(nt)
+        ) < 0:
+            return None
+        nmI = NFC_MODULATION()
+        nmI.nmt = NMT_ISO14443BICLASS
+        nmI.nbr = NBR_106
+        if self.libnfc.nfc_initiator_select_passive_target(
+            self.device, nmI, None, 0, ctypes.byref(nt)
+        ) <= 0:
+            return None
+        return ICLASS(nt.nti.nic)
 
     # ----------------------------------------------------- software ISO 14443-4
     def enable_software_tcl(self):

@@ -1054,6 +1054,52 @@ Suggested shape: `ICLASS IDENTIFY | SELECT | READCHECK | CHECK <key> | READ <blk
 | DUMP | KEYDIV <csn>`, with per-command help (the `COMMAND_HELP` system). Needs an iCLASS card +
 a PN53x (or the PN5180, section 21) to verify; add a hardware-verification entry to section 3 when porting.
 
+Target use-case: **read the enrolled fingerprint template(s) off an iCLASS fingerprint-reader ID
+card** (biometric access-control systems store the fingerprint minutiae/template in the iCLASS
+app area). Once authenticated READ of the app1/app2 blocks works (stage 3), dump those blocks and
+decode the template container. The template is bigger than one 8-byte block, so this exercises
+multi-block reads and (on 16K/32K cards) PAGESEL for app2 - note the vendor template format is
+proprietary and will need identifying from a known card.
+
+### Authoritative corrections from the pm3 comparison (2026-10-24) - port pm3, not nfc-iclass
+Compared nfc-iclass against the pm3 fork (/home/addy/work/private_pm3); pm3 is field-proven. Adopt
+pm3's behaviour where they differ:
+- **CRC**: nfc-iclass's CRC is WRONG for multi-byte coverage (its ~/byte-swap/^0xBC3 formula only
+  coincides with the real CRC for a single byte, which is why only its single-byte READ worked). Use
+  pm3 `crc16_iclass`: poly 0x1021 (reflected 0x8408), **init 0x4807**, refin/refout true, **no
+  xorout**, appended **little-endian**, computed over the bytes AFTER the command byte. Verified by
+  compiling pm3's crc16.c: block byte 0x01 -> FA22 (both agree); 9x0x11 -> pm3 B24A vs nfc D344 (differ).
+- **Command opcodes** (pm3 protocols.h): HALT 0x0, SELECT 0x81, PAGESEL 0x84, CHECK 0x05, READ4 0x06,
+  UPDATE 0x87, READCHECK 0x88 (debit)/0x18 (credit), ACTALL 0x0A, READ/IDENTIFY 0x0C, ACT 0x0E,
+  ANTICOLL 0x0F. Reader handshake: ACTALL(0A) -> IDENTIFY(0C 00 + CRC 7333) -> SELECT(0x81 + 8 CSN)
+  -> READ conf blk1 (0C 01 FA22) -> READ AIA blk5 -> READCHECK(88/18 blk2)->8-byte e-purse.
+- **A raw-frame port must do its OWN ACTALL/IDENTIFY/SELECT handshake** - nfc-iclass offloads it to
+  libnfc's NMT_ISO14443BICLASS mode (which is exactly the path giving -20 RF errors on our PN532-over-
+  UART, and -6 timeout on the SCL3711/PN533 which can't modulate iClass at all). Don't rely on the
+  reader's built-in iclass mode; drive raw frames (InCommunicateThru / register-level on the PN5180).
+- **Auth**: CHECK = [0x05][nR=00000000][readerMAC(4)] (9 B, nR=0); reader MAC over cc||nR. Keytype
+  0x88/0x18. pm3 doesn't verify the returned TMAC (relies on NAK); nfc's extra TMAC check is harmless
+  while nR=0.
+- **UPDATE bug in nfc-iclass**: it ALWAYS does MAC then appends a CRC -> 16-byte frame. For a SECURE
+  tag the frame must be [0x87][block][8 data][4 MAC] = 14 B, NO CRC (this spurious CRC is almost
+  certainly nfc's unexplained "UPDATE doesn't work", its own TODO). Only NON-secure/perso tags use
+  [0x87][block][8 data][2 CRC], no MAC. Never append a CRC after a MAC.
+- **Crypto**: port pm3's loclass (client/src/loclass/ ikeys.c + cipher.c incl. doMAC_N; cipherutils.c)
+  - same holiman/loclass lineage as AdamLaurie/loclass but maintained and complete. Ship pm3's
+  self-test vectors to validate: testMAC (div_key E033CA419AEE43F9, cc_nr FE FF.., MAC 1D49C9DA) and
+  doKeyTests. Default debit key AE A6 84 A6 DA B2 32 78.
+- **Extras to add as budget allows**: per-command retries + strict length checks; READ4 (4 blocks at
+  once); PAGESEL for AA2/16K/32K (nfc can't reach app2/second book); real two-stage e-purse credit
+  (DEAD code in nfc); SE/SR/SEOS + SIO/PACS parsing; default/elite key dictionaries.
+
+### Progress (2026-10-24, in progress)
+- `pynfc.selectICLASS` fixed to do Type-B-wake-then-iClass (was iClass-only, never worked). But on
+  our hardware libnfc's iClass select fails: **SCL3711/PN533 = -6 timeout (can't modulate iClass);
+  PN532-over-UART = -20 RF trans error** (card answers only the iClass modulation, not 14443A/B).
+  Unresolved - needs: reposition the card, confirm legacy-vs-SE, try the PN532 over USB not UART, or a
+  pm3 to identify the card. The raw-frame port (own handshake) is the robust path and sidesteps
+  libnfc's iclass mode.
+
 ## 21. NXP PN5180 reader back-end (`READER_PN5180`) - **hardware on hand**
 Add the NXP **PN5180** as a supported reader. The PN5180 is a high-performance NFC frontend
 (ISO 14443-A/B to 848 kbit/s, ISO 15693 / ICODE, ISO 18092 / FeliCa) controlled at the
