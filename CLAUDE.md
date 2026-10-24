@@ -144,9 +144,11 @@ Three layers:
      after a read the card's RF link desyncs (everything → 6982) and software reset won't clear
      it; remove and re-present the card between runs. `-f <dev>` instead selects a **libnfc
      PN53x/PN5180 raw-frame backend** (`LibnfcIClass`): selectICLASS then loclass command frames
-     over `pynfc.iclass_transceive`, with CSN-diversified default-key auth (READCHECK→MAC→CHECK).
-     Built but needs a reader that can modulate iCLASS — a genuine PN532 or the PN5180; the
-     SCL3711/PN533 and cheap PN532 clones can't (iClass select times out, `-6`).
+     over `pynfc.iclass_transceive`, with CSN-diversified default-key auth (READCHECK→MAC→CHECK) —
+     the card crypto done on the host with our own `loclass` keys, no reader key slot. HW-verified
+     on a PN532 (`-f pn532_uart:/dev/ttyUSB0`): full dump + DECRYPT match the OMNIKEY. Needs a
+     reader that can modulate iCLASS — a working PN532 (the SCL3711/PN533 and some clones can't;
+     set the module's interface DIP switch to UART/HSU) or the PN5180.
 
 ### Support modules in `rfidiot/`
 - `iclass_omnikey.py` — the OMNIKEY iCLASS transport used by `iclass.py`: the `0x42000C21`

@@ -1099,20 +1099,22 @@ pm3's behaviour where they differ:
   vectors: MAC 1D49C9DA, CRC 0C007333/0C01FA22, hash0 x5, DES D6AD3CA619659E6B, permutekey
   8A0DB988BBA790EA, the HS key table. The hard part is finished without a card. Ported from pm3's
   loclass (holiman/loclass lineage), credited in the source.
-- **Raw-frame read+auth layer BUILT (2026-10-24)** - `pynfc` gained `iclass_transceive` +
-  `iclass_readblock` / `iclass_readcheck` / `iclass_check` / `iclass_authenticate` (loclass frames over
-  `nfc_initiator_transceive_bytes`, as nfc-iclass does, but with loclass's CORRECT CRC). `iclass.py -f <dev>`
-  selects a `LibnfcIClass` backend: selectICLASS -> read public blocks; for app blocks it diversifies each
-  public default key (loclass.diversifyKey, CSN reversed) and does READCHECK->doReaderMAC->CHECK. Offline
-  bits validated (frame build, CRC, diversify). **Cannot be live-tested here**: see hardware below.
-  Still to add: UPDATE/write, PAGESEL for 16K/32K, elite-key attempts, a `rfidiot-cli` ICLASS group.
-- `pynfc.selectICLASS` does Type-B-wake-then-iClass (correct, matches nfc-iclass). **HARDWARE BLOCKER
-  confirmed 2026-10-24**: libnfc iClass select = **-6 (NFC_ETIMEOUT) on every reader we have** -
-  SCL3711/PN533 can't modulate iCLASS; the **Hailege PN532 clone on pn532_uart:/dev/ttyUSB0 ALSO can't**
-  (field works for 14443A - MIFARE read fine - but the iClass card, known-good on the OMNIKEY, gives a
-  solid -6 across 15+ attempts, both with/without the Type-B wake, infinite-select, longer timeouts, RF
-  tweaks). Cheap PN532 clones are tuned for 14443-A only. So the raw-frame path needs a **genuine PN532**
-  or the **PN5180** (register-level RF, TODO §21) to run. The OMNIKEY path (above) is the working route today.
+- **Raw-frame read+auth layer DONE + HW-VERIFIED on a PN532 (2026-10-24)** - `pynfc` gained
+  `iclass_transceive` + `iclass_readblock` / `iclass_readcheck` / `iclass_check` / `iclass_authenticate`
+  (loclass frames over `nfc_initiator_transceive_bytes`, as nfc-iclass does, but with loclass's CORRECT
+  CRC). `iclass.py -f <dev>` selects a `LibnfcIClass` backend: selectICLASS -> read public blocks; for app
+  blocks it diversifies each public default key (loclass.diversifyKey, CSN reversed) and does
+  READCHECK->doReaderMAC->CHECK. **Verified end-to-end**: `iclass.py -f pn532_uart:/dev/ttyUSB0 DUMP`
+  read the full card (public + authenticated HID app, identical to the OMNIKEY), and `DECRYPT` decoded the
+  PACS/Wiegand - auth uses OUR loclass diversification of the public default Kd (no reader key slot). This
+  proves loclass's cipher/MAC/diversification against a real card. Still to add: UPDATE/write, PAGESEL for
+  16K/32K, elite-key attempts, a `rfidiot-cli` ICLASS group.
+- `pynfc.selectICLASS` does Type-B-wake-then-iClass (correct, matches nfc-iclass). **Reader caveat**:
+  iClass needs a reader that can modulate it. The SCL3711/PN533 CANNOT (select = -6 NFC_ETIMEOUT); the
+  FIRST Hailege PN532 module also couldn't (dud/clone - 14443A worked, iClass -6 on 15+ tries). A
+  **second PN532 module works** (on pn532_uart:/dev/ttyUSB0) - NB these modules have an interface-mode
+  DIP switch: set it to **UART/HSU** or libnfc can't even open it (`pn53x_check_communication error`).
+  The PN5180 (TODO §21) remains the natural register-level iClass reader for when more RF control is needed.
 
 ### OMNIKEY CardMan 5321 path - **WORKING / HW-VERIFIED 2026-10-24** (`iclass.py` + `rfidiot/iclass_omnikey.py`)
 The test card is legacy iCLASS "DL" (dual-tech; CSN/credential redacted - real captured card data is not
