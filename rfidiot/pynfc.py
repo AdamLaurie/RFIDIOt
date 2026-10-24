@@ -1520,6 +1520,7 @@ class CCIDDev():
         self._iface = 0
         self._seq = _os.urandom(1)[0]
         self._atr = []
+        self._slot = 0          # CCID bSlot; 0 = contact, 1 = contactless (e.g. OMNIKEY iCLASS)
         self.log = logging.getLogger("pynfc.cciddev")
         if not self.log.handlers:
             sh = logging.StreamHandler()
@@ -1626,7 +1627,7 @@ class CCIDDev():
         self._seq = (self._seq + 1) & 0xFF
         n = len(payload)
         hdr = [msgtype, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF,
-               0x00, self._seq, p1, p2 & 0xFF, p3 & 0xFF]
+               self._slot & 0xFF, self._seq, p1, p2 & 0xFF, p3 & 0xFF]
         self._bulk(self.EP_OUT, hdr + list(payload), timeout_ms)
         out = bytearray()
         while True:
@@ -1679,6 +1680,17 @@ class CCIDDev():
         if len(r) < 2:
             raise IOError("short CCID response (%d bytes)" % len(r))
         return list(r[:-2]), r[-2], r[-1]
+
+    def set_slot(self, slot):
+        "select the CCID slot (0 = contact, 1 = contactless) for subsequent commands"
+        self._slot = slot & 0xFF
+
+    def escape(self, payload):
+        """send a raw PC_to_RDR_Escape (vendor control) - used for the OMNIKEY iCLASS
+        proprietary command datagram, bypassing pcscd/libccid (which has no escape for
+        this reader). `payload` is the vendor datagram (e.g. the 0xf7-wrapped APDU);
+        returns the response's abData."""
+        return self._ccid(0x6B, list(payload))     # PC_to_RDR_Escape
 
     def deconfigure(self):
         fd = getattr(self, "_fd", None)

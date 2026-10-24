@@ -206,15 +206,21 @@ class rfidiot:
                         hresult, _response = smartcard.scard.SCardControl(self.hcard, IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE, apdu)
                         if hresult != smartcard.scard.SCARD_S_SUCCESS:
                             print("Failed to control: " + smartcard.scard.SCardGetErrorMessage(hresult))
-                            if hresult == smartcard.scard.SCARD_E_NOT_TRANSACTED:
-                                # issue #23: direct reader (escape) commands on the
-                                # ACR122U PICC need CCID exchange authorised in libccid.
+                            if hresult in (smartcard.scard.SCARD_E_NOT_TRANSACTED,
+                                           smartcard.scard.SCARD_E_UNSUPPORTED_FEATURE):
+                                # issue #23: direct reader (escape) commands need CCID
+                                # exchange authorised in libccid (ACR122U PICC; OMNIKEY
+                                # 5321 iCLASS). "Transaction failed" = not authorised;
+                                # "Feature not supported" = libccid has no escape for this
+                                # reader (OMNIKEY contactless -> needs HID's ifdokccid).
                                 print("  This reader needs direct CCID escape commands enabled. Set")
                                 print("  ifdDriverOptions to 0x0001 (DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED)")
-                                print("  in the libccid Info.plist (on Linux usually /etc/libccid_Info.plist")
-                                print("  or /usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist), then")
-                                print("  restart pcscd - or simply present a card so a normal transaction is")
-                                print("  used instead of the direct-control fallback.")
+                                print("  in the libccid Info.plist (usually /etc/libccid_Info.plist), then")
+                                print("  restart pcscd - if it is socket-activated, 'sudo pkill -x pcscd'")
+                                print("  forces a fresh config load. If it still says 'Feature not supported'")
+                                print("  libccid has no escape for this reader: e.g. the OMNIKEY 5321")
+                                print("  contactless/iCLASS needs HID's proprietary 'ifdokccid' driver. Or")
+                                print("  present a card so a normal transaction is used instead.")
                             sys.exit(True)
                     self.pcsc_atr = self.ListToHex(newstates[0][2])
                 if self.readersubtype == self.READER_ACS:

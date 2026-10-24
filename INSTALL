@@ -53,3 +53,28 @@ and you've written your own clients, you'll need to make the following changes:
 
 everything else should behave the same as before. please inform me if you hit any snags!
 
+
+
+*** direct CCID / escape commands (ACR122U '-f ccid'/'-r ccid', OMNIKEY 5321 iCLASS)
+
+some readers are driven by sending vendor "escape" commands straight to the
+reader over PC/SC (SCardControl), rather than normal card APDUs. examples:
+
+  - the ACR122U over the direct-CCID path ('-f ccid' / '-r ccid')
+  - the OMNIKEY CardMan 5321 contactless slot ('-r 1') reading HID iCLASS, which
+    wraps its proprietary iCLASS commands in an escape datagram
+
+by default libccid refuses escape commands, so these fail with "Feature not
+supported" or "Transaction failed". to allow them, set ifdDriverOptions to
+0x0001 (DRIVER_OPTION_CCID_EXCHANGE_AUTHORIZED) in the libccid Info.plist and
+restart pcscd:
+
+  sudo sed -i '/<key>ifdDriverOptions<\/key>/{n;s/0x0000/0x0001/}' /etc/libccid_Info.plist
+  sudo systemctl restart pcscd            # if still failing, force a fresh load:
+  sudo pkill -x pcscd                      # (socket-activated pcscd re-reads the
+                                           #  config only on a fresh spawn)
+
+the Info.plist is usually /etc/libccid_Info.plist (the bundle copy under
+/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist is normally a symlink
+to it). NB the OMNIKEY 5321 contactless may additionally need HID's proprietary
+'ifdokccid' driver for its full iCLASS command set.
