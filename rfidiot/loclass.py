@@ -407,6 +407,51 @@ def reader_check(challenge, div_key, nr=b"\x00\x00\x00\x00"):
 
 
 # --------------------------------------------------------------------------- #
+#  key dictionaries (public default auth keys)
+# --------------------------------------------------------------------------- #
+import os as _os
+
+DEFAULT_KEYS_DIC = _os.path.join(_os.path.dirname(__file__), "iclass_default_keys.dic")
+# machine-local key store (NOT in the repo): the user's full/private key set
+LOCAL_KEYS_DIC = _os.path.expanduser("~/.rfidiot/iclass_keys.dic")
+
+
+def _read_dic(path, keys, seen):
+    try:
+        f = open(path)
+    except OSError:
+        return
+    with f:
+        for line in f:
+            line = line.split("#", 1)[0].strip().replace(" ", "")
+            if len(line) in (16, 32):           # 8- or 16-byte keys
+                try:
+                    k = bytes.fromhex(line)
+                except ValueError:
+                    continue
+                if k not in seen:
+                    seen.add(k)
+                    keys.append(k)
+
+
+def load_keys(path=None):
+    """load iCLASS key dictionaries (.dic: one 8/16-byte hex key per line, '#' comments).
+
+    With no path: the bundled public default-auth dictionary, plus the machine-local
+    store ~/.rfidiot/iclass_keys.dic if present (the user's full/private key set, not
+    shipped in the repo). With a path: just that file. Returns a de-duplicated list of
+    key byte-strings - card-auth keys (Kd/Kc) for the raw-frame / loclass path (the
+    OMNIKEY path authenticates from a reader key slot and does not need them)."""
+    keys, seen = [], set()
+    if path:
+        _read_dic(path, keys, seen)
+    else:
+        _read_dic(DEFAULT_KEYS_DIC, keys, seen)
+        _read_dic(LOCAL_KEYS_DIC, keys, seen)
+    return keys
+
+
+# --------------------------------------------------------------------------- #
 #  self-test (offline, no hardware) - run:  python3 -m rfidiot.loclass
 # --------------------------------------------------------------------------- #
 def selftest():

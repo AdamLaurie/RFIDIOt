@@ -129,8 +129,34 @@ Three layers:
      ePassport (BAC/DG2) and an EMV card (cert chain), single-host and over a socket. NB a
      PN533 target can wedge if the emulator is `kill`ed (SIGTERM) instead of Ctrl-C'd — then
      it needs a replug.
+   - `iclass.py` — read HID **iCLASS / Picopass** cards via an **OMNIKEY CardMan 5x21**
+     (pcscd + HID's `ifdokccid` driver). iCLASS is not reachable over standard PC/SC
+     (MIFARE-only, returns 6981); this drives the OMNIKEY proprietary `SCardCLICCTransmit`
+     escape directly — `SCardControl(0x42000C21, [0xF7]+len(8-byte LE)+apdu, padded to 263)` —
+     from 64-bit Python (no 32-bit libsyncapi / libssl.0.9.8). Standalone (auto-finds the
+     OMNIKEY contactless slot), not the usual `rfidiot.card` path. `IDENTIFY` (CSN/config/AIA,
+     plain), `DUMP [start end]` and `READ <blk>` (secured: Manage-Session → Authenticate reader
+     key slot 0x21 → Read, no 2nd Manage-Session) — secured mode is mandatory for the HID app.
+     `DECRYPT` 3DES-decrypts the app1 credential and decodes PACS/Wiegand (the 16-byte HID
+     transport key is not shipped — give it via `-k`, `$RFIDIOT_ICLASS_DECRYPTKEY`, or
+     `~/.rfidiot/iclass_decryptionkey.bin`). The iCLASS cipher/diversification live in
+     `rfidiot/loclass.py`. NB only ~one secured session works per physical card placement —
+     after a read the card's RF link desyncs (everything → 6982) and software reset won't clear
+     it; remove and re-present the card between runs.
 
 ### Support modules in `rfidiot/`
+- `iclass_omnikey.py` — the OMNIKEY iCLASS transport used by `iclass.py`: the `0x42000C21`
+  escape (standard CLA 80) and the secured CLA-84 session (3DES-EDE2-CBC + single-DES-CBC-MAC,
+  public-domain KCUR reader session keys), ported from the holiman/loclass + ColdHeat
+  (`iclassified.c`) lineage. Uses pyscard directly (not `READER_*`); see TODO §20 for folding
+  it into the reader abstraction.
+- `loclass.py` — iCLASS/Picopass crypto + raw command-frame builders (the iClass cipher, MAC,
+  CRC16, standard + elite key diversification), ported from pm3's loclass and self-test-validated
+  offline (`python3 -m rfidiot.loclass`). Reader-agnostic; feeds both `iclass_omnikey.py` and a
+  future raw-frame PN53x/PN5180 iCLASS path. `load_keys()` reads `iclass_default_keys.dic` (the
+  genuinely-public default Kd/Kc auth keys, mirrored from pm3). The leaked HID 3DES *decryption*
+  key is NOT bundled — it stays machine-local in `~/.rfidiot/iclass_decryptionkey.bin` (user-supplied;
+  `.gitignore`-guarded), and `iclass.py DECRYPT` also takes it via `-k` / `$RFIDIOT_ICLASS_DECRYPTKEY`.
 - `pace.py` — PACE (ICAO 9303 Part 11) access protocol: ECDH with Generic Mapping,
   3DES-CBC/AES secure messaging. Reader-agnostic (drives an `rfidiot.card`); uses
   pycryptodome's `ECC` for the curve maths. `mrpkey.py` calls it on the `PACE` keyword.

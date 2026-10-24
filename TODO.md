@@ -1109,27 +1109,69 @@ pm3's behaviour where they differ:
   pm3 to identify the card. The raw-frame port (own handshake) is the robust path and sidesteps
   libnfc's iclass mode.
 
-### OMNIKEY CardMan 5321 path (reverse-engineered 2026-10-24) - the reader that reads this card
-The test card is legacy iCLASS "DL" (dual-tech, CSN E012FFF9007CF89E). Only the OMNIKEY read it.
-iCLASS on the OMNIKEY is NOT plain PC/SC - it uses proprietary commands over an SCardControl **escape**
-channel. Full method (from ColdHeat/iclass + the HID 5321-903 Rev B.4 guide; see memory [[iclass-port]]):
-- Escape transport: SCardControl code SCARD_CTL_CODE(1)=0x42000001 (RFIDIOt's IOCTL_SMARTCARD_VENDOR_IFD_
-  EXCHANGE), payload = `[0xF7, len, 0,0,0, <apdu>]` (keep <=271 B, dwMaxCCIDMsgLen). Raw-CCID equivalent:
-  PC_to_RDR_Escape msg type 0x6B (CCIDDev.escape() added) on contactless slot 1 (CCIDDev.set_slot(1)).
-- Commands: Select Page 80/84 A6 (P2 04/08/0C -> CSN/config/AIA directly); Load Key 80/84 82; Authenticate
-  80/84 88 (P1 00=Kd debit/01=Kc credit, P2=key slot); Read 80/84 B0 (P1 blk MSB, P2 LSB, Le 08);
-  Update 80/84 D6. CLA 80 = plain; CLA 84 = secured (3DES-EDE2-CBC + DES CBC-MAC) after a Manage Session.
-- Read flow (ColdHeat): connect -> Manage Session `84 72 00 01 08 <8B challenge>` -> Authenticate
-  `84 88 00 21 00` (reader key SLOT 0x21 = pre-loaded default HID debit key) -> Manage Session -> Read
-  `84 B0 00 <blk> 00 08`. Public-domain reader session keys (KCUR): read `A596154AB73CD8941F5678F5E3F1DF73`,
-  read/write `B497CA728A8066DAC32E5B858C2C7028`. Secured-session crypto to port = SCardCLICCTransmitS in
-  ColdHeat iclassified.c.
-- BLOCKER on this box: **libccid 1.7.1 has no escape for the OMNIKEY 5321** ("Feature not supported" even
-  with ifdDriverOptions=0x0001). Raw-CCID escape reaches the reader but contactless slot-1 activation over
-  usbdevfs is fiddly and wedged the reader (needs a replug). **Install HID `ifdokccid`** (nhos-project/
-  ifdokccid open-source, or HID official) -> escape works via pcscd -> implement the flow above + the
-  secured-session 3DES. The loclass crypto (keys/diversification) is ready; the OMNIKEY uses reader key
-  slots, but Load Key can push a loclass-diversified key into a slot for non-default keys.
+### OMNIKEY CardMan 5321 path - **WORKING / HW-VERIFIED 2026-10-24** (`iclass.py` + `rfidiot/iclass_omnikey.py`)
+The test card is legacy iCLASS "DL" (dual-tech; CSN/credential redacted - real captured card data is not
+committed, same rule as passport MRZs / EMV PANs). Only the
+OMNIKEY reads it (SCL3711/PN533 can't modulate iCLASS, PN532-over-UART coupling marginal). iCLASS on the
+OMNIKEY is NOT plain PC/SC (FF-storage cmds are MIFARE-only -> 6981) - it needs the proprietary
+SCardCLICCTransmit escape. Reverse-engineered the modern-driver form and implemented it in Python (no
+libsyncapi, no 32-bit, no sudo). See memory [[iclass-port]].
+- Driver: **HID `ifdokccid` 4.3.x** must own the reader (deconflict libccid: remove 076b:5321 from
+  ifd-ccid's Info.plist so ifdokccid claims it); pcscd running. libccid has no escape for this reader.
+- **Escape transport (WORKING)**: `SCardControl(0x42000C21, buf)` where
+  `buf = [0xF7] + len(apdu) as 8-byte little-endian + apdu`, zero-padded to **263** bytes (0x107).
+  (This is what HID's 64-bit libsyncapi 1.0.1 sends; ULONG is 8 bytes on LP64, hence the 8-byte length -
+  the earlier 5-byte `[0xF7,len,0,0,0]` form and control code 0x42000001 were WRONG and gave "Feature not
+  supported".) Reply = `<data><SW1><SW2>`. Done from pyscard in 64-bit Python.
+- Commands: Select Page 80/84 A6 (P2 04/08/0C -> CSN/config/AIA directly); Authenticate 84 88 (P2=key
+  slot); Read 80/84 B0 (P1 blk MSB, P2 LSB, Le 08). CLA 80 = plain (public blocks); CLA 84 = secured
+  (3DES-EDE2-CBC + single-DES-CBC-MAC) - **mandatory for READ of the HID application**.
+- **Secured read flow (WORKING)**: reset card -> Manage Session `84 72 00 01 08 00*8` -> Authenticate
+  `84 88 00 21 00` (reader slot 0x21 = pre-loaded default HID Kd) -> Read `84 B0 00 <blk> 00 08`.
+  **Do NOT re-Manage-Session after Authenticate** (that desyncs the session -> 6982). Secured wrapping
+  ported from ColdHeat `SCardCLICCTransmitS`; public-domain KCUR session keys: read
+  `A596154AB73CD8941F5678F5E3F1DF73`, read/write `B497CA728A8066DAC32E5B858C2C7028`.
+- **Verified**: `iclass.py DUMP` read the whole 2K card incl. the secured HID app - blk0 CSN, blk1 config,
+  blk2 e-purse, blk3/4 Kd/Kc (FF), blk5 AIA, blk6 HID app header, blk7-9 the encrypted HID credential,
+  rest FF (real block values redacted - captured card data). `iclass.py DECRYPT` then 3DES-decrypts blk7
+  and decodes the PACS/Wiegand (facility + card number) - validated on the real credential. Commands:
+  `iclass.py IDENTIFY|DUMP [start end]|READ <blk>|DECRYPT|... SLOT <hex>`. HARDWARE: OMNIKEY CardMan 5321
+  (076b:5321) contactless slot,
+  ifdokccid 4.3.3, legacy iCLASS 2K card.
+- **Quirk**: after a secured session the card's RF session desyncs (every cmd, even standard, -> 6982);
+  a software power-cycle (UNPOWER+reconnect) doesn't always clear it - **physically remove/re-present the
+  card** (or replug the reader) to recover. Documented in the tool `-h` and module docstring.
+- **Fingerprint-reader card finding**: this is a standard HID access **credential** card (2K), NOT a
+  fingerprint-template store - 2K is far too small for a template; biometric readers keep templates in
+  their own DB keyed by the credential in blk6-9. (So the original "read the fingerprint off the card"
+  use-case doesn't apply to a 2K credential card; a template would live on a 16K/32K card in app2.)
+
+Remaining / follow-ups:
+- **DONE**: `iclass.py DECRYPT` 3DES-decrypts the app1 credential (blk6-0x12) and decodes PACS/Wiegand
+  (H10301 26-bit, Corporate 1000 35-bit, H10304 37-bit; raw bits otherwise). Crypto + decode validated by
+  round-trip (synthetic FC=123/CN=45678). The 16-byte HID transport key is NOT shipped (same rule as
+  passport MRZs) - supply via `-k <32hex>`, `$RFIDIOT_ICLASS_DECRYPTKEY`, or
+  `~/.rfidiot/iclass_decryptionkey.bin` (pm3 name/location). NOT yet run against the real card (needs the
+  key + a fresh card placement). Software card-reset is a dead end (MS stays SW=0000 after fresh PC/SC
+  context, RF-control escapes c08/c0d, UNPOWER/EJECT/RESET) - a physical cycle per secured session is
+  required; retest DECRYPT live once a key is on hand.
+- **Keys** (added 2026-10-24): `rfidiot/iclass_default_keys.dic` bundles the GENUINELY-PUBLIC iCLASS
+  default AUTH keys (default Kd `AEA684A6DAB23278`, PicoPass/SAGEM/loclass-demo keys etc., mirrored from
+  pm3's open `iclass_default_keys.dic`); load via `rfidiot.loclass.load_keys()`. These are for the
+  raw-frame/loclass path (the OMNIKEY path auths from slot 0x21). NOT bundled (per the no-keys rule and
+  matching pm3): the big elite-key collection, and the leaked HID 3DES **decryption** key - the latter is
+  machine-local only (`~/.rfidiot/iclass_decryptionkey.bin`, user-supplied; `.gitignore` guards it). See
+  `~/.rfidiot/README.txt`.
+- Load Key (84 82) to push a **loclass-diversified** custom key into a reader slot for non-default-key
+  cards (the loclass crypto + `load_keys()` dictionary are ready); currently only the default-key
+  slot 0x21 is wired.
+- 16K/32K cards: PAGESEL (84 A6 with page/book) for app2 - needed for larger app areas / templates.
+- Deeper integration: fold the escape + secured session into the RFIDIOt reader abstraction
+  (`self.pcsc_connection.control(0x42000C21, ...)` on the READER_OMNIKEY path) and expose as
+  `rfidiot-cli` ICLASS commands, so it shares reader selection with the rest of the toolkit. Currently
+  `iclass.py`/`iclass_omnikey.py` auto-find the OMNIKEY contactless slot standalone.
+- The raw-frame PN53x/PN5180 path (above) is still the dependency-free route for readers we have register
+  control over; the loclass command-frame builders are ready for it.
 
 ## 21. NXP PN5180 reader back-end (`READER_PN5180`) - **hardware on hand**
 Add the NXP **PN5180** as a supported reader. The PN5180 is a high-performance NFC frontend

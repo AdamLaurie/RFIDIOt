@@ -4,3 +4,8 @@ __pycache__/
 PYLINT.txt
 .venv/
 mitm.log
+
+# never commit the leaked HID iCLASS 3DES decryption key or captured card data
+iclass_decryptionkey.bin
+*_decryptionkey.bin
+iclass_dump_*.bin
