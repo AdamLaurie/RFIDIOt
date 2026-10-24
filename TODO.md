@@ -1107,8 +1107,13 @@ pm3's behaviour where they differ:
   READCHECK->doReaderMAC->CHECK. **Verified end-to-end**: `iclass.py -f pn532_uart:/dev/ttyUSB0 DUMP`
   read the full card (public + authenticated HID app, identical to the OMNIKEY), and `DECRYPT` decoded the
   PACS/Wiegand - auth uses OUR loclass diversification of the public default Kd (no reader key slot). This
-  proves loclass's cipher/MAC/diversification against a real card. Still to add: UPDATE/write, PAGESEL for
-  16K/32K, elite-key attempts, a `rfidiot-cli` ICLASS group.
+  proves loclass's cipher/MAC/diversification against a real card.
+- **`rfidiot-cli` ICLASS group DONE + HW-VERIFIED (2026-10-24)** - standalone primitives (no auto-SELECT,
+  per the cli rule): `ICLASS SELECT | READ <blk> | DUMP | AUTH [DEBIT|CREDIT] [ALL|<16hex>] | DECRYPT`,
+  chained in one run e.g. `rfidiot-cli.py -f pn532_uart:/dev/ttyUSB0 ICLASS SELECT ICLASS AUTH ICLASS DUMP`.
+  Uses the libnfc path (card.nfc.iclass_*); errors cleanly on a non-libnfc reader (use iclass.py for the
+  OMNIKEY). AUTH stores CSN+divkey on the card for the run; verified SELECT/AUTH/READ/DUMP/DECRYPT on the
+  PN532. rfidiot-cli -> v3.1j. Still to add: UPDATE/write, PAGESEL for 16K/32K, elite-key attempts.
 - `pynfc.selectICLASS` does Type-B-wake-then-iClass (correct, matches nfc-iclass). **Reader caveat**:
   iClass needs a reader that can modulate it. The SCL3711/PN533 CANNOT (select = -6 NFC_ETIMEOUT); the
   FIRST Hailege PN532 module also couldn't (dud/clone - 14443A worked, iClass -6 on 15+ tries). A
