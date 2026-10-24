@@ -162,11 +162,13 @@ paths that can't be hardware-tested with the current SCL3711 (libnfc) setup.
 Survey of what ChAP.py could do that it doesn't yet. Work these one at a time,
 top to bottom.
 
-**Bug (found 2026-10-24):** the PSE record-reading loop (`ChAP.py` ~1963) only processes a record
-when the card answers READ RECORD (Le=00) with `6Cxx` (wrong-length retry); a card that returns the
-record data directly with `9000` is skipped, so PSE-advertised AIDs are missed (ChAP then falls back
-to its built-in AID list). Seen on a contactless Visa Debit (UID 1FD24605). Fix: also process a
-direct `9000`+data response, not only the `6C` path.
+**[FIXED 2026-10-24, ChAP v3.1c]** the PSE record-reading loop (`ChAP.py` ~1963) only processed a
+record when the card answered READ RECORD (Le=00) with `6Cxx` (wrong-length retry); a card that
+returns the record data directly with `9000` was skipped, so PSE-advertised AIDs were missed (ChAP
+fell back to its built-in AID list). Now also processes a direct `9000`+data response (and skips
+empty-AID entries). Verified on the Elatec TWN4 (`ChAP.py -r ccid:003:091 -c`): a Debit Mastercard's
+PSE records parse directly (`AID found a0000000041010`) and the full read + cert chain
+(CA 1984 -> Issuer 1408 -> ICC 1024) completes. First seen on a contactless Visa Debit (1FD24605).
 
 1. **[DONE] Live card authentication (complete what `-c` starts).** `-c` now runs,
    after the cert chain, SDA + DDA/fDDA against the recovered keys:

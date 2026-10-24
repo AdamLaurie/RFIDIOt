@@ -1913,7 +1913,7 @@ if EncipheredPIN and not PIN:
     sys.exit(True)
 
 try:
-    print("ChAP v3.1b (using RFIDIOt v%s)" % getattr(card, "VERSION", "?"))
+    print("ChAP v3.1c (using RFIDIOt v%s)" % getattr(card, "VERSION", "?"))
     print("using reader:", getattr(card, "readername", "unknown"))
     if card.readertype in (card.READER_LIBNFC, card.READER_CHAMELEON, card.READER_TWN4):
         # contactless: run ISO 14443-A (then -B) anticollision/select to power and
@@ -1960,11 +1960,15 @@ try:
                     le = 0x00
                     apdu = READ_RECORD + [p1] + [p2, le]
                     response, sw1, sw2 = _transceive(apdu)
-                    if sw1 == 0x6C:
-                        print(f"  Record {x:02x}, File {y:02x}: length {sw2}")
+                    if sw1 == 0x6C:                           # wrong length -> retry with correct Le
                         le = sw2
                         apdu = READ_RECORD + [p1] + [p2, le]
                         response, sw1, sw2 = _transceive(apdu)
+                    # process a record that read OK - whether after the 6C retry
+                    # above or returned directly to Le=00 (some cards answer
+                    # 9000 + data straight off, so the 6C path never fires)
+                    if (sw1, sw2) == (0x90, 0x00) and response:
+                        print(f"  Record {x:02x}, File {y:02x}: length {len(response)}")
                         print("  ", end="")
                         aid = ""
                         if Verbose:
@@ -1977,9 +1981,10 @@ try:
                                 aidlen = response[i + 1]
                                 aid = response[i + 2 : i + 2 + aidlen]
                             i += 1
-                        print("   AID found:", end="")
-                        hexprint(aid)
-                        aidlist.append(["PSD Entry"] + aid)
+                        if aid:
+                            print("   AID found:", end="")
+                            hexprint(aid)
+                            aidlist.append(["PSD Entry"] + aid)
     if BruteforceAID:
         bruteforce_aids(BRUTE_AID)
     if aidlist:
