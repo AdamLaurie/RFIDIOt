@@ -62,17 +62,35 @@ def _tohex(b):
 class OmnikeyIClass:
     """Minimal driver for HID iCLASS over an OMNIKEY reader (pcscd + ifdokccid)."""
 
-    def __init__(self, debug=False):
-        if scard is None:
+    def __init__(self, debug=False, control_fn=None):
+        if scard is None and control_fn is None:
             raise IClassError("pyscard (smartcard) not available")
         self.debug = debug
         self.ctx = None
-        self.card = None        # SCARDHANDLE
+        self.card = None        # SCARDHANDLE (standalone mode)
         self.pci = None
         self.readername = None
         self.csn = None
         self._key = bytearray(16)
         self._rdh = bytearray(4)
+        # control_fn(controlCode, list_in) -> list_out lets this driver run on an
+        # already-open pyscard connection (e.g. rfidiot-cli's card.pcsc_connection.
+        # control) instead of opening its own PC/SC context via open().
+        self._control_fn = control_fn
+
+    def reset_session(self):
+        "clear the secured-session state (key/rdh) - call after a card reset"
+        self._key = bytearray(16)
+        self._rdh = bytearray(4)
+
+    def _escape(self, buf):
+        "send one raw SCardControl escape; returns the response bytes"
+        if self._control_fn is not None:
+            return bytes(self._control_fn(OMNIKEY_CLICC_CTL, list(buf)))
+        hr, resp = scard.SCardControl(self.card, OMNIKEY_CLICC_CTL, buf)
+        if hr != scard.SCARD_S_SUCCESS:
+            raise IClassError("escape failed: %s" % scard.SCardGetErrorMessage(hr))
+        return bytes(resp or b"")
 
     # ---- connection -----------------------------------------------------
     def open(self, reset=True):
@@ -137,10 +155,7 @@ class OmnikeyIClass:
         apdu = bytes(apdu)
         buf = [0xF7] + list(len(apdu).to_bytes(8, "little")) + list(apdu)
         buf += [0] * (_SNDBUF - len(buf))
-        hr, resp = scard.SCardControl(self.card, OMNIKEY_CLICC_CTL, buf)
-        if hr != scard.SCARD_S_SUCCESS:
-            raise IClassError("escape failed: %s" % scard.SCardGetErrorMessage(hr))
-        resp = bytes(resp or b"")
+        resp = self._escape(buf)
         if self.debug:
             print("    80> %s" % _tohex(apdu))
             print("    80< %s" % _tohex(resp))

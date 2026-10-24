@@ -1108,12 +1108,16 @@ pm3's behaviour where they differ:
   read the full card (public + authenticated HID app, identical to the OMNIKEY), and `DECRYPT` decoded the
   PACS/Wiegand - auth uses OUR loclass diversification of the public default Kd (no reader key slot). This
   proves loclass's cipher/MAC/diversification against a real card.
-- **`rfidiot-cli` ICLASS group DONE + HW-VERIFIED (2026-10-24)** - standalone primitives (no auto-SELECT,
-  per the cli rule): `ICLASS SELECT | READ <blk> | DUMP | AUTH [DEBIT|CREDIT] [ALL|<16hex>] | DECRYPT`,
-  chained in one run e.g. `rfidiot-cli.py -f pn532_uart:/dev/ttyUSB0 ICLASS SELECT ICLASS AUTH ICLASS DUMP`.
-  Uses the libnfc path (card.nfc.iclass_*); errors cleanly on a non-libnfc reader (use iclass.py for the
-  OMNIKEY). AUTH stores CSN+divkey on the card for the run; verified SELECT/AUTH/READ/DUMP/DECRYPT on the
-  PN532. rfidiot-cli -> v3.1j. Still to add: UPDATE/write, PAGESEL for 16K/32K, elite-key attempts.
+- **`rfidiot-cli` ICLASS group DONE + HW-VERIFIED, BOTH backends (2026-10-24)** - standalone primitives
+  (no auto-SELECT): `ICLASS SELECT | READ <blk> | DUMP | AUTH ... | DECRYPT`, chained in one run.
+  Dispatches on reader type: **libnfc** (`-f`, card.nfc.iclass_*, host-side loclass; AUTH
+  `[DEBIT|CREDIT] [ALL|<16hex>]` diversifies the default Kd) and **OMNIKEY** (`-r`, PC/SC escape via
+  `card.pcsc_connection.control(0x42000C21,...)` + the secured session; AUTH `[SLOT <hex>]`, default slot
+  0x21). OmnikeyIClass refactored to take a `control_fn` so it runs on rfidiot-cli's existing connection
+  (no own PC/SC context); the OMNIKEY instance + CSN are stashed on `card` for the run. Live-verified on
+  BOTH backends: PN532 (`-f`) and OMNIKEY (`-r 1`) each do SELECT/AUTH/READ/DUMP/DECRYPT and decode the
+  PACS/Wiegand. (OMNIKEY reads ~one secured session per physical card placement - re-present between runs.)
+  rfidiot-cli -> v3.1j. Still to add: UPDATE/write, PAGESEL for 16K/32K, elite-key attempts.
 - `pynfc.selectICLASS` does Type-B-wake-then-iClass (correct, matches nfc-iclass). **Reader caveat**:
   iClass needs a reader that can modulate it. The SCL3711/PN533 CANNOT (select = -6 NFC_ETIMEOUT); the
   FIRST Hailege PN532 module also couldn't (dud/clone - 14443A worked, iClass -6 on 15+ tries). A

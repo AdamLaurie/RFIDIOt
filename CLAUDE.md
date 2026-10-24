@@ -98,9 +98,10 @@ Three layers:
      MRZ to access the chip with PACE instead of BAC (via `rfidiot/pace.py`).
    - `rfidiot-cli.py` — general command dispatcher (`IDENTIFY`, `APDU`, `DUMP`,
      `MF AUTH/READ/WRITE/CLONE`, `DESFIRE …`, `ICLASS SELECT/READ/DUMP/AUTH/DECRYPT`,
-     `SELECT`, `SCRIPT`); good reference for driving the library. The `ICLASS` group is the
-     libnfc raw-frame iCLASS path (standalone primitives, chained in one run; needs `-f` + a
-     reader that can modulate iCLASS — see `iclass.py` for the OMNIKEY).
+     `SELECT`, `SCRIPT`); good reference for driving the library. The `ICLASS` group (standalone
+     primitives, chained in one run) drives iCLASS over either backend: a libnfc reader (`-f`,
+     raw-frame loclass) or an OMNIKEY (`-r`, PC/SC escape via `card.pcsc_connection.control` +
+     the secured session — `OmnikeyIClass` takes a `control_fn` to run on the existing connection).
    - `ChAP.py` — "Chip And PIN": contact/contactless EMV reader. An ordinary client:
      it uses `rfidiot.card`, so reader selection is the standard global options
      (`-f <n>` libnfc, `-r <n>` PC/SC, `-R`); its own feature flags are parsed from

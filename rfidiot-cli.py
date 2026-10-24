@@ -321,11 +321,12 @@ if chelp or len(sys.argv) == 1:
     print("                                                        2 == 212 kBaud")
     print("                                                        4 == 424 kBaud")
     print("                                                        8 == 848 kBaud")
-    print("     ICLASS <COMMAND> [<ARGS> ... ]                   HID iCLASS / Picopass (libnfc -f; raw-frame loclass):")
+    print("     ICLASS <COMMAND> [<ARGS> ... ]                   HID iCLASS / Picopass (libnfc -f, or OMNIKEY -r):")
     print("        SELECT                                          Activate card, show/remember CSN")
     print("        READ <BLOCK>                                    Read one 8-byte block (hex)")
     print("        DUMP                                            Read blocks 0x00-0x1F")
-    print("        AUTH [DEBIT|CREDIT] [ALL|<16hex>]               Auth the app (default = public Kd, diversified)")
+    print("        AUTH [DEBIT|CREDIT] [ALL|<16hex>]               Auth app: libnfc = loclass default Kd (diversified);")
+    print("        AUTH [SLOT <hex>]                               OMNIKEY = reader key slot (default 0x21)")
     print("        DECRYPT                                         3DES-decrypt credential + decode PACS/Wiegand")
     print("     IDENTIFY                                         Show TAG type")
     print("     MF <COMMAND> [<ARGS> ... ]                       Mifare commands:")
@@ -479,19 +480,23 @@ COMMAND_HELP = {
                 "  PC/SC path (-r, or -r ccid); the -f ccid / libnfc path won't answer (it talks\n"
                 "  to the PN532). No tag needed.",
     "HSS": "HSS <SPEED>\n  High-Speed Select the tag. SPEED (decimal): 1=106, 2=212, 4=424, 8=848 kBaud.",
-    "ICLASS": "ICLASS <SUBCOMMAND> [...]   HID iCLASS / Picopass (libnfc raw-frame path, needs -f)\n"
+    "ICLASS": "ICLASS <SUBCOMMAND> [...]   HID iCLASS / Picopass\n"
               "  SELECT                  activate the card; print and remember its CSN\n"
               "  READ <BLOCK>            read one 8-byte block (hex block no.)\n"
               "  DUMP                    read blocks 0x00-0x1F\n"
-              "  AUTH [DEBIT|CREDIT] [ALL|<16hex>]   authenticate the app area; default = the\n"
-              "                          public default Kd, diversified for this CSN (ALL tries the\n"
-              "                          whole default dictionary; a 16-hex key uses that key)\n"
+              "  AUTH ...                authenticate the app area, then read app blocks:\n"
+              "    libnfc (-f):  AUTH [DEBIT|CREDIT] [ALL|<16hex>]   host-side loclass; default =\n"
+              "                  the public default Kd diversified for this CSN (ALL = whole dict)\n"
+              "    OMNIKEY (-r): AUTH [SLOT <hex>]                   reader key slot (default 0x21)\n"
               "  DECRYPT                 3DES-decrypt the app1 credential + decode PACS/Wiegand\n"
+              "  Two backends, same commands: a libnfc reader (-f; raw-frame, needs a PN532/PN5180\n"
+              "  that can modulate iCLASS) or an OMNIKEY (-r; PC/SC escape + secured session).\n"
               "  Standalone primitives (no auto-SELECT): chain in one run, e.g.\n"
               "    rfidiot-cli.py -f pn532_uart:/dev/ttyUSB0 ICLASS SELECT ICLASS AUTH ICLASS DUMP\n"
-              "  Needs a reader that can modulate iCLASS (a working PN532, or a PN5180); for the\n"
-              "  OMNIKEY use the standalone iclass.py tool. DECRYPT needs the HID transport key in\n"
-              "  ~/.rfidiot/iclass_decryptionkey.bin or $RFIDIOT_ICLASS_DECRYPTKEY.",
+              "    rfidiot-cli.py -r 1 ICLASS SELECT ICLASS AUTH ICLASS DUMP\n"
+              "  OMNIKEY reads ~one secured session per physical card placement (re-present between\n"
+              "  runs). DECRYPT needs the HID transport key in ~/.rfidiot/iclass_decryptionkey.bin\n"
+              "  or $RFIDIOT_ICLASS_DECRYPTKEY.",
     "IDENTIFY": "IDENTIFY\n  Show the current tag's type (and decode its ATR/ATS where possible).",
     "MF": "MF <SUBCOMMAND> [...]   MIFARE Classic commands\n"
           "  AUTH <A|B> <BLOCK>      authenticate a sector with key A or B (future auths auto)\n"
@@ -1994,92 +1999,137 @@ while args:
             continue
 
         if command == "ICLASS":
-            # HID iCLASS / Picopass via the libnfc raw-frame path (loclass crypto).
-            # Standalone primitives (no auto-SELECT): chain them in one run, e.g.
+            # HID iCLASS / Picopass. Two backends, same commands: the libnfc raw-frame
+            # path (-f; card.nfc.iclass_*, host-side loclass crypto) and the OMNIKEY PC/SC
+            # escape (-r; secured SCardControl session, reader key slots). Standalone
+            # primitives (no auto-SELECT) - chain them in one run, e.g.
             #   rfidiot-cli.py -f pn532_uart:/dev/ttyUSB0 ICLASS SELECT ICLASS AUTH ICLASS DUMP
-            # Needs a reader that can modulate iCLASS (a working PN532, or a PN5180);
-            # for the OMNIKEY use the standalone iclass.py tool instead.
+            #   rfidiot-cli.py -r 1 ICLASS SELECT ICLASS AUTH ICLASS DUMP        (OMNIKEY)
             iccommand = args.pop().upper()
             if iccommand in ("?", "HELP"):
                 print_cmd_help("ICLASS")
                 continue
             _help_key = "ICLASS " + iccommand
-            if getattr(card, "readertype", None) != card.READER_LIBNFC:
-                print("\n  ICLASS needs a libnfc reader (-f <dev>); for the OMNIKEY use iclass.py\n")
-                continue
             from rfidiot import loclass
-            nfc = card.nfc
+            rt = getattr(card, "readertype", None)
+            is_libnfc = (rt == card.READER_LIBNFC)
+            is_omni = (rt == card.READER_PCSC and
+                       getattr(card, "readersubtype", None) == card.READER_OMNIKEY)
+            if not (is_libnfc or is_omni):
+                print("\n  ICLASS needs a libnfc reader (-f <dev>) or an OMNIKEY (-r)\n")
+                continue
+
+            # uniform block read for whichever backend is selected
+            def ic_read(block):
+                if is_libnfc:
+                    return card.nfc.iclass_readblock(block)
+                omni = getattr(card, "_ic_omni", None)
+                if omni is None:
+                    return None
+                d, sw = omni.read_block(block, secure=True)
+                return d if sw == 0x9000 else None
 
             if iccommand == "SELECT":
-                ic = nfc.selectICLASS()
                 print()
-                if ic:
-                    card._iclass_csn = bytes.fromhex(ic.uid)
-                    print("  iClass CSN: " + ic.uid)
+                if is_libnfc:
+                    ic = card.nfc.selectICLASS()
+                    card._iclass_csn = bytes.fromhex(ic.uid) if ic else None
+                    csnhex = ic.uid if ic else None
                 else:
-                    card._iclass_csn = None
-                    print("  No iClass card (select failed - coupling, or the reader "
-                          "can't modulate iCLASS)")
+                    from rfidiot.iclass_omnikey import OmnikeyIClass
+                    try:
+                        card.pcsc_connection.reconnect()   # reset card -> clean secured session
+                    except Exception:
+                        pass
+                    omni = OmnikeyIClass(control_fn=card.pcsc_connection.control)
+                    omni.reset_session()
+                    d, sw = omni.transceive([0x80, 0xA6, 0x00, 0x04, 0x08])  # Select Page -> CSN
+                    if sw == 0x9000:
+                        omni.csn = d
+                        card._ic_omni = omni
+                        card._iclass_csn = d
+                        csnhex = d.hex().upper()
+                    else:
+                        card._ic_omni = None
+                        card._iclass_csn = None
+                        csnhex = None
+                if csnhex:
+                    print("  iClass CSN: " + csnhex)
+                else:
+                    print("  No iClass card (select failed)")
                 print()
                 continue
 
             if iccommand == "READ":
                 block = int(args.pop(), 16)
-                d = nfc.iclass_readblock(block)
-                print()
-                print("  block 0x%02X: %s" % (block, d.hex().upper() if d else "read failed"))
-                print()
+                d = ic_read(block)
+                print("\n  block 0x%02X: %s\n" % (block, d.hex().upper() if d else "read failed"))
                 continue
 
             if iccommand == "DUMP":
-                print()
-                print("  iClass dump (blocks 0x00-0x1F):")
+                print("\n  iClass dump (blocks 0x00-0x1F):")
                 for b in range(0x20):
-                    d = nfc.iclass_readblock(b)
+                    d = ic_read(b)
                     print("    blk 0x%02X: %s" % (b, d.hex().upper() if d else "----------------"))
                 print()
                 continue
 
             if iccommand == "AUTH":
-                csn = getattr(card, "_iclass_csn", None)
-                if not csn:
-                    print("\n  run ICLASS SELECT first\n")
-                    continue
-                csn_rev = bytes(reversed(csn))
-                # optional trailing args: a keytype (DEBIT/CREDIT), ALL, and/or an 8-byte hex key
-                debit = True
-                keyhex = None
-                tryall = False
-                while args:
-                    nxt = args[-1].upper()
-                    if nxt in ("DEBIT", "CREDIT", "ALL"):
-                        args.pop()
-                        if nxt == "CREDIT":
-                            debit = False
-                        elif nxt == "DEBIT":
-                            debit = True
-                        else:
-                            tryall = True
-                    elif len(nxt) == 16 and all(c in "0123456789ABCDEF" for c in nxt):
-                        keyhex = args.pop().upper()
-                    else:
-                        break
-                keys = ([bytes.fromhex(keyhex)] if keyhex
-                        else loclass.load_keys() if tryall
-                        else [loclass.load_keys()[0]])
                 print()
-                for k in keys:
-                    if len(k) != 8:
+                if is_libnfc:
+                    csn = getattr(card, "_iclass_csn", None)
+                    if not csn:
+                        print("  run ICLASS SELECT first\n")
                         continue
-                    dk = loclass.diversifyKey(csn_rev, k)
-                    nfc.selectICLASS()                 # fresh e-purse before each try
-                    if nfc.iclass_authenticate(dk, debit=debit):
-                        card._iclass_divkey = dk
-                        print("  AUTH OK  (key %s -> div %s, %s)"
-                              % (k.hex().upper(), dk.hex().upper(), "debit" if debit else "credit"))
-                        break
+                    csn_rev = bytes(reversed(csn))
+                    debit = True
+                    keyhex = None
+                    tryall = False
+                    while args:          # optional DEBIT/CREDIT/ALL and/or an 8-byte hex key
+                        nxt = args[-1].upper()
+                        if nxt in ("DEBIT", "CREDIT", "ALL"):
+                            args.pop()
+                            debit = nxt != "CREDIT"
+                            tryall = tryall or nxt == "ALL"
+                        elif len(nxt) == 16 and all(c in "0123456789ABCDEF" for c in nxt):
+                            keyhex = args.pop().upper()
+                        else:
+                            break
+                    keys = ([bytes.fromhex(keyhex)] if keyhex
+                            else loclass.load_keys() if tryall
+                            else [loclass.load_keys()[0]])
+                    for k in keys:
+                        if len(k) != 8:
+                            continue
+                        dk = loclass.diversifyKey(csn_rev, k)
+                        card.nfc.selectICLASS()            # fresh e-purse before each try
+                        if card.nfc.iclass_authenticate(dk, debit=debit):
+                            card._iclass_divkey = dk
+                            print("  AUTH OK  (key %s -> div %s, %s)"
+                                  % (k.hex().upper(), dk.hex().upper(), "debit" if debit else "credit"))
+                            break
+                    else:
+                        print("  AUTH FAILED (no key matched; try ICLASS AUTH ALL or give a key)")
                 else:
-                    print("  AUTH FAILED (no key matched; try ICLASS AUTH ALL or give a key)")
+                    omni = getattr(card, "_ic_omni", None)
+                    if omni is None:
+                        print("  run ICLASS SELECT first\n")
+                        continue
+                    slot = 0x21                            # OMNIKEY reader key slot (default HID Kd)
+                    while args:
+                        nxt = args[-1].upper()
+                        if nxt == "SLOT":
+                            args.pop()
+                            slot = int(args.pop(), 16)
+                        elif len(nxt) == 2 and all(c in "0123456789ABCDEF" for c in nxt):
+                            slot = int(args.pop(), 16)
+                        else:
+                            break
+                    try:
+                        omni.authenticate(slot=slot)
+                        print("  AUTH OK  (OMNIKEY reader key slot 0x%02X)" % slot)
+                    except Exception as e:
+                        print("  AUTH FAILED: %s" % e)
                 print()
                 continue
 
@@ -2090,11 +2140,10 @@ while args:
                     print("\n  no HID transport key (set ~/.rfidiot/iclass_decryptionkey.bin "
                           "or $RFIDIOT_ICLASS_DECRYPTKEY)\n")
                     continue
-                print()
-                print("  app1 credential (3DES-decrypted):")
+                print("\n  app1 credential (3DES-decrypted):")
                 blk7 = None
                 for b in CRED_BLOCKS:
-                    d = nfc.iclass_readblock(b)
+                    d = ic_read(b)
                     if not d:
                         print("    blk 0x%02X: ---------------- (run ICLASS SELECT + AUTH first)" % b)
                         continue
