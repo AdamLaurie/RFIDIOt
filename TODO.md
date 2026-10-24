@@ -1236,3 +1236,41 @@ Scope / order:
   has the same hard-wired first-UID-byte limit noted for emulation in section 17 / the emulation
   notes - treat emulation as a later, separate step if at all.
 - Add a hardware-verification entry to section 3 as each layer comes up.
+
+
+## 22. PN532 over SPI via FT232H/pyftdi (`READER_PN532SPI`) - **hardware on hand**
+The generic PN532 breakout modules (the working Hailege one, section 20's reader notes) expose
+**SPI** as well as UART/I2C, selected by the on-board interface DIP switch (UART/HSU = the mode we
+drive today over `pn532_uart:/dev/ttyUSB0`). Add a PN532-over-SPI back-end driven from a PC through
+an **FT232H + pyftdi**, sharing the exact SPI/GPIO plumbing being built for the PN5180 (section 21) -
+so one FT232H can drive either chip. This gives a second, UART-adapter-free way to reach the PN532
+(the one that *can* modulate iCLASS), and - because it is still a PN532 - it inherits the libnfc-free
+raw-frame iCLASS path (`pynfc.iclass_*` / section 20) and the emulation/relay capabilities.
+
+Why it is NOT just "libnfc over SPI": libnfc's `pn532_spi` driver wants a kernel `spidev` (an SBC
+like a Pi), not an FT232H on a PC. So this is a native back-end that speaks the **PN532 host command
+protocol directly over pyftdi SPI** (the same commands the `pynfc.CCIDDev` raw path already issues -
+GetFirmwareVersion 0x02, SAMConfiguration 0x14, InListPassiveTarget 0x4A, InDataExchange 0x40,
+InCommunicateThru 0x42, RFConfiguration 0x32), not through libnfc.
+
+Shape (mirror `pypn5180.py`; factor the shared FT232H bits out of it):
+- Factor a small **`pyftdi` SPI+GPIO helper** out of `pypn5180.py` (open the FTDI URL, a SpiController
+  port, the GPIO port) and reuse it here, so PN5180 and PN532-SPI share one FT232H abstraction.
+- New `rfidiot/pypn532spi.py` with the **PN532 SPI link layer**. Gotchas to get right:
+  - **Bit order is LSB-first** on the PN532 SPI bus (the classic PN532-SPI trap) - either ask pyftdi
+    for LSB-first or bit-reverse every byte in software.
+  - **SPI status/data framing**: lead each transfer with the SPI command byte - `0x01` data-write,
+    `0x02` status-read (poll bit0 = ready), `0x03` data-read - wrapping the normal PN532 frame
+    (`00 00 FF LEN LCS TFI=D4 CMD ... DCS 00`). Handle the 6-byte **ACK** frame and the ready poll
+    (SPI has no IRQ wait like UART; poll status, or use the IRQ GPIO if wired).
+  - Pin map on the FT232H: SPI on AD0-AD3 (SCK/MOSI/MISO/CS) + optional **IRQ** on a spare GPIO;
+    PN532 at 3V3 logic. (SPI mode 0.)
+- New `READER_PN532SPI` constant + dispatch in `RFIDIOt.py` (select / APDU / transceive / the iCLASS
+  `iclass_*` transceive), selected like the PN5180 (`-R READER_PN532SPI`, FTDI URL via `-l`, e.g.
+  `ftdi://ftdi:232h/1`; or a `pn532_spi:ftdi://...` connstring).
+- Reuse the existing PN532 raw-command helpers where possible (the `CCIDDev._pn532` command builder in
+  `pynfc` already frames PN532 host commands for the CCID path - lift/share the framing, swap the
+  transport for pyftdi SPI).
+Scope/order: bring-up (GetFirmwareVersion over SPI) -> SAMConfiguration -> InListPassiveTarget (14443-A
+IDENTIFY) -> InDataExchange/InCommunicateThru (APDUs, T=CL) -> iCLASS via the raw-frame path.
+Add a hardware-verification entry to section 3 when it comes up.
