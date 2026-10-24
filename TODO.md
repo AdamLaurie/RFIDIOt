@@ -1093,6 +1093,15 @@ pm3's behaviour where they differ:
   (DEAD code in nfc); SE/SR/SEOS + SIO/PACS parsing; default/elite key dictionaries.
 
 ### Progress (2026-10-24, in progress)
+- **CRYPTO DONE + self-test-validated offline** (`rfidiot/loclass.py`, `python3 -m rfidiot.loclass`):
+  the iClass cipher + MAC (doMAC/doMAC_N/doReaderMAC), CRC16, standard key diversification
+  (hash0 + DES), and ELITE diversification (permutekey/hash1/hash2/divkey_elite). All match pm3's
+  vectors: MAC 1D49C9DA, CRC 0C007333/0C01FA22, hash0 x5, DES D6AD3CA619659E6B, permutekey
+  8A0DB988BBA790EA, the HS key table. The hard part is finished without a card. Ported from pm3's
+  loclass (holiman/loclass lineage), credited in the source.
+- **Still to build**: the raw iClass command/protocol layer (ACTALL/IDENTIFY/SELECT/READCHECK/CHECK/
+  READ/UPDATE using loclass + the CRC) and the `rfidiot-cli` ICLASS command group. Both need a working
+  iClass transceive, which is the hardware blocker below.
 - `pynfc.selectICLASS` fixed to do Type-B-wake-then-iClass (was iClass-only, never worked). But on
   our hardware libnfc's iClass select fails: **SCL3711/PN533 = -6 timeout (can't modulate iClass);
   PN532-over-UART = -20 RF trans error** (card answers only the iClass modulation, not 14443A/B).

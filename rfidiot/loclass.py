@@ -266,6 +266,101 @@ def diversifyKey(csn, key):
 
 
 # --------------------------------------------------------------------------- #
+#  ELITE / high-security key diversification (pm3 optimized_elite.c)
+#  permute between NIST and iClass key formats, hash1 (CSN -> key indices),
+#  hash2 (custom master key -> 128-byte key table), divkey_elite.
+# --------------------------------------------------------------------------- #
+def permutekey(key):
+    "permute a key from standard NIST format to iClass format"
+    dest = bytearray(8)
+    for i in range(8):
+        v = 0
+        for n in range(8):
+            v |= ((key[n] >> (7 - i)) & 1) << n
+        dest[i] = v
+    return bytes(dest)
+
+
+def permutekey_rev(key):
+    "permute a key from iClass format back to standard NIST format"
+    dest = bytearray(8)
+    for i in range(8):
+        v = 0
+        for n in range(8):
+            v |= ((key[n] >> (7 - i)) & 1) << (7 - n)
+        dest[7 - i] = v
+    return bytes(dest)
+
+
+def _rr(v):
+    return ((v >> 1) | ((v & 1) << 7)) & 0xFF
+
+
+def _rl(v):
+    return ((v << 1) | ((v & 0x80) >> 7)) & 0xFF
+
+
+def _swap(v):
+    return (((v >> 4) & 0xFF) | ((v & 0xFF) << 4)) & 0xFF
+
+
+def hash1(csn):
+    "hash1: CSN -> 8 key-table indices (each 0..127)"
+    k = bytearray(8)
+    k[0] = csn[0] ^ csn[1] ^ csn[2] ^ csn[3] ^ csn[4] ^ csn[5] ^ csn[6] ^ csn[7]
+    k[1] = sum(csn) & 0xFF
+    k[2] = _rr(_swap((csn[2] + k[1]) & 0xFF))
+    k[3] = _rl(_swap((csn[3] + k[0]) & 0xFF))
+    k[4] = (~_rr((csn[4] + k[2]) & 0xFF) + 1) & 0xFF
+    k[5] = (~_rl((csn[5] + k[3]) & 0xFF) + 1) & 0xFF
+    k[6] = _rr((csn[6] + (k[4] ^ 0x3C)) & 0xFF)
+    k[7] = _rl((csn[7] + (k[5] ^ 0xC3)) & 0xFF)
+    return bytes(b & 0x7F for b in k)
+
+
+def _rk(key, n):
+    "rotate-left each of the 8 key bytes n times"
+    out = bytearray(key)
+    for _ in range(n):
+        out = bytearray(_rl(b) for b in out)
+    return bytes(out)
+
+
+def _des_iclass(iclass_key, data, encrypt):
+    "DES enc/dec with an iClass-format key (permuted back to NIST first)"
+    from Crypto.Cipher import DES
+    c = DES.new(permutekey_rev(iclass_key), DES.MODE_ECB)
+    return c.encrypt(bytes(data)) if encrypt else c.decrypt(bytes(data))
+
+
+def hash2(key64):
+    "hash2: 8-byte custom master key -> 128-byte high-security key table"
+    key64 = bytes(key64)
+    neg = bytes((~b) & 0xFF for b in key64)
+    z = [b""] * 8
+    y = [b""] * 8
+    z[0] = _des_iclass(key64, neg, True)
+    y[0] = _des_iclass(z[0], neg, False)
+    for i in range(1, 8):
+        temp = _rk(key64, i)
+        z[i] = _des_iclass(temp, z[i - 1], False)
+        y[i] = _des_iclass(temp, y[i - 1], True)
+    table = bytearray(128)
+    for i in range(8):
+        table[i * 16:i * 16 + 8] = y[i]
+        table[i * 16 + 8:i * 16 + 16] = z[i]
+    return bytes(table)
+
+
+def divkey_elite(csn, key):
+    "elite iClass key diversification using a custom (elite) master key"
+    keytable = hash2(key)
+    key_index = hash1(csn)
+    key_sel = bytes(keytable[key_index[i]] for i in range(8))
+    return diversifyKey(csn, permutekey_rev(key_sel))
+
+
+# --------------------------------------------------------------------------- #
 #  self-test (offline, no hardware) - run:  python3 -m rfidiot.loclass
 # --------------------------------------------------------------------------- #
 def selftest():
@@ -322,6 +417,21 @@ def selftest():
     print("divKey: %s (= hash0(DES))  %s"
           % (dk.hex().upper(), "OK" if dk == dkref else "FAIL"))
     ok = ok and dk == dkref
+
+    # elite: permutekey vector (pm3 optimized_elite.c)
+    pk = permutekey(bytes.fromhex("6C8D44F92A2D01BF")).hex().upper()
+    print("permKey: %s want 8A0DB988BBA790EA  %s"
+          % (pk, "OK" if pk == "8A0DB988BBA790EA" else "FAIL"))
+    ok = ok and pk == "8A0DB988BBA790EA"
+
+    # elite: hash2 HS key table vector (pm3 optimized_elite.c comment)
+    want_kt = ("F13559A10D5A267F18600B968AC025C1BFA13BB0FF852875F21FC68F0E748F21"
+               "147A5516C8A97DB3130C5DC9318DA9B2A356830F557EDE457121D26DC1571C9C"
+               "782F6451427B6430FA265176D3E0FBB6319FBF2F7E4F94B4BD4F7591E31BEB42"
+               "3F886FB86C2C930D692CD5203CC161954308A02FFEB326D7980B347B4770A0AB")
+    kt = hash2(bytes.fromhex("5B7C62C491C11B39")).hex().upper()
+    print("hash2 : %s... %s" % (kt[:16], "OK" if kt == want_kt else "FAIL"))
+    ok = ok and kt == want_kt
 
     print("SELFTEST:", "PASS" if ok else "FAIL")
     return ok
