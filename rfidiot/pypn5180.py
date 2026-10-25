@@ -37,7 +37,7 @@ import time
 
 from .pynfc import _tcl_exchange
 
-VERSION = "0.1a"
+VERSION = "0.1b"
 
 # ---- PN5180 SPI instruction set (first byte of each frame) -----------------
 PN5180_WRITE_REGISTER = 0x00
@@ -144,8 +144,11 @@ class PN5180:
         busy_m = 1 << self._pin_busy
         rst_m = 1 << self._pin_rst
         irq_m = 1 << self._pin_irq
-        # RST is our only output; BUSY and IRQ are inputs
-        self._gpio.set_direction(busy_m | rst_m | irq_m, rst_m)
+        # RST is our only output; BUSY/IRQ are inputs. NB only the OUTPUT pin is
+        # put in the pyftdi SpiController GPIO direction mask: including an input
+        # pin (e.g. BUSY) in the mask makes its read come back stuck-high on
+        # pyftdi's SpiGpioPort - leaving it unmanaged reads the real pin state.
+        self._gpio.set_direction(rst_m, rst_m)
         self._rst_mask = rst_m
         self._busy_mask = busy_m
         self._irq_mask = irq_m
@@ -179,7 +182,15 @@ class PN5180:
         return
 
     def reset(self):
-        "hardware reset via RST, then wait for the idle IRQ"
+        """hardware reset via RST, then wait for the idle IRQ.
+
+        NB (2026-10-25 bring-up): driving RST through pyftdi's SpiController GPIO
+        (AD5) proved unreliable on the bench - the write did not reliably pull the
+        pin, leaving the PN5180 held in reset (RST low -> every SPI read 0xFF). If
+        the chip reads all-FF, measure RST: it must be ~VDD (high). The robust
+        workaround is a hardware pull-up on RST (or tie it high) rather than relying
+        on this GPIO write; a future revision may drive RST over a dedicated FTDI
+        GPIO instead of the SpiController's shared port."""
         self._rst(True)
         time.sleep(0.01)
         self._rst(False)             # assert reset (active low)

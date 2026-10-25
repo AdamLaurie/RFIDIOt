@@ -1237,6 +1237,30 @@ Scope / order:
   notes - treat emulation as a later, separate step if at all.
 - Add a hardware-verification entry to section 3 as each layer comes up.
 
+### Bring-up log (2026-10-25) - FT232H wired to a PN5180 board; BLOCKED on the board, not the code
+Wired an FT232H (0403:6014) to a generic PN5180 board (header: +5 +3.3 RST NSS MOSI MISO SCK BUSY GND GPIO
+IRQ AUX REQ) per the pin map (SCK=AD0 MOSI=AD1 MISO=AD2 NSS=AD3 BUSY=AD4 RST=AD5). The board **never answered
+SPI** (all reads 0xFF) despite exhaustively verifying everything on our side. Findings worth keeping:
+- **FT232H SPI engine is GOOD** - a jumper AD1<->AD2 + full-duplex `port.exchange(pat, duplex=True)` echoes
+  every pattern. (NB a half-duplex `exchange(out, readlen)` does NOT echo a loopback - use duplex=True.)
+- **pyftdi SpiController GPIO quirk (FIXED in pypn5180.py)**: putting an INPUT pin (BUSY/AD4) in the GPIO
+  `set_direction` mask makes its read come back stuck-high; only put the OUTPUT (RST) in the mask and read
+  BUSY as an unmanaged pin. This caused the first "BUSY stuck high".
+- **RST drive over the SpiController GPIO (AD5) is unreliable** - the write didn't reliably pull AD5, so the
+  PN5180 sat in reset (RST measured 0.2 V) and returned all-FF. Tying RST high (->3.2 V) released it (BUSY
+  idle low). Recommend a hardware pull-up / tie-high on RST, or driving it from a dedicated FTDI GPIO, not
+  the shared SpiController port. Code comment added in reset().
+- **Power**: the board needs a real 3.3 V rail. Feeding only signal lines gives a ~2.9 V phantom (I/O ESD
+  diodes) and nothing works; feed +5 into the board reg or +3.3 direct (with COMMON GROUND - that was an
+  early miss) for ~3.2-3.3 V.
+- **Still 0xFF after** all of: RST tied high, both MOSI/MISO orientations, all 4 SPI modes, 50k-1M Hz,
+  continuity beeping on all four SPI lines. A **short during wiring knocked the FT232H off the USB bus once**
+  - that event may well have damaged the PN5180's SPI (chip still draws power / idles BUSY but the interface
+  is dead), or the board is a dud. **Needs a known-good PN5180 board** to continue; the scaffold + FT232H
+  SPI are proven, so a working board should enumerate (version read) quickly.
+- iCLASS does NOT depend on this: it's working via the PN532 (-f) and OMNIKEY (-r) already. PN5180 is an
+  extra back-end / the register-level RF route.
+
 
 ## 22. PN532 over SPI via FT232H/pyftdi (`READER_PN532SPI`) - **hardware on hand**
 The generic PN532 breakout modules (the working Hailege one, section 20's reader notes) expose
