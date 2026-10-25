@@ -22,10 +22,21 @@
 #  AN and on the widely used Arduino PN5180 library by Andreas Trappmann
 #  (github.com/ATrappmann/PN5180-Library, credited as reference).
 #
-#  Default FT232H pin map (override in the constructor):
-#     AD0 SCK   AD1 MOSI   AD2 MISO   AD3 NSS/CS   (SPI, pyftdi SpiController)
-#     AD4 BUSY (in)   AD5 RST (out, active low)   AD6 IRQ (in, optional)
-#  Wire the PN5180's 3V3 logic to the FT232H (the module regulates 5V->3V3).
+#  Default FT232H pin map (override in the constructor). Wire colours are for the
+#  FTDI C232HM MPSSE cable - an FT232H in a USB plug with flying leads, so it
+#  enumerates as a normal FT232H and needs NO code change vs a breakout board.
+#  Buy the 3.3V "C232HM-DDHSL-0", NOT the 5V "-EDHSL-0" (the PN5180 is a 3.3V part,
+#  not 5V-tolerant). Mapping verified against the pyftdi pinout docs:
+#     AD0 SCK   (Orange)    AD1 MOSI (Yellow)   AD2 MISO (Green)   AD3 NSS/CS (Brown)
+#     AD4 BUSY  (Grey, in)  AD5 RST  (Purple, out, active low)     AD6 IRQ (White, in, optional)
+#     VCC = Red (3.3V, ~250 mA)   GND = Black
+#  PN5180 logic is 3.3V = the FT232H level, so no level shifter. Power: feed the
+#  cable's Red (3.3V) to the PN5180 +3.3 pin - it is NOT a 5V lead, so do not use
+#  it on the board's +5; a heavy RF field may want a stronger external 3.3V. With
+#  cs_count=1 only AD3 is chip-select, leaving AD4-6 free for BUSY/RST/IRQ.
+#  **Tie RST high (pull-up)**: driving RST over the SpiController GPIO proved
+#  unreliable on the bench - if left low the chip sits in reset and every SPI read
+#  is 0xFF (see reset()). On a plain FT232H breakout the same pins apply (no colours).
 #
 #  APDUs: like the TWN4 back-end, T=CL runs in software (pynfc._tcl_exchange)
 #  over raw ISO 14443-3 frames; the PN5180 handles CRC/parity in hardware.
