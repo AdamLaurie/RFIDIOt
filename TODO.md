@@ -1260,6 +1260,16 @@ SPI** (all reads 0xFF) despite exhaustively verifying everything on our side. Fi
   SPI are proven, so a working board should enumerate (version read) quickly.
 - iCLASS does NOT depend on this: it's working via the PN532 (-f) and OMNIKEY (-r) already. PN5180 is an
   extra back-end / the register-level RF route.
+- **CODE VINDICATED (2026-10-25)**: ran the known-good reference driver **captainbeeheart/pypn5180** (its
+  HAL uses pyftdi SpiController, full-duplex exchange, a 5ms delay instead of BUSY, and - tellingly - NO
+  software reset) directly against this board, patched only for the FT232H URL (ftdi://ftdi:232h/1) +
+  Py3.14 `is`->`==`. It returns the **IDENTICAL all-0xFFFF** - plain and after a reset pulse, at 50k and
+  1M Hz. Two independent drivers behaving the same => the fault is the **board/reset, not our pypn5180.py**.
+  (We'd already copied its full-duplex read into ours.) The reference's own fix for this exact symptom is
+  its Issue #2: a **MANUAL reset-pin pulse** made the version read valid - software reset over FT232H is
+  unreliable in BOTH drivers. So to finish: a **known-good PN5180** (this one likely died from the wiring
+  short) wired with a **hardware RST pull-up** so a reset can actually be delivered (software AD5 reset via
+  the SpiController GPIO did not take), or a manual RST pulse on a live board.
 
 
 ## 22. PN532 over SPI via FT232H/pyftdi (`READER_PN532SPI`) - **hardware on hand**

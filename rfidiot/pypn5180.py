@@ -222,8 +222,12 @@ class PN5180:
         second CS-framed transfer. Returns the response bytes (or b'')."""
         # 0. chip must be ready (BUSY low) before a command
         self._wait_busy(want_low=True, timeout=self.timeout)
-        # 1. send: pyftdi frames CS low..write..CS high in one call
-        self._port.write(bytes(tx))
+        # 1. send the command (CS framed). Use a full-duplex exchange (MISO ignored)
+        #    rather than write(): on the FT232H MPSSE a half-duplex write/read did
+        #    not clock reliably in testing - the known-good captainbeeheart/pypn5180
+        #    HAL drives everything through exchange(..., duplex=True), and our own
+        #    loopback only echoed in duplex mode.
+        self._port.exchange(bytes(tx), duplex=True)
         # 2. the chip pulses BUSY high while it processes; wait for it to finish.
         #    (over USB-GPIO the high pulse can be missed, so we just wait for the
         #    ready/low state with a short settle first.)
@@ -231,8 +235,8 @@ class PN5180:
         self._wait_busy(want_low=True, timeout=self.timeout)
         if not rx_len:
             return b""
-        # 3. read the response (CS framed), clocking out 0xFF
-        resp = bytes(self._port.read(rx_len))
+        # 3. read the response: clock out rx_len 0xFF bytes full-duplex, sample MISO
+        resp = bytes(self._port.exchange(b"\xff" * rx_len, duplex=True))
         time.sleep(0.001)
         self._wait_busy(want_low=True, timeout=self.timeout)
         return resp
